@@ -111,7 +111,7 @@ const App: React.FC = () => {
         const result = await hubGeminiGenerate({
           prompt: promptText,
           imageBase64: config.startImage || undefined,
-          model: "gemini-2.0-flash-exp",
+          model: "gemini-2.5-flash",
         });
         if (result.text) setConfig(prev => ({ ...prev, actionDescription: result.text!.trim() }));
       } else {
@@ -119,7 +119,7 @@ const App: React.FC = () => {
         const contents = config.startImage
           ? { parts: [{ inlineData: { data: config.startImage.split(',')[1], mimeType: 'image/png' } }, { text: `${systemPrompt} Context: ${config.actionDescription || 'Cinematic scene'}` }] }
           : { parts: [{ text: `${systemPrompt} Input: ${config.actionDescription}` }] };
-        const response = await ai.models.generateContent({ model: 'gemini-2.0-flash-exp', contents });
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents });
         if (response.text) setConfig(prev => ({ ...prev, actionDescription: response.text.trim() }));
       }
     } catch (error) {
@@ -139,7 +139,7 @@ const App: React.FC = () => {
       const result = await hubGeminiGenerate({
         prompt: promptText,
         imageBase64: imageSource,
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash",
         aspectRatio: config.aspectRatio,
         imageSize,
       });
@@ -153,7 +153,7 @@ const App: React.FC = () => {
       { text: promptText }
     ];
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.5-flash',
       contents: { parts },
       config: { imageConfig: { aspectRatio: (config.aspectRatio as any), imageSize } }
     });
@@ -183,7 +183,7 @@ const App: React.FC = () => {
         const result = await hubGeminiGenerate({
           prompt: promptText,
           imageBase64: config.startImage || undefined,
-          model: "gemini-2.0-flash-exp",
+          model: "gemini-2.5-flash",
           aspectRatio: config.aspectRatio,
           imageSize,
         });
@@ -197,14 +197,14 @@ const App: React.FC = () => {
             { text: `Apply ${artStyle?.technicalTerm} style at ${config.styleWeight}% intensity. Lens: ${lens?.technicalTerm}. Lighting: ${lighting?.technicalTerm}. Context: ${config.actionDescription}` }
           ];
           response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-2.5-flash',
             contents: { parts },
             config: { imageConfig: { aspectRatio: (config.aspectRatio as any), imageSize } }
           });
         } else {
           const prompt = `STYLE: ${artStyle?.technicalTerm}. LENS: ${lens?.technicalTerm}. LIGHTING: ${lighting?.technicalTerm}. INTENSITY: ${config.styleWeight}%. SUBJECT: ${config.actionDescription}. Ultra-high fidelity visual.`;
           response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: { imageConfig: { aspectRatio: (config.aspectRatio as any), imageSize } }
           });

@@ -27,13 +27,13 @@ export const BulkProcessor: React.FC<BulkProcessorProps> = ({ items, setItems, o
         const result = await hubGeminiGenerate({
           prompt: "Concise description (max 15 words) of the main subject/action.",
           imageBase64: base64,
-          model: "gemini-2.0-flash-exp",
+          model: "gemini-2.5-flash",
         });
         return result.text?.trim() || "Cinematic scene";
       }
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.5-flash',
         contents: {
           parts: [
             { inlineData: { data: base64.split(',')[1], mimeType: 'image/png' } },
