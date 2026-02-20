@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
-import { uploadDataUrl, hasBlob, resolveBlobUrl } from "@/lib/blob";
+import { uploadDataUrl, hasBlob } from "@/lib/blob";
 import { authOptions } from "@/lib/auth";
 import { generateImageTags } from "@/lib/generateImageTags";
 
@@ -197,24 +197,19 @@ export async function GET(request: NextRequest) {
       tags?: string[];
     };
     const rows: GenRow[] = (data ?? []) as GenRow[];
-    const items = await Promise.all(
-      rows.map(async (row) => {
-        const resolvedUrl = await resolveBlobUrl(row.blob_url);
-        return {
-          id: row.id,
-          appId: row.app_id,
-          dataUrl: resolvedUrl,
-          blobUrl: row.blob_url,
-          width: row.width,
-          height: row.height,
-          name: row.name,
-          createdAt: new Date(row.created_at).getTime(),
-          userId: row.user_id,
-          projectId: row.project_id,
-          tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
-        };
-      })
-    );
+    const items = rows.map((row) => ({
+      id: row.id,
+      appId: row.app_id,
+      dataUrl: null as string | null,
+      blobUrl: row.blob_url,
+      width: row.width,
+      height: row.height,
+      name: row.name,
+      createdAt: new Date(row.created_at).getTime(),
+      userId: row.user_id,
+      projectId: row.project_id,
+      tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
+    }));
 
     return NextResponse.json({ items });
   } catch (e) {

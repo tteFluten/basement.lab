@@ -16,6 +16,8 @@ export interface HistoryItem {
   projectName?: string;
   /** Descriptive tags for search (from API) */
   tags?: string[];
+  /** Blob URL from API; when set, client may resolve for display if dataUrl is empty */
+  blobUrl?: string;
 }
 
 const MAX_ITEMS = 30;
