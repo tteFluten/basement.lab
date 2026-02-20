@@ -19,6 +19,10 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (process.env.API_KEY) {
+      setAppState(AppState.IDLE);
+      return;
+    }
     const checkKey = async () => {
       try {
         // @ts-ignore
