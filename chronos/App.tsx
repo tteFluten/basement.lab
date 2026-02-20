@@ -204,7 +204,7 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-zinc-400 font-mono overflow-hidden">
       {/* TOP HEADER */}
-      <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-[#333] bg-[#111] backdrop-blur-md z-20">
+      <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-[#333] bg-[#0a0a0a] backdrop-blur-md z-20">
         <div className="flex items-center gap-4">
           <h1 className="text-sm font-bold tracking-[0.3em] text-white">CHRONOS <span className="text-zinc-600 font-light">//</span> V4.6</h1>
           <div className="h-3 w-[1px] bg-white/10"></div>
@@ -231,7 +231,7 @@ const App: React.FC = () => {
       <div className="flex-grow flex min-h-0 overflow-hidden">
         
         {/* TIMELINE SIDEBAR */}
-        <aside className="w-28 border-r border-[#333] flex flex-col bg-[#111] overflow-hidden">
+        <aside className="w-28 border-r border-[#333] flex flex-col bg-[#0a0a0a] overflow-hidden">
           <div className="p-3 text-[9px] font-bold text-zinc-600 border-b border-[#333] uppercase tracking-widest text-center">Timeline</div>
           <div ref={scrollRef} className="flex-grow overflow-y-auto no-scrollbar py-2">
             {timeline.map((frame, idx) => (
@@ -326,7 +326,7 @@ const App: React.FC = () => {
           </div>
 
           {/* CONTROL CONSOLE */}
-          <div className="flex-shrink-0 border-t border-[#333] bg-[#111] backdrop-blur-2xl px-8 py-6">
+          <div className="flex-shrink-0 border-t border-[#333] bg-[#0a0a0a] backdrop-blur-2xl px-8 py-6">
             <div className="grid grid-cols-12 gap-10 max-w-7xl mx-auto">
               
               {/* Analysis Log */}
@@ -416,7 +416,7 @@ const App: React.FC = () => {
       </div>
 
       {/* FOOTER */}
-      <footer className="flex-shrink-0 h-8 border-t border-[#333] bg-[#111] flex items-center justify-between px-6 text-[8px] text-zinc-700 tracking-[0.3em] uppercase z-20">
+      <footer className="flex-shrink-0 h-8 border-t border-[#333] bg-[#0a0a0a] flex items-center justify-between px-6 text-[8px] text-zinc-700 tracking-[0.3em] uppercase z-20">
         <div className="flex gap-8">
           <span className="flex items-center gap-2"><div className="w-1 h-1 bg-zinc-800 rounded-full"></div> Bi-Directional_Flux: Active</span>
           <span className="flex items-center gap-2"><div className="w-1 h-1 bg-zinc-800 rounded-full"></div> Frame_Buffer: {timeline.length}</span>

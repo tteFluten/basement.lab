@@ -238,8 +238,8 @@ const App: React.FC = () => {
   }, [config]);
 
   return (
-    <div className="min-h-screen bg-[#111] text-zinc-400 font-mono">
-      <header className="sticky top-0 z-50 bg-[#111] border-b border-[#333] px-6 py-4">
+    <div className="min-h-screen bg-[#0a0a0a] text-zinc-400 font-mono">
+      <header className="sticky top-0 z-50 bg-[#0a0a0a] border-b border-[#333] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-sm font-bold text-zinc-100 tracking-[0.2em] uppercase">CinePrompt_Terminal</h1>
@@ -291,7 +291,7 @@ const App: React.FC = () => {
             />
           </section>
 
-          <section className="space-y-12">
+          <section className="space-y-6">
             <OptionGrid 
               title="02_Aesthetic_Medium" 
               options={STILL_STYLES} 
@@ -300,21 +300,18 @@ const App: React.FC = () => {
               showImages={false}
               variant="horizontal"
             />
-            
-            <div className="border border-[#333] p-8 space-y-6 bg-[#181818]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">Style_Weight</h3>
-                <div className="text-sm font-bold text-zinc-100">{config.styleWeight}%</div>
-              </div>
+            <div className="border border-[#333] px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 bg-[#111]">
+              <h3 className="text-[9px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Style_Weight</h3>
               <input 
                 type="range" 
                 min="0" 
                 max="100" 
                 value={config.styleWeight}
                 onChange={(e) => setConfig(prev => ({ ...prev, styleWeight: parseInt(e.target.value) }))}
-                className="w-full h-1 bg-zinc-900 appearance-none cursor-pointer accent-zinc-100"
+                className="flex-1 min-w-[120px] max-w-[200px] h-0.5 bg-[#333] appearance-none cursor-pointer [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-zinc-100 [&::-webkit-slider-thumb]:cursor-pointer"
               />
-              <p className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">{getWeightDescription(config.styleWeight)}</p>
+              <span className="text-[10px] font-bold tabular-nums text-zinc-100">{config.styleWeight}%</span>
+              <span className="text-[8px] text-zinc-600 uppercase tracking-wider w-full">{getWeightDescription(config.styleWeight)}</span>
             </div>
           </section>
 

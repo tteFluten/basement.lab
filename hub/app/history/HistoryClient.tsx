@@ -13,7 +13,7 @@ export function HistoryClient() {
   }, []);
 
   return (
-    <main className="p-8 bg-[#111] min-h-full">
+    <main className="p-8 bg-[#0a0a0a] min-h-full">
       <h1 className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.3em] border-b border-[#333] pb-2 mb-6">
         History
       </h1>
@@ -27,7 +27,7 @@ export function HistoryClient() {
           {items.map((item) => (
             <div
               key={item.id}
-              className="border border-[#333] overflow-hidden bg-[#181818]"
+              className="border border-[#333] overflow-hidden bg-[#111]"
             >
               <img
                 src={item.dataUrl}

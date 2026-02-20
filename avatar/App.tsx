@@ -180,7 +180,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#111] text-zinc-400 flex flex-col tracking-tighter text-xs">
+    <div className="min-h-screen bg-[#0a0a0a] text-zinc-400 flex flex-col tracking-tighter text-xs">
       {/* HEADER */}
       <header className="border-b border-[#333] px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">

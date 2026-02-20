@@ -154,7 +154,7 @@ const App: React.FC = () => {
 
   if (appState === AppState.KEY_SELECTION) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center font-mono bg-[#111] text-zinc-400">
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center font-mono bg-[#0a0a0a] text-zinc-400">
         <div className="bg-[#181818] p-16 border border-[#333] w-full max-w-xl">
           <div className="w-10 h-10 bg-white mx-auto mb-10"></div>
           <h1 className="text-2xl font-bold mb-4 tracking-[0.5em] uppercase text-zinc-100">CONCEPT_ART_STUDIO</h1>
@@ -176,7 +176,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-[#111] font-mono text-zinc-500 overflow-hidden">
+    <div className="flex h-screen bg-[#0a0a0a] font-mono text-zinc-500 overflow-hidden">
       {/* Sidebar */}
       <aside className="w-96 border-r border-[#333] flex flex-col p-8 overflow-y-auto bg-[#181818]">
         <div className="flex flex-col gap-2 mb-20 border-l border-zinc-100 pl-4">
@@ -289,7 +289,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Area */}
-      <main className="flex-1 overflow-y-auto p-16 bg-[#111]">
+      <main className="flex-1 overflow-y-auto p-16 bg-[#0a0a0a]">
         {history.length === 0 && appState === AppState.IDLE && (
           <div className="h-full flex flex-col items-center justify-center">
             <div className="w-1 h-1 bg-zinc-900 mb-6"></div>
