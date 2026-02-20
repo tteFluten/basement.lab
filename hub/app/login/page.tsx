@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-bg text-fg">
+    <>
       <div className="w-full max-w-sm border border-border bg-bg-muted p-6">
         <h1 className="text-xl font-medium border-b border-border pb-2 mb-6">
           Basement Lab
@@ -96,6 +96,16 @@ export default function LoginPage() {
       >
         Back to home
       </Link>
+    </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-bg text-fg">
+      <Suspense fallback={<div className="text-fg-muted">Loading…</div>}>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }

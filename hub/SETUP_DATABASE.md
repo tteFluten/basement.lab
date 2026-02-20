@@ -1,5 +1,15 @@
 # Conectar base de datos (Supabase) y Blob
 
+## ¿Qué es .env.local y dónde configuro?
+
+- **`.env.local`** es un archivo que solo existe en **tu máquina** (desarrollo). Ahí ponés claves y URLs que el Hub necesita (Supabase, NextAuth, etc.). Ese archivo **no se sube a git** (está en `.gitignore`), así que cada desarrollador crea el suyo.
+- **Dónde va**: dentro de la carpeta del Hub, al mismo nivel que `package.json`. Ruta completa: `hub/.env.local`. Si no existe, crealo (archivo de texto, una variable por línea: `NOMBRE=valor`).
+- **¿Y en producción (Vercel, “afuera”)?** Ahí **no usás un archivo**. En el panel de Vercel (tu proyecto → **Settings** → **Environment Variables**) cargás las **mismas variables** con los **mismos nombres** (`NEXTAUTH_URL`, `NEXTAUTH_SECRET`, etc.) y los valores que correspondan para producción (por ejemplo `NEXTAUTH_URL=https://tu-dominio.vercel.app`). Vercel inyecta esas variables cuando corre el Hub; el código no cambia, solo cambia dónde se definen (archivo local vs panel).
+
+**Resumen**: en tu PC → creás/editás `hub/.env.local`. En Vercel (o el host que uses) → Settings → Environment Variables, mismo nombre de variable, valor de producción.
+
+---
+
 ## 1. Supabase
 
 1. Entrá a [supabase.com](https://supabase.com) y creá un proyecto.
@@ -49,15 +59,15 @@
 - Sin Supabase: el Hub sigue funcionando; el historial en memoria sigue disponible; la API devuelve 503 en GET y no persiste en POST.
 - Sin Blob: la API puede seguir guardando en Supabase usando la data URL en `blob_url` (solo recomendable para pruebas; en producción usá Blob).
 
-## 4. Variables en Vercel
+## 4. Variables en Vercel (producción)
 
-En el deployment, agregá en **Environment Variables**:
+En el deployment **no hay archivo .env.local**: las variables se cargan en el panel. En tu proyecto de Vercel → **Settings** → **Environment Variables** agregá las mismas que en local (mismos nombres), con valores de producción:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL` (mismo valor que en local si usás el mismo proyecto Supabase)
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `BLOB_READ_WRITE_TOKEN`
-- `NEXTAUTH_URL` (ej. `https://tu-dominio.vercel.app`)
-- `NEXTAUTH_SECRET`
-- `SETUP_PASSWORD_SECRET` (solo si querés usar el endpoint para setear contraseñas)
+- `NEXTAUTH_URL` → **acá sí cambiá**: poné la URL pública del Hub, ej. `https://tu-app.vercel.app`
+- `NEXTAUTH_SECRET` (puede ser el mismo o uno nuevo solo para producción)
+- `SETUP_PASSWORD_SECRET` (solo si querés usar el endpoint para setear contraseñas en producción)
 
-Luego redeploy.
+Guardá y hacé redeploy. El Hub en Vercel va a leer estas variables igual que en local.
