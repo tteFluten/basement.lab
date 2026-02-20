@@ -1,15 +1,14 @@
 @echo off
 cd /d "%~dp0"
-echo [Root] %CD%
 
+:: Find npm
 where npm >nul 2>nul
 if errorlevel 1 (
   set "NPM="
   if exist "C:\Program Files\nodejs\npm.cmd" set "NPM=C:\Program Files\nodejs\npm.cmd"
   if exist "%LOCALAPPDATA%\Programs\node\npm.cmd" set "NPM=%LOCALAPPDATA%\Programs\node\npm.cmd"
   if not defined NPM (
-    echo Node.js / npm not found in PATH.
-    echo Install Node.js from https://nodejs.org or run from Cursor: Ctrl+Shift+P -^> "Tasks: Run Task" -^> "Start Hub"
+    echo [!] Node.js / npm not found. Install from https://nodejs.org
     pause
     exit /b 1
   )
@@ -17,26 +16,33 @@ if errorlevel 1 (
   set "NPM=npm"
 )
 
+:: Kill any leftover process on port 3000
+echo [Hub] Cleaning port 3000...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3000 " ^| findstr "LISTENING"') do (
+  taskkill /PID %%a /F /T >nul 2>nul
+)
+
+:: Build apps if not built yet
 if not exist "hub\public\embed\cineprompt\index.html" (
-  echo [Root] Building apps (first time or after changes)...
+  echo [Hub] Building apps for the first time...
   call "%NPM%" run build:apps
   if errorlevel 1 (
-    echo [Root] build:apps failed. Check errors above.
+    echo [!] build:apps failed.
     pause
     exit /b 1
   )
-  echo [Root] Apps built.
 )
 
+:: Install hub deps if missing
 if not exist "hub\node_modules" (
-  echo [Hub] Installing dependencies...
-  cd hub
-  call "%NPM%" install
-  cd ..
+  echo [Hub] Installing hub dependencies...
+  call "%NPM%" install --prefix hub
 )
 
-echo [Hub] Starting. Open http://localhost:3000
+:: Start
 echo.
-cd hub
-call "%NPM%" run dev
+echo [Hub] Starting on http://localhost:3000
+echo      Press Ctrl+C to stop, then close this window.
+echo.
+call "%NPM%" run dev --prefix hub
 pause

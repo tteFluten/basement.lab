@@ -3,8 +3,8 @@
   "private": true,
   "scripts": {
     "build:apps": "npm install --prefix cineprompt && npm install --prefix pov && npm install --prefix chronos && npm install --prefix swag && npm install --prefix avatar && npm run build --prefix cineprompt && npm run build --prefix pov && npm run build --prefix chronos && npm run build --prefix swag && npm run build --prefix avatar",
-    "dev": "cd hub && npm run dev",
-    "dev:hub": "cd hub && npm run dev",
+    "dev": "npm run dev --prefix hub",
+    "dev:hub": "npm run dev --prefix hub",
     "dev:cineprompt": "cd cineprompt && npm run dev",
     "dev:pov": "cd pov && npm run dev",
     "dev:chronos": "cd chronos && npm run dev",
