@@ -51,30 +51,27 @@ basement.lab/
 └── README.md
 ```
 
-## Hub (Basement Lab)
+## Hub (Basement Lab) — unified
 
-The Hub uses **Geist Mono** for all UI and unifies all apps with a shared toolbar (app links, history, project, user, day/night). Apps run in iframes; the hub is on port 3000, apps on 5173–5177.
+The Hub uses **Geist Mono** and a shared toolbar. **All apps are built into the Hub** and served from a single process (no separate dev servers).
 
-**Run only the Hub:**
+**From repo root:**
 
-```powershell
-cd hub
-npm install
-npm run dev
-```
+1. **First time (or after changing app code):** build apps into the hub:
+   ```powershell
+   npm run build:apps
+   ```
+2. **Start the Hub:**
+   ```powershell
+   npm run dev
+   ```
+   Or double-click `start-hub.cmd` (it runs `build:apps` automatically if needed).
 
-Open [http://localhost:3000](http://localhost:3000). App links will point to localhost:5173 etc.; start each app in another terminal if needed.
+Open [http://localhost:3000](http://localhost:3000). Use the toolbar to open CinePrompt, POV, Chronos, Swag, or Avatar. One server, one URL.
 
-**Run Hub + all apps (one command from repo root):**
+**After editing an app** (e.g. in `cineprompt/`), run `npm run build:apps` again, then refresh the browser.
 
-```powershell
-npm install
-npm run dev:all
-```
-
-Then open [http://localhost:3000](http://localhost:3000) and use the toolbar to open CinePrompt, POV, Chronos, Swag, or Avatar.
-
-Copy `hub/.env.example` to `hub/.env.local` for Postgres, Blob, NextAuth, or app URL overrides when you add them.
+Copy `hub/.env.example` to `hub/.env.local` for Postgres, Blob, NextAuth when you add them.
 
 ## License
 

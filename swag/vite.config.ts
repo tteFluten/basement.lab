@@ -5,9 +5,14 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      base: '/embed/swag/',
       server: {
         port: 5176,
         host: '0.0.0.0',
+      },
+      build: {
+        outDir: path.resolve(__dirname, '../hub/public/embed/swag'),
+        emptyOutDir: true,
       },
       plugins: [react()],
       define: {

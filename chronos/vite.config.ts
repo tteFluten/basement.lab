@@ -5,9 +5,14 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      base: '/apps/chronos/',
       server: {
         port: 5175,
         host: '0.0.0.0',
+      },
+      build: {
+        outDir: path.resolve(__dirname, '../hub/public/embed/chronos'),
+        emptyOutDir: true,
       },
       plugins: [react()],
       define: {

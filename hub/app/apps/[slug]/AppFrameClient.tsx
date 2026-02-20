@@ -27,7 +27,7 @@ export function AppFrameClient() {
         sandbox="allow-scripts allow-same-origin allow-forms"
       />
       <p className="text-fg-muted text-xs px-4 py-2 border-t border-border bg-bg-muted shrink-0">
-        App at {url}. If it does not load, run that app (e.g. <code className="text-fg">cd {slug} &amp;&amp; npm run dev</code>) or run <code className="text-fg">npm run dev:all</code> from the repo root.
+        App at {url}. To rebuild apps, run <code className="text-fg">npm run build:apps</code> from the repo root.
       </p>
     </main>
   );

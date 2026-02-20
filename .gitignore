@@ -6,6 +6,7 @@ dist
 dist-ssr
 .next
 out
+hub/public/embed
 
 # Env and secrets (do not commit API keys)
 .env

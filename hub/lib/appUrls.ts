@@ -1,18 +1,12 @@
 /**
- * App dev server URLs when running all apps (see root dev:all).
- * Override via NEXT_PUBLIC_APP_<NAME>_URL if needed.
+ * Unified mode: apps are built into hub/public/embed/<name>/ and served at /embed/<name>/.
+ * Override with NEXT_PUBLIC_APP_<NAME>_URL to use a dev server instead.
  */
-const defaults: Record<string, string> = {
-  cineprompt: "http://localhost:5173",
-  pov: "http://localhost:5174",
-  chronos: "http://localhost:5175",
-  swag: "http://localhost:5176",
-  avatar: "http://localhost:5177",
-};
+const unifiedPath = (slug: string) => `/embed/${slug}/index.html`;
 
 export function getAppUrl(slug: string): string {
   if (!slug || typeof slug !== "string") return "#";
   const envKey = `NEXT_PUBLIC_APP_${slug.toUpperCase()}_URL`;
   const env = typeof process !== "undefined" ? (process as NodeJS.Process & { env: Record<string, string> }).env[envKey] : undefined;
-  return env || defaults[slug] || "#";
+  return env || unifiedPath(slug);
 }
