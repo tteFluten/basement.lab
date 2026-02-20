@@ -48,12 +48,15 @@ export async function POST(request: NextRequest) {
         imageConfig: { aspectRatio: "16:9", imageSize: size },
       },
     });
-    const candidates = (response as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data: string } }> } } }).candidates;
-    const part = candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-    if (!part?.inlineData?.data) {
+    const r = response as Record<string, unknown>;
+    const candidates = r.candidates as Array<Record<string, unknown>> | undefined;
+    const content = candidates?.[0]?.content as { parts?: Array<{ inlineData?: { data: string } }> } | undefined;
+    const part = content?.parts?.find((p) => p.inlineData);
+    const data = part?.inlineData?.data;
+    if (!data) {
       return NextResponse.json({ error: "Final render failed" }, { status: 500 });
     }
-    return NextResponse.json({ dataUrl: `data:image/png;base64,${part.inlineData.data}` });
+    return NextResponse.json({ dataUrl: `data:image/png;base64,${data}` });
   } catch (e) {
     console.error("POST /api/gemini/frame-variator/generate-single:", e);
     const msg = e instanceof Error ? e.message : "Server error";
