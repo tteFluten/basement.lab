@@ -127,11 +127,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId") ?? undefined;
     const tag = searchParams.get("tag") ?? undefined;
     const appId = searchParams.get("appId") ?? undefined;
-    const minWidth = searchParams.get("minWidth");
-    const maxWidth = searchParams.get("maxWidth");
-    const minHeight = searchParams.get("minHeight");
-    const maxHeight = searchParams.get("maxHeight");
-    const limit = Math.min(Number(searchParams.get("limit")) || 50, 100);
+    const limit = Math.min(Number(searchParams.get("limit")) || 100, 200);
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
     const supabase = getSupabase();
@@ -149,18 +145,6 @@ export async function GET(request: NextRequest) {
       if (userId && isAdmin) q = q.eq("user_id", userId);
       if (appId) q = q.eq("app_id", appId);
       if (includeTagFilter && tag) q = q.contains("tags", [tag]);
-      if (minWidth !== null && minWidth !== undefined && minWidth !== "") {
-        q = q.gte("width", Number(minWidth));
-      }
-      if (maxWidth !== null && maxWidth !== undefined && maxWidth !== "") {
-        q = q.lte("width", Number(maxWidth));
-      }
-      if (minHeight !== null && minHeight !== undefined && minHeight !== "") {
-        q = q.gte("height", Number(minHeight));
-      }
-      if (maxHeight !== null && maxHeight !== undefined && maxHeight !== "") {
-        q = q.lte("height", Number(maxHeight));
-      }
       return q;
     };
 
