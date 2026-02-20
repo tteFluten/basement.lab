@@ -25,7 +25,11 @@ export async function uploadDataUrl(
       const blob = await put(pathname, buffer, { access: "public", addRandomSuffix: true });
       return blob.url;
     } catch {
-      const blob = await put(pathname, buffer, { access: "private", addRandomSuffix: true });
+      // @vercel/blob types omit "private" but it is supported at runtime
+      const blob = await put(pathname, buffer, {
+        access: "private",
+        addRandomSuffix: true,
+      } as unknown as Parameters<typeof put>[2]);
       return blob.url;
     }
   } catch (err) {
