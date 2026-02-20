@@ -13,7 +13,14 @@ export async function POST(request: NextRequest) {
     const prompt = (body.prompt as string) ?? "";
     const imageBase64 = body.imageBase64 as string | undefined;
     const imageMime = (body.imageMime as string) ?? "image/png";
-    const model = (body.model as string) ?? "gemini-2.0-flash-exp";
+    const rawModel = (body.model as string) ?? "gemini-2.5-flash";
+    const MODEL_MAP: Record<string, string> = {
+      "gemini-2.0-flash-exp": "gemini-2.5-flash",
+      "gemini-3-flash-preview": "gemini-2.5-flash",
+      "gemini-3-pro-image-preview": "gemini-2.5-flash-image",
+      "gemini-3-pro-preview": "gemini-2.5-flash",
+    };
+    const model = MODEL_MAP[rawModel] ?? rawModel;
     const aspectRatio = body.aspectRatio as string | undefined;
     const imageSize = body.imageSize as string | undefined;
     const responseMimeType = body.responseMimeType as string | undefined;

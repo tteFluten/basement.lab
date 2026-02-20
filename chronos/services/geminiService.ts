@@ -49,7 +49,7 @@ export const analyzeCausality = async (imageBase64: string): Promise<AnalysisRes
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           { inlineData: { data: base64Data, mimeType: 'image/png' } },
@@ -108,7 +108,7 @@ export const analyzeConsequence = async (imageBase64: string): Promise<AnalysisR
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           { inlineData: { data: base64Data, mimeType: 'image/png' } },

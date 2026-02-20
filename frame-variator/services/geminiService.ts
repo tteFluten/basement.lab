@@ -60,7 +60,7 @@ export class GeminiService {
     }
     const ai = this.getClient();
     const response = await this.wrapApiKeyError(ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash",
       contents: {
         parts: [
           { inlineData: { data: base64Image.split(',')[1], mimeType: "image/jpeg" } },
@@ -113,7 +113,7 @@ export class GeminiService {
     Return as JSON array of {title, description}.`;
 
     const response = await this.wrapApiKeyError(ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -161,7 +161,7 @@ export class GeminiService {
     Output: Clean 3x3 contact sheet image.`;
 
     const response = await this.wrapApiKeyError(ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash-image",
       contents: {
         parts: [
           { inlineData: { data: originalBase64.split(',')[1], mimeType: "image/jpeg" } },
@@ -215,7 +215,7 @@ export class GeminiService {
     The resulting image must look like the original cinema camera capture for: ${prompt}.`;
 
     const response = await this.wrapApiKeyError(ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash-image",
       contents: {
         parts: [
           { inlineData: { data: originalBase64.split(',')[1], mimeType: "image/jpeg" } },

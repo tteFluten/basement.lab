@@ -7,7 +7,7 @@ function getHubApiBase(): string | null {
   return null;
 }
 
-const MODEL_NAME = 'gemini-2.0-flash-exp';
+const MODEL_NAME = 'gemini-2.5-flash-image';
 
 export async function generateProImage(params: {
   prompt: string;

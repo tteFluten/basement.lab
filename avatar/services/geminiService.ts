@@ -39,7 +39,7 @@ export const analyzeReferenceStyle = async (referenceImage: File): Promise<strin
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           { inlineData: { data: base64, mimeType: referenceImage.type } },
@@ -84,7 +84,7 @@ export const transformImage = async (
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const isPro = quality === 'high';
-  const modelName = isPro ? 'gemini-2.0-flash-exp' : 'gemini-2.0-flash-exp';
+  const modelName = isPro ? 'gemini-2.5-flash-image' : 'gemini-2.5-flash-image';
 
   const activeLocks = [];
   if (options.matchBackground) activeLocks.push("SYNC_BACKGROUND: Copia exacta del fondo de la IMAGEN_2.");
