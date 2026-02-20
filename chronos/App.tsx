@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeCausality, analyzeConsequence, reconstructFrame, AnalysisResult } from './services/geminiService';
+import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
 
 type GeminiAspectRatio = "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
 
@@ -39,31 +40,40 @@ const App: React.FC = () => {
     return "9:16";
   };
 
+  const applyReferenceImage = (result: string) => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = determineAspectRatio(img.width, img.height);
+      setAspectRatio(ratio);
+      const initialFrame: TimelineFrame = {
+        id: crypto.randomUUID(),
+        data: result,
+        timeLabel: 'T-0s',
+        analysis: 'Original Reference Frame.',
+        visualPrompt: '',
+        step: 0
+      };
+      setTimeline([initialFrame]);
+      setSelectedIndex(0);
+      setError(null);
+    };
+    img.src = result;
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          const ratio = determineAspectRatio(img.width, img.height);
-          setAspectRatio(ratio);
-          const initialFrame: TimelineFrame = {
-            id: crypto.randomUUID(),
-            data: result,
-            timeLabel: 'T-0s',
-            analysis: 'Original Reference Frame.',
-            visualPrompt: '',
-            step: 0
-          };
-          setTimeline([initialFrame]);
-          setSelectedIndex(0);
-          setError(null);
-        };
-        img.src = result;
-      };
+      reader.onload = (e) => applyReferenceImage(e.target?.result as string);
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleReferenceClick = () => {
+    if (isHubEnv()) {
+      openReferencePicker().then(applyReferenceImage).catch(() => {});
+    } else {
+      document.getElementById('chronos-file-input')?.click();
     }
   };
 
@@ -153,13 +163,24 @@ const App: React.FC = () => {
     }
   };
 
-  const downloadFrame = () => {
+  const downloadFrame = async () => {
     const current = timeline[selectedIndex];
     if (!current) return;
-    const link = document.createElement('a');
-    link.href = current.data;
-    link.download = `CHRONOS_${current.timeLabel}.png`;
-    link.click();
+    if (isHubEnv()) {
+      try {
+        await openDownloadAction(current.data, 'chronos');
+      } catch {
+        const link = document.createElement('a');
+        link.href = current.data;
+        link.download = `CHRONOS_${current.timeLabel}.png`;
+        link.click();
+      }
+    } else {
+      const link = document.createElement('a');
+      link.href = current.data;
+      link.download = `CHRONOS_${current.timeLabel}.png`;
+      link.click();
+    }
   };
 
   const reset = () => {
@@ -183,7 +204,7 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-zinc-400 font-mono overflow-hidden">
       {/* TOP HEADER */}
-      <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/80 backdrop-blur-md z-20">
+      <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-[#333] bg-[#111] backdrop-blur-md z-20">
         <div className="flex items-center gap-4">
           <h1 className="text-sm font-bold tracking-[0.3em] text-white">CHRONOS <span className="text-zinc-600 font-light">//</span> V4.6</h1>
           <div className="h-3 w-[1px] bg-white/10"></div>
@@ -194,7 +215,7 @@ const App: React.FC = () => {
           {timeline.length > 0 && (
             <button 
               onClick={reset}
-              className="text-[9px] flex items-center gap-2 hover:text-white transition-all uppercase tracking-widest border border-white/5 px-2 py-1 rounded"
+              className="text-[9px] flex items-center gap-2 hover:text-white transition-all uppercase tracking-widest border border-[#333] px-2 py-1 rounded"
             >
               <IconTrash /> RESET_SESSION
             </button>
@@ -210,8 +231,8 @@ const App: React.FC = () => {
       <div className="flex-grow flex min-h-0 overflow-hidden">
         
         {/* TIMELINE SIDEBAR */}
-        <aside className="w-28 border-r border-white/5 flex flex-col bg-black/40 overflow-hidden">
-          <div className="p-3 text-[9px] font-bold text-zinc-600 border-b border-white/5 uppercase tracking-widest text-center">Timeline</div>
+        <aside className="w-28 border-r border-[#333] flex flex-col bg-[#111] overflow-hidden">
+          <div className="p-3 text-[9px] font-bold text-zinc-600 border-b border-[#333] uppercase tracking-widest text-center">Timeline</div>
           <div ref={scrollRef} className="flex-grow overflow-y-auto no-scrollbar py-2">
             {timeline.map((frame, idx) => (
               <button
@@ -285,15 +306,15 @@ const App: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <label className="group flex flex-col items-center gap-8 cursor-pointer p-20 border border-white/5 rounded-lg bg-black/20 hover:bg-black/40 transition-all">
-                <div className="p-8 border border-white/10 rounded-full group-hover:scale-110 group-hover:border-white/30 transition-all duration-500">
+              <label className="group flex flex-col items-center gap-8 cursor-pointer p-20 border border-[#333] bg-[#181818] hover:bg-[#1a1a1a] transition-all" onClick={(e) => { e.preventDefault(); handleReferenceClick(); }}>
+                <div className="p-8 border border-[#333] group-hover:scale-110 group-hover:border-zinc-500 transition-all duration-500">
                   <IconUpload />
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 group-hover:text-white transition-colors">Select_Reference_Frame</p>
-                  <p className="text-[8px] text-zinc-700 mt-3 uppercase tracking-widest">Initial_Injection</p>
+                  <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 group-hover:text-white transition-colors">{isHubEnv() ? 'Upload_Or_From_History' : 'Select_Reference_Frame'}</p>
+                  <p className="text-[8px] text-zinc-600 mt-3 uppercase tracking-widest">Initial_Injection</p>
                 </div>
-                <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+                <input id="chronos-file-input" type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
               </label>
             )}
 
@@ -305,7 +326,7 @@ const App: React.FC = () => {
           </div>
 
           {/* CONTROL CONSOLE */}
-          <div className="flex-shrink-0 border-t border-white/5 bg-black/60 backdrop-blur-2xl px-8 py-6">
+          <div className="flex-shrink-0 border-t border-[#333] bg-[#111] backdrop-blur-2xl px-8 py-6">
             <div className="grid grid-cols-12 gap-10 max-w-7xl mx-auto">
               
               {/* Analysis Log */}
@@ -395,7 +416,7 @@ const App: React.FC = () => {
       </div>
 
       {/* FOOTER */}
-      <footer className="flex-shrink-0 h-8 border-t border-white/5 bg-black flex items-center justify-between px-6 text-[8px] text-zinc-700 tracking-[0.3em] uppercase z-20">
+      <footer className="flex-shrink-0 h-8 border-t border-[#333] bg-[#111] flex items-center justify-between px-6 text-[8px] text-zinc-700 tracking-[0.3em] uppercase z-20">
         <div className="flex gap-8">
           <span className="flex items-center gap-2"><div className="w-1 h-1 bg-zinc-800 rounded-full"></div> Bi-Directional_Flux: Active</span>
           <span className="flex items-center gap-2"><div className="w-1 h-1 bg-zinc-800 rounded-full"></div> Frame_Buffer: {timeline.length}</span>

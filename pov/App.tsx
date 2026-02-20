@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { AppState, GeneratedImage } from './types';
 import { generateProImage } from './services/geminiService';
 import CropOverlay from './components/CropOverlay';
+import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.KEY_SELECTION);
@@ -59,6 +59,50 @@ const App: React.FC = () => {
     }
   };
 
+  const handleReferenceClick = () => {
+    if (isHubEnv()) {
+      openReferencePicker()
+        .then(setUploadedImage)
+        .catch(() => {});
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const urlToDataUrl = (url: string): Promise<string> => {
+    if (url.startsWith('data:')) return Promise.resolve(url);
+    return fetch(url)
+      .then((r) => r.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((res, rej) => {
+            const r = new FileReader();
+            r.onloadend = () => res(r.result as string);
+            r.onerror = rej;
+            r.readAsDataURL(blob);
+          })
+      );
+  };
+
+  const handleDownload = async (img: GeneratedImage) => {
+    if (isHubEnv()) {
+      try {
+        const dataUrl = await urlToDataUrl(img.url);
+        await openDownloadAction(dataUrl, 'pov');
+      } catch {
+        const a = document.createElement('a');
+        a.href = img.url;
+        a.download = `concept-${img.id}.png`;
+        a.click();
+      }
+    } else {
+      const a = document.createElement('a');
+      a.href = img.url;
+      a.download = `concept-${img.id}.png`;
+      a.click();
+    }
+  };
+
   const runGeneration = async (isRefining = false, refinePromptOverride?: string, imageOverride?: string) => {
     if (!prompt && !isRefining) return;
     
@@ -110,8 +154,8 @@ const App: React.FC = () => {
 
   if (appState === AppState.KEY_SELECTION) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center font-mono bg-black text-zinc-400">
-        <div className="bg-zinc-950 p-16 border border-zinc-900 w-full max-w-xl">
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center font-mono bg-[#111] text-zinc-400">
+        <div className="bg-[#181818] p-16 border border-[#333] w-full max-w-xl">
           <div className="w-10 h-10 bg-white mx-auto mb-10"></div>
           <h1 className="text-2xl font-bold mb-4 tracking-[0.5em] uppercase text-zinc-100">CONCEPT_ART_STUDIO</h1>
           <p className="text-[10px] mb-12 leading-relaxed uppercase tracking-[0.3em] text-zinc-600 max-w-xs mx-auto">
@@ -132,9 +176,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-black font-mono text-zinc-500 overflow-hidden">
+    <div className="flex h-screen bg-[#111] font-mono text-zinc-500 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-96 border-r border-zinc-900 flex flex-col p-8 overflow-y-auto bg-zinc-950">
+      <aside className="w-96 border-r border-[#333] flex flex-col p-8 overflow-y-auto bg-[#181818]">
         <div className="flex flex-col gap-2 mb-20 border-l border-zinc-100 pl-4">
           <span className="font-bold text-sm tracking-[0.5em] uppercase text-zinc-100">CONCEPT_ART</span>
           <span className="text-[10px] tracking-[0.2em] uppercase text-zinc-700 font-bold">STUDIO_V2.5</span>
@@ -150,25 +194,25 @@ const App: React.FC = () => {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="DEFINE_ARTISTIC_CONCEPT..."
-              className="w-full bg-black border border-zinc-900 p-5 text-[11px] text-zinc-300 focus:outline-none focus:border-zinc-100 min-h-[180px] resize-none leading-loose placeholder:text-zinc-800 transition-colors"
+              className="w-full bg-[#111] border border-[#333] p-5 text-[11px] text-zinc-300 focus:outline-none focus:border-zinc-100 min-h-[180px] resize-none leading-loose placeholder:text-zinc-800 transition-colors"
             />
           </section>
 
           <section>
             <label className="text-[9px] font-bold text-zinc-600 uppercase tracking-[0.4em] block mb-5">02_INPUT_REFERENCE</label>
             <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full h-40 border border-zinc-900 flex flex-col items-center justify-center cursor-pointer hover:bg-zinc-900 transition-all overflow-hidden relative group"
+              onClick={handleReferenceClick}
+              className="w-full h-40 border border-[#333] flex flex-col items-center justify-center cursor-pointer hover:bg-[#1a1a1a] transition-all overflow-hidden relative group bg-[#111]"
             >
               {uploadedImage ? (
                 <>
                   <img src={uploadedImage} alt="Reference" className="w-full h-full object-cover opacity-30 grayscale group-hover:opacity-50 transition-opacity" />
-                  <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold bg-black/70 tracking-[0.3em] text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity">OVERWRITE_FILE</div>
+                  <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold bg-[#111]/70 tracking-[0.3em] text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity">OVERWRITE_FILE</div>
                 </>
               ) : (
                 <div className="flex flex-col items-center gap-3">
-                  <div className="w-4 h-4 border border-zinc-800 group-hover:border-zinc-500 transition-colors"></div>
-                  <span className="text-[8px] text-zinc-800 font-bold tracking-[0.4em] uppercase group-hover:text-zinc-600">BIND_LOCAL_ASSET</span>
+                  <div className="w-4 h-4 border border-[#333] group-hover:border-zinc-500 transition-colors"></div>
+                  <span className="text-[8px] text-zinc-600 font-bold tracking-[0.4em] uppercase">{isHubEnv() ? 'UPLOAD_OR_PICK_FROM_HISTORY' : 'BIND_LOCAL_ASSET'}</span>
                 </div>
               )}
             </div>
@@ -183,7 +227,7 @@ const App: React.FC = () => {
                   <button
                     key={size}
                     onClick={() => { setIsGridMode(true); setGridSize(size); }}
-                    className={`py-3 text-[10px] border transition-all ${isGridMode && gridSize === size ? 'bg-zinc-100 text-black border-zinc-100 font-bold' : 'bg-black border-zinc-900 text-zinc-700 hover:border-zinc-500'}`}
+                    className={`py-3 text-[10px] border transition-all ${isGridMode && gridSize === size ? 'bg-zinc-100 text-black border-zinc-100 font-bold' : 'bg-[#111] border-[#333] text-zinc-700 hover:border-zinc-500'}`}
                   >
                     {size}X{size}
                   </button>
@@ -191,7 +235,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => setIsGridMode(false)}
                   title="Single Image Mode"
-                  className={`py-3 text-[10px] border transition-all ${!isGridMode ? 'bg-zinc-100 text-black border-zinc-100 font-bold' : 'bg-black border-zinc-900 text-zinc-700 hover:border-zinc-500'}`}
+                  className={`py-3 text-[10px] border transition-all ${!isGridMode ? 'bg-zinc-100 text-black border-zinc-100 font-bold' : 'bg-[#111] border-[#333] text-zinc-700 hover:border-zinc-500'}`}
                 >
                   SGL
                 </button>
@@ -201,7 +245,7 @@ const App: React.FC = () => {
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="text-[9px] font-bold text-zinc-600 uppercase tracking-[0.4em] block mb-5">04_DIMENSION</label>
-                <div className="flex border border-zinc-900">
+                <div className="flex border border-[#333]">
                   {['1K', '2K', '4K'].map(res => (
                     <button
                       key={res}
@@ -219,7 +263,7 @@ const App: React.FC = () => {
                   <select
                     value={aspectRatio}
                     onChange={(e) => setAspectRatio(e.target.value as any)}
-                    className="w-full bg-black border border-zinc-900 p-2.5 text-[9px] focus:outline-none focus:border-zinc-100 appearance-none cursor-pointer uppercase text-zinc-700"
+                    className="w-full bg-[#111] border border-[#333] p-2.5 text-[9px] focus:outline-none focus:border-zinc-100 appearance-none cursor-pointer uppercase text-zinc-700"
                   >
                     <option value="1:1">1:1 SQUARE</option>
                     <option value="16:9">16:9 CINEMA</option>
@@ -245,7 +289,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Area */}
-      <main className="flex-1 overflow-y-auto p-16 bg-black">
+      <main className="flex-1 overflow-y-auto p-16 bg-[#111]">
         {history.length === 0 && appState === AppState.IDLE && (
           <div className="h-full flex flex-col items-center justify-center">
             <div className="w-1 h-1 bg-zinc-900 mb-6"></div>
@@ -266,7 +310,7 @@ const App: React.FC = () => {
           <div className="max-w-6xl mx-auto space-y-40 pb-60">
             {history.map((img, idx) => (
               <div key={img.id} className="group relative">
-                <div className="flex items-end justify-between mb-8 pb-4 border-b border-zinc-900">
+                <div className="flex items-end justify-between mb-8 pb-4 border-b border-[#333]">
                   <div className="flex items-center gap-10">
                     <span className="text-[10px] font-bold text-zinc-900 tabular-nums tracking-widest">SEQ_ID_{String(history.length - idx).padStart(3, '0')}</span>
                     <span className="text-[9px] text-zinc-700 uppercase tracking-[0.3em]">
@@ -282,16 +326,16 @@ const App: React.FC = () => {
                         [ SELECT_CELL ]
                       </button>
                     )}
-                    <a 
-                      href={img.url} 
-                      download={`concept-${img.id}.png`}
-                      className="text-[9px] font-bold text-zinc-800 hover:text-zinc-200 transition-all uppercase tracking-[0.3em]"
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(img)}
+                      className="text-[9px] font-bold text-zinc-600 hover:text-zinc-200 transition-all uppercase tracking-[0.3em]"
                     >
                       DOWNLOAD
-                    </a>
+                    </button>
                   </div>
                 </div>
-                <div className="bg-zinc-950 border border-zinc-900 aspect-video flex items-center justify-center transition-all hover:border-zinc-700 overflow-hidden shadow-2xl">
+                <div className="bg-[#181818] border border-[#333] aspect-video flex items-center justify-center transition-all hover:border-zinc-700 overflow-hidden shadow-2xl">
                   <img 
                     src={img.url} 
                     alt={img.prompt} 

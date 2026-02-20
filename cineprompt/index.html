@@ -6,38 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CinePrompt Pro | Terminal</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: 'Geist Mono';
+      src: url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-400-normal.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+    }
     body {
-      font-family: 'Space Mono', monospace;
-      background-color: #000000;
-      color: #d4d4d8;
+      font-family: 'Geist Mono', monospace;
+      background-color: #111111;
+      color: #e4e4e7;
     }
-    .font-mono {
-      font-family: 'Space Mono', monospace;
-    }
-    ::-webkit-scrollbar {
-      width: 4px;
-      height: 4px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #000;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #27272a;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #3f3f46;
-    }
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    /* Global Reset for Rounded Corners */
-    * {
-      border-radius: 0 !important;
-    }
+    .font-mono { font-family: 'Geist Mono', monospace; }
+    * { border-radius: 0 !important; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #333; }
+    ::-webkit-scrollbar-thumb:hover { background: #525252; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
   </style>
 <script type="importmap">
 {

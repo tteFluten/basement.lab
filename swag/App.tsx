@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { MockupType, AspectRatio, StylePreset, GenerationResult } from './types';
 import { generateMockup } from './services/geminiService';
+import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
 
 interface PendingGeneration {
   id: string;
@@ -123,6 +123,16 @@ const App: React.FC = () => {
     }
   };
 
+  const urlToDataUrl = (url: string): Promise<string> => {
+    if (url.startsWith('data:')) return Promise.resolve(url);
+    return fetch(url).then(r => r.blob()).then(blob => new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result as string);
+      r.onerror = rej;
+      r.readAsDataURL(blob);
+    }));
+  };
+
   const downloadImage = (url: string, name: string) => {
     const link = document.createElement('a');
     link.href = url;
@@ -130,6 +140,35 @@ const App: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownload = async (url: string, name: string) => {
+    if (isHubEnv()) {
+      try {
+        const dataUrl = await urlToDataUrl(url);
+        await openDownloadAction(dataUrl, 'swag');
+      } catch {
+        downloadImage(url, name);
+      }
+    } else {
+      downloadImage(url, name);
+    }
+  };
+
+  const handleLogoClick = () => {
+    if (isHubEnv()) {
+      openReferencePicker().then(setLogo).catch(() => {});
+    } else {
+      logoInputRef.current?.click();
+    }
+  };
+
+  const handleStyleClick = () => {
+    if (isHubEnv()) {
+      openReferencePicker().then(setStyleRef).catch(() => {});
+    } else {
+      styleInputRef.current?.click();
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -155,8 +194,8 @@ const App: React.FC = () => {
 
   if (!hasKey) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black p-4 font-mono">
-        <div className="max-w-md w-full border border-zinc-900 p-8 text-center bg-black">
+      <div className="min-h-screen flex items-center justify-center bg-[#111] p-4 font-mono">
+        <div className="max-w-md w-full border border-[#333] p-8 text-center bg-[#111]">
           <div className="w-12 h-12 border border-zinc-700 flex items-center justify-center mx-auto mb-6">
             <svg className="w-6 h-6 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -189,9 +228,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-zinc-400 font-mono">
+    <div className="min-h-screen bg-[#111] text-zinc-400 font-mono">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-zinc-900">
+      <header className="sticky top-0 z-50 bg-[#111] backdrop-blur-md border-b border-[#333]">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-6 h-6 border border-zinc-500 flex items-center justify-center">
@@ -219,14 +258,14 @@ const App: React.FC = () => {
           <section className="space-y-4">
             <h2 className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">01_Logo_Input</h2>
             <div 
-              onClick={() => logoInputRef.current?.click()}
-              className={`aspect-video border border-zinc-900 flex items-center justify-center cursor-pointer transition-all bg-black hover:border-zinc-600 ${logo ? 'border-zinc-500' : ''}`}
+              onClick={handleLogoClick}
+              className={`aspect-video border border-[#333] flex items-center justify-center cursor-pointer transition-all bg-[#111] hover:border-zinc-500 ${logo ? 'border-zinc-500' : ''}`}
             >
               {logo ? (
                 <img src={logo} alt="Logo" className="w-full h-full object-contain p-8" />
               ) : (
                 <div className="text-center p-4">
-                  <p className="text-[10px] text-zinc-600 uppercase tracking-tighter">Upload_Source</p>
+                  <p className="text-[10px] text-zinc-600 uppercase tracking-tighter">{isHubEnv() ? 'Upload_Or_From_History' : 'Upload_Source'}</p>
                 </div>
               )}
               <input type="file" ref={logoInputRef} onChange={(e) => handleFileUpload(e, setLogo)} className="hidden" accept="image/*" />
@@ -239,7 +278,7 @@ const App: React.FC = () => {
               <select 
                 value={stylePreset} 
                 onChange={(e) => setStylePreset(e.target.value as StylePreset)}
-                className="w-full bg-black p-3 border border-zinc-900 text-xs text-zinc-400 focus:border-zinc-500 outline-none appearance-none"
+                className="w-full bg-[#111] p-3 border border-[#333] text-xs text-zinc-400 focus:border-zinc-500 outline-none appearance-none"
               >
                 {Object.values(StylePreset).map(preset => (
                   <option key={preset} value={preset}>{preset.toUpperCase().replace(/\s/g, '_')}</option>
@@ -247,14 +286,14 @@ const App: React.FC = () => {
               </select>
               
               <div 
-                onClick={() => styleInputRef.current?.click()}
-                className={`aspect-video border border-zinc-900 flex items-center justify-center cursor-pointer transition-all bg-black hover:border-zinc-600 ${styleRef ? 'border-zinc-500' : ''}`}
+                onClick={handleStyleClick}
+                className={`aspect-video border border-[#333] flex items-center justify-center cursor-pointer transition-all bg-[#111] hover:border-zinc-500 ${styleRef ? 'border-zinc-500' : ''}`}
               >
                 {styleRef ? (
                   <img src={styleRef} alt="Style" className="w-full h-full object-cover" />
                 ) : (
                   <div className="text-center p-4">
-                    <p className="text-[10px] text-zinc-600 uppercase tracking-tighter">Style_Reference</p>
+                    <p className="text-[10px] text-zinc-600 uppercase tracking-tighter">{isHubEnv() ? 'Upload_Or_From_History' : 'Style_Reference'}</p>
                   </div>
                 )}
                 <input type="file" ref={styleInputRef} onChange={(e) => handleFileUpload(e, setStyleRef)} className="hidden" accept="image/*" />
@@ -268,7 +307,7 @@ const App: React.FC = () => {
               <select 
                 value={mockupType} 
                 onChange={(e) => setMockupType(e.target.value as MockupType)}
-                className="w-full bg-black p-3 border border-zinc-900 text-xs text-zinc-400 focus:border-zinc-500 outline-none appearance-none"
+                className="w-full bg-[#111] p-3 border border-[#333] text-xs text-zinc-400 focus:border-zinc-500 outline-none appearance-none"
               >
                 {Object.values(MockupType).map(type => (
                   <option key={type} value={type}>{type.toUpperCase().replace(/\s/g, '_')}</option>
@@ -282,7 +321,7 @@ const App: React.FC = () => {
                     <button 
                       key={ratio}
                       onClick={() => setAspectRatio(ratio)}
-                      className={`text-left p-2 text-[10px] border transition-all ${aspectRatio === ratio ? 'bg-zinc-100 text-black border-zinc-100' : 'border-zinc-900 text-zinc-600 hover:border-zinc-600'}`}
+                      className={`text-left p-2 text-[10px] border transition-all ${aspectRatio === ratio ? 'bg-zinc-100 text-black border-zinc-100' : 'border-[#333] text-zinc-600 hover:border-zinc-500'}`}
                     >
                       {ratio}
                     </button>
@@ -294,7 +333,7 @@ const App: React.FC = () => {
                     <button 
                       key={res}
                       onClick={() => setResolution(res)}
-                      className={`text-left p-2 text-[10px] border transition-all ${resolution === res ? 'bg-zinc-100 text-black border-zinc-100' : 'border-zinc-900 text-zinc-600 hover:border-zinc-600'}`}
+                      className={`text-left p-2 text-[10px] border transition-all ${resolution === res ? 'bg-zinc-100 text-black border-zinc-100' : 'border-[#333] text-zinc-600 hover:border-zinc-500'}`}
                     >
                       {res}
                     </button>
@@ -307,7 +346,7 @@ const App: React.FC = () => {
           <button
             onClick={handleGenerate}
             disabled={!logo}
-            className={`w-full py-5 font-bold uppercase text-xs tracking-[0.4em] transition-all border ${!logo ? 'border-zinc-900 text-zinc-700 cursor-not-allowed' : 'bg-white border-white text-black hover:bg-black hover:text-white active:scale-[0.98]'}`}
+            className={`w-full py-5 font-bold uppercase text-xs tracking-[0.4em] transition-all border ${!logo ? 'border-[#333] text-zinc-700 cursor-not-allowed' : 'bg-zinc-100 border-zinc-100 text-black hover:bg-[#111] hover:text-white hover:border-[#333] active:scale-[0.98]'}`}
           >
             Execute_Render
           </button>
@@ -322,10 +361,10 @@ const App: React.FC = () => {
         {/* Content Area */}
         <div className="lg:col-span-8 space-y-8">
           {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between border-b border-zinc-900 pb-4 gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[#333] pb-4 gap-4">
             <div className="flex items-center gap-6">
               <h2 className="text-xs font-bold uppercase tracking-[0.5em] text-zinc-100">Archive</h2>
-              <div className="flex border border-zinc-900">
+              <div className="flex border border-[#333]">
                 <button 
                   onClick={() => setViewMode('GRID')}
                   className={`px-3 py-1.5 text-[10px] uppercase tracking-tighter transition-colors ${viewMode === 'GRID' ? 'bg-zinc-100 text-black' : 'text-zinc-600 hover:text-zinc-400'}`}
@@ -360,7 +399,7 @@ const App: React.FC = () => {
           </div>
 
           {items.length === 0 ? (
-            <div className="aspect-video border border-zinc-900 flex flex-col items-center justify-center space-y-6 opacity-30">
+            <div className="aspect-video border border-[#333] flex flex-col items-center justify-center space-y-6 opacity-30">
               <p className="text-[10px] uppercase tracking-[0.3em]">No_Output_Cached</p>
             </div>
           ) : (
@@ -368,7 +407,7 @@ const App: React.FC = () => {
               {items.map((item) => {
                 const isPending = 'isPending' in item;
                 return (
-                  <div key={item.id} className="group border border-zinc-900 bg-black overflow-hidden relative transition-all hover:border-zinc-500">
+                  <div key={item.id} className="group border border-[#333] bg-[#111] overflow-hidden relative transition-all hover:border-zinc-500">
                     <div className="relative aspect-square overflow-hidden bg-zinc-950 flex items-center justify-center">
                       {isPending ? (
                         <div className="flex flex-col items-center gap-4">
@@ -385,9 +424,9 @@ const App: React.FC = () => {
                             alt={item.id} 
                             className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
                           />
-                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                          <div className="absolute inset-0 bg-[#111]/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                             <button 
-                              onClick={() => downloadImage(item.imageUrl, `${item.config.mockup}-${item.id}`)}
+                              onClick={() => handleDownload(item.imageUrl, `${item.config.mockup}-${item.id}`)}
                               className="px-4 py-2 bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-100 transition-all"
                             >
                               Download
@@ -402,7 +441,7 @@ const App: React.FC = () => {
                         </>
                       )}
                     </div>
-                    <div className="p-4 flex items-center justify-between border-t border-zinc-900 bg-black">
+                    <div className="p-4 flex items-center justify-between border-t border-[#333] bg-[#111]">
                       <div className="space-y-1">
                         <p className="text-[10px] font-bold text-zinc-100 uppercase tracking-tighter">{item.config.mockup}</p>
                         <p className="text-[8px] text-zinc-600 uppercase tracking-widest">
@@ -412,7 +451,7 @@ const App: React.FC = () => {
                       {!isPending && (
                         <button 
                           onClick={() => handleDelete(item.id)}
-                          className="text-[9px] text-zinc-900 hover:text-red-900 transition-colors uppercase"
+                          className="text-[9px] text-zinc-600 hover:text-red-900 transition-colors uppercase"
                         >
                           [Remove]
                         </button>

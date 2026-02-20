@@ -1,12 +1,11 @@
-
 import React, { useState, useRef } from 'react';
-import { 
-  Plus, 
-  Image as ImageIcon, 
-  Trash2, 
-  Settings2, 
-  Download, 
-  CheckCircle, 
+import {
+  Plus,
+  Image as ImageIcon,
+  Trash2,
+  Settings2,
+  Download,
+  CheckCircle,
   AlertCircle,
   Loader2,
   Zap,
@@ -21,6 +20,26 @@ import {
 } from 'lucide-react';
 import { ImageFile, StylingOptions, ProcessingState, AspectRatio, QualityLevel } from './types';
 import { transformImage, analyzeReferenceStyle } from './services/geminiService';
+import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+
+function dataUrlToFile(dataUrl: string, name = 'reference.png'): File {
+  const [header, base64] = dataUrl.split(',');
+  const mime = (header.match(/data:(.*);base64/) || [])[1] || 'image/png';
+  const bin = atob(base64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new File([arr], name, { type: mime });
+}
+
+function urlToDataUrl(url: string): Promise<string> {
+  if (url.startsWith('data:')) return Promise.resolve(url);
+  return fetch(url).then(r => r.blob()).then(blob => new Promise<string>((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  }));
+}
 
 const App: React.FC = () => {
   const [sourceImages, setSourceImages] = useState<ImageFile[]>([]);
@@ -61,17 +80,31 @@ const App: React.FC = () => {
     e.target.value = '';
   };
 
-  const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0]) return;
-    const file = e.target.files[0];
+  const applyReference = (file: File, preview: string) => {
     setReferenceImage({
       id: 'ref',
       file,
-      preview: URL.createObjectURL(file),
+      preview,
       status: 'completed',
     });
     setStyleManifest(null);
+  };
+
+  const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    applyReference(file, URL.createObjectURL(file));
     e.target.value = '';
+  };
+
+  const handleReferenceClick = () => {
+    if (isHubEnv()) {
+      openReferencePicker()
+        .then(dataUrl => applyReference(dataUrlToFile(dataUrl), dataUrl))
+        .catch(() => {});
+    } else {
+      referenceInputRef.current?.click();
+    }
   };
 
   const startProcessing = async () => {
@@ -121,28 +154,42 @@ const App: React.FC = () => {
     }
   };
 
-  const downloadAll = () => {
-    sourceImages.forEach((img, idx) => {
-      if (img.resultUrl) {
+  const downloadAll = async () => {
+    const withResult = sourceImages.filter((img): img is ImageFile & { resultUrl: string } => !!img.resultUrl);
+    if (isHubEnv()) {
+      for (let idx = 0; idx < withResult.length; idx++) {
+        const img = withResult[idx];
+        try {
+          const dataUrl = await urlToDataUrl(img.resultUrl);
+          await openDownloadAction(dataUrl, 'avatar');
+        } catch {
+          const link = document.createElement('a');
+          link.href = img.resultUrl;
+          link.download = `AVATAR_${idx + 1}.PNG`;
+          link.click();
+        }
+      }
+    } else {
+      withResult.forEach((img, idx) => {
         const link = document.createElement('a');
         link.href = img.resultUrl;
         link.download = `AVATAR_${idx + 1}.PNG`;
         link.click();
-      }
-    });
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-black text-zinc-400 flex flex-col tracking-tighter text-xs">
+    <div className="min-h-screen bg-[#111] text-zinc-400 flex flex-col tracking-tighter text-xs">
       {/* HEADER */}
-      <header className="border-b border-zinc-900 px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-[#333] px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Terminal size={18} className="text-white" />
           <h1 className="text-lg font-bold text-white tracking-widest">AVATARFLOW // B_02</h1>
         </div>
 
         <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2 border border-zinc-900 px-3 py-1">
+          <div className="flex items-center space-x-2 border border-[#333] px-3 py-1">
             <ShieldCheck size={12} className={processing.isProcessing ? "text-amber-500" : "text-zinc-500"} />
             <span className="font-bold">{processing.isProcessing ? 'LOCKED' : 'READY'}</span>
           </div>
@@ -152,8 +199,8 @@ const App: React.FC = () => {
             disabled={processing.isProcessing || !referenceImage || sourceImages.length === 0}
             className={`px-6 py-2 font-bold transition-all ${
               processing.isProcessing || !referenceImage || sourceImages.length === 0
-                ? 'bg-zinc-900 text-zinc-700 cursor-not-allowed'
-                : 'bg-white text-black hover:bg-zinc-100 active:scale-95'
+                ? 'bg-[#333] text-zinc-700 cursor-not-allowed'
+                : 'bg-zinc-100 text-black hover:bg-[#111] hover:text-white hover:border-[#333] active:scale-95 border border-[#333]'
             }`}
           >
             {processing.isProcessing ? 'EXECUTING...' : 'RUN_BULK'}
@@ -164,14 +211,14 @@ const App: React.FC = () => {
       <main className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1800px] mx-auto w-full">
         {/* SIDEBAR */}
         <div className={`lg:col-span-3 space-y-6 transition-opacity ${processing.isProcessing ? 'opacity-20 pointer-events-none' : ''}`}>
-          <section className="border border-zinc-900 p-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
+          <section className="border border-[#333] p-4 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#333] pb-2">
               <span className="font-bold text-zinc-100">MASTER_REF</span>
               <Layout size={14} />
             </div>
             <div 
-              onClick={() => !processing.isProcessing && referenceInputRef.current?.click()}
-              className={`relative border border-zinc-900 aspect-square flex flex-col items-center justify-center cursor-pointer hover:bg-zinc-900 transition-colors ${
+              onClick={() => !processing.isProcessing && handleReferenceClick()}
+              className={`relative border border-[#333] aspect-square flex flex-col items-center justify-center cursor-pointer hover:bg-[#1a1a1a] transition-colors ${
                 referenceImage ? 'border-zinc-500' : ''
               }`}
             >
@@ -183,15 +230,15 @@ const App: React.FC = () => {
               <input type="file" ref={referenceInputRef} onChange={handleReferenceUpload} className="hidden" accept="image/*" />
             </div>
             {styleManifest && (
-              <div className="bg-zinc-950 p-2 border border-zinc-900">
+              <div className="bg-[#181818] p-2 border border-[#333]">
                 <p className="text-[9px] text-zinc-500 leading-none">DNA_MANIFEST:</p>
                 <p className="text-[9px] mt-1 italic">{styleManifest}</p>
               </div>
             )}
           </section>
 
-          <section className="border border-zinc-900 p-4 space-y-6">
-            <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
+          <section className="border border-[#333] p-4 space-y-6">
+            <div className="flex items-center justify-between border-b border-[#333] pb-2">
               <span className="font-bold text-zinc-100">CONFIGURATION</span>
               <Settings2 size={14} />
             </div>
@@ -199,7 +246,7 @@ const App: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="text-[9px] font-bold text-zinc-600 block mb-1">ASPECT_RATIO</label>
-                <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="w-full bg-black border border-zinc-900 p-2 outline-none focus:border-white">
+                <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="w-full bg-[#111] border border-[#333] p-2 outline-none focus:border-zinc-500">
                   <option value="1:1">1:1 SQ</option>
                   <option value="4:3">4:3 PT</option>
                   <option value="16:9">16:9 LS</option>
@@ -207,7 +254,7 @@ const App: React.FC = () => {
               </div>
               <div>
                 <label className="text-[9px] font-bold text-zinc-600 block mb-1">ENGINE_RES</label>
-                <select value={quality} onChange={(e) => setQuality(e.target.value as QualityLevel)} className="w-full bg-black border border-zinc-900 p-2 outline-none focus:border-white">
+                <select value={quality} onChange={(e) => setQuality(e.target.value as QualityLevel)} className="w-full bg-[#111] border border-[#333] p-2 outline-none focus:border-zinc-500">
                   <option value="high">PRO_4K</option>
                   <option value="standard">STD_HD</option>
                 </select>
@@ -216,7 +263,7 @@ const App: React.FC = () => {
                 <label className="text-[9px] font-bold text-zinc-600 block mb-1">GLOBAL_PROMPT</label>
                 <textarea 
                   value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                  className="w-full h-20 bg-black border border-zinc-900 p-2 outline-none focus:border-white resize-none"
+                  className="w-full h-20 bg-[#111] border border-[#333] p-2 outline-none focus:border-zinc-500 resize-none"
                 />
               </div>
 
@@ -247,16 +294,16 @@ const App: React.FC = () => {
 
         {/* WORKSPACE */}
         <div className="lg:col-span-9 flex flex-col relative">
-          <div className="border border-zinc-900 flex-1 flex flex-col bg-black overflow-hidden relative">
+          <div className="border border-[#333] flex-1 flex flex-col bg-[#111] overflow-hidden relative">
             
             {/* BUSY OVERLAY */}
             {processing.isProcessing && (
-              <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-10 border border-zinc-900">
-                <div className="max-w-md w-full border border-zinc-900 p-8 flex flex-col items-center">
+              <div className="absolute inset-0 z-50 bg-[#111]/95 flex flex-col items-center justify-center p-10 border border-[#333]">
+                <div className="max-w-md w-full border border-[#333] p-8 flex flex-col items-center">
                   <Loader2 className="animate-spin text-white mb-6" size={32} />
                   <p className="text-white font-bold tracking-[0.4em] mb-4">SYSTEM_BUSY</p>
                   <p className="text-[10px] text-zinc-500 mb-8">PROCESSING_LANE: {processing.currentIndex + 1} // {processing.total}</p>
-                  <div className="w-full bg-zinc-900 h-1 overflow-hidden">
+                  <div className="w-full bg-[#333] h-1 overflow-hidden">
                     <div 
                       className="h-full bg-white transition-all duration-300" 
                       style={{ width: `${((processing.currentIndex + 1) / processing.total) * 100}%` }}
@@ -266,11 +313,11 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <div className="px-6 py-4 border-b border-zinc-900 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[#333] flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <Layers size={16} />
                 <span className="font-bold text-zinc-100">PRODUCTION_QUEUE</span>
-                <span className="text-[9px] bg-zinc-900 text-zinc-400 px-2 border border-zinc-900">[{sourceImages.length}]</span>
+                <span className="text-[9px] bg-[#333] text-zinc-400 px-2 border border-[#333]">[{sourceImages.length}]</span>
               </div>
               
               <div className={`flex items-center space-x-3 transition-opacity ${processing.isProcessing ? 'opacity-0' : ''}`}>
@@ -282,7 +329,7 @@ const App: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => sourceInputRef.current?.click()} 
-                  className="border border-zinc-900 px-4 py-1 hover:bg-zinc-900 text-white font-bold"
+                  className="border border-[#333] px-4 py-1 hover:bg-[#333] text-white font-bold"
                 >
                   IMPORT_BULK
                 </button>
@@ -299,7 +346,7 @@ const App: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
                   {sourceImages.map((img, idx) => (
-                    <div key={img.id} className={`group relative border border-zinc-900 aspect-[3/4] transition-all duration-300 ${
+                    <div key={img.id} className={`group relative border border-[#333] aspect-[3/4] transition-all duration-300 ${
                       img.status === 'processing' ? 'border-white opacity-50' : 
                       img.status === 'error' ? 'border-red-900' : 'hover:border-zinc-500'
                     }`}>
@@ -309,7 +356,7 @@ const App: React.FC = () => {
                         alt="Avatar" 
                       />
                       
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/80 border-t border-zinc-900">
+                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-[#111]/90 border-t border-[#333]">
                         <div className="flex items-center justify-between">
                           <span className="text-[8px] font-bold text-zinc-500">I_{idx + 1}</span>
                           {img.status === 'completed' && <span className="text-[8px] text-white">DONE</span>}
@@ -317,7 +364,7 @@ const App: React.FC = () => {
                       </div>
 
                       {img.status === 'processing' && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <div className="absolute inset-0 flex items-center justify-center bg-[#111]/60">
                           <Loader2 className="animate-spin text-white" size={20} />
                         </div>
                       )}
@@ -329,8 +376,8 @@ const App: React.FC = () => {
                         </div>
                       )}
 
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center bg-black/60 transition-opacity">
-                        <button onClick={() => setSourceImages(prev => prev.filter(i => i.id !== img.id))} className="p-2 bg-zinc-900 hover:bg-red-900 text-white">
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center bg-[#111]/80 transition-opacity">
+                        <button onClick={() => setSourceImages(prev => prev.filter(i => i.id !== img.id))} className="p-2 bg-[#333] hover:bg-red-900 text-white">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -341,7 +388,7 @@ const App: React.FC = () => {
             </div>
             
             {processing.isProcessing && (
-              <div className="bg-zinc-900 h-0.5 w-full relative">
+              <div className="bg-[#333] h-0.5 w-full relative">
                 <div 
                   className="absolute inset-y-0 left-0 bg-white transition-all duration-500" 
                   style={{ width: `${((processing.currentIndex + 1) / processing.total) * 100}%` }} 
@@ -352,7 +399,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <footer className="border-t border-zinc-900 px-6 py-2 flex justify-between items-center text-[9px] text-zinc-600 font-bold">
+      <footer className="border-t border-[#333] px-6 py-2 flex justify-between items-center text-[9px] text-zinc-600 font-bold">
         <span>DEVICE: GEMINI_AI_SESSION // 001</span>
         <span>STATUS: SYSTEM_OPTIMIZED</span>
       </footer>
