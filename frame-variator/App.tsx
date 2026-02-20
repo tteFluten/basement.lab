@@ -148,12 +148,34 @@ const App: React.FC = () => {
     }
   };
 
-  const downloadGrid = () => {
+  const urlToDataUrl = (url: string): Promise<string> => {
+    if (url.startsWith('data:')) return Promise.resolve(url);
+    return fetch(url).then(r => r.blob()).then(blob => new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result as string);
+      r.onerror = rej;
+      r.readAsDataURL(blob);
+    }));
+  };
+
+  const downloadGrid = async () => {
     if (!currentGrid.imageUrl) return;
-    const link = document.createElement('a');
-    link.href = currentGrid.imageUrl;
-    link.download = `FV_Grid_${mode}_${Date.now()}.png`;
-    link.click();
+    if (isHubEnv()) {
+      try {
+        const dataUrl = await urlToDataUrl(currentGrid.imageUrl);
+        await openDownloadAction(dataUrl, 'frame-variator');
+      } catch {
+        const link = document.createElement('a');
+        link.href = currentGrid.imageUrl;
+        link.download = `FV_Grid_${mode}_${Date.now()}.png`;
+        link.click();
+      }
+    } else {
+      const link = document.createElement('a');
+      link.href = currentGrid.imageUrl;
+      link.download = `FV_Grid_${mode}_${Date.now()}.png`;
+      link.click();
+    }
   };
 
   const downloadSelectedPreview = () => {
