@@ -18,8 +18,10 @@ import {
   ChevronDown,
   LogOut,
   User as UserIcon,
+  Shield,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
 
 const APP_LINKS = [
   { slug: "cineprompt", label: "CinePrompt", Icon: Film },
@@ -41,6 +43,93 @@ const PROJECT_APP_LINKS = [
 ] as const;
 
 const iconSize = 18;
+
+type Project = { id: string; name: string };
+
+function ProjectSelector() {
+  const [open, setOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((data) => {
+        const list = Array.isArray(data?.items) ? data.items : [];
+        setProjects(list);
+        const id = getCurrentProjectId();
+        setCurrentId(id);
+        if (list.length === 1 && !id) {
+          setCurrentProjectId(list[0].id);
+          setCurrentId(list[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [open]);
+
+  const currentName = projects.find((p) => p.id === currentId)?.name ?? "Project";
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Current project (saves go here)"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1 p-1.5 shrink-0 max-w-[140px] ${
+          open ? "text-fg border-b border-fg" : "text-fg-muted hover:text-fg"
+        }`}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        <FolderOpen size={iconSize} strokeWidth={1.5} />
+        <span className="text-xs truncate">{currentName}</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+      </button>
+      {open && (
+        <ul
+          className="absolute right-0 top-full mt-1 min-w-[200px] border border-border bg-bg-muted py-1 z-50 max-h-[280px] overflow-auto"
+          role="menu"
+        >
+          {projects.length === 0 ? (
+            <li className="px-3 py-2 text-xs text-fg-muted">
+              No projects. Admin can create in Dashboard.
+            </li>
+          ) : (
+            projects.map((p) => (
+              <li key={p.id} role="none">
+                <button
+                  type="button"
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-bg ${
+                    currentId === p.id ? "text-fg font-medium" : "text-fg-muted"
+                  }`}
+                  role="menuitem"
+                  onClick={() => {
+                    setCurrentProjectId(p.id);
+                    setCurrentId(p.id);
+                    setOpen(false);
+                  }}
+                >
+                  {p.name}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function ProjectAppsMenu() {
   const pathname = usePathname();
@@ -174,6 +263,8 @@ function UserMenu() {
 
 export function Toolbar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
 
   return (
     <header className="border-b border-border bg-bg-muted shrink-0">
@@ -212,13 +303,16 @@ export function Toolbar() {
         >
           <History size={iconSize} strokeWidth={1.5} />
         </Link>
-        <button
-          type="button"
-          title="Project"
-          className="p-1.5 text-fg-muted hover:text-fg shrink-0"
-        >
-          <FolderOpen size={iconSize} strokeWidth={1.5} />
-        </button>
+        <ProjectSelector />
+        {isAdmin && (
+          <Link
+            href="/admin"
+            title="Admin"
+            className="p-1.5 text-fg-muted hover:text-fg shrink-0"
+          >
+            <Shield size={iconSize} strokeWidth={1.5} />
+          </Link>
+        )}
         <UserMenu />
       </nav>
     </header>

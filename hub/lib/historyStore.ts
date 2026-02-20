@@ -12,10 +12,10 @@ export interface HistoryItem {
   mimeType?: string;
   width?: number;
   height?: number;
-  /** Placeholder until we have auth: user display name */
   userName?: string;
-  /** Placeholder until we have projects: project name */
   projectName?: string;
+  /** Descriptive tags for search (from API) */
+  tags?: string[];
 }
 
 const MAX_ITEMS = 30;

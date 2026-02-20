@@ -27,8 +27,7 @@ export function getAppIcon(appId: string): LucideIcon {
   return APP_ICONS[appId] ?? ImagePlus;
 }
 
-export function getAppLabel(appId: string): string {
-  const labels: Record<string, string> = {
+const APP_LABELS: Record<string, string> = {
     cineprompt: "CinePrompt",
     pov: "POV",
     chronos: "Chronos",
@@ -37,6 +36,12 @@ export function getAppLabel(appId: string): string {
     render: "Render",
     "frame-variator": "Frame Variator",
     connect: "Connect",
-  };
-  return labels[appId] ?? appId;
+};
+
+export function getAppLabel(appId: string): string {
+  return APP_LABELS[appId] ?? appId;
+}
+
+export function getAppIds(): string[] {
+  return Object.keys(APP_LABELS);
 }

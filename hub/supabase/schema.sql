@@ -46,11 +46,14 @@ create table if not exists public.generations (
   width int,
   height int,
   name text,
+  tags text[] default '{}',
   created_at timestamptz default now()
 );
 
 create index if not exists idx_generations_user_id on public.generations(user_id);
 create index if not exists idx_generations_project_id on public.generations(project_id);
 create index if not exists idx_generations_created_at on public.generations(created_at desc);
+create index if not exists idx_generations_tags on public.generations using gin(tags);
+create index if not exists idx_generations_app_id on public.generations(app_id);
 
 -- Optional: seed admin. Run hub/supabase/seed.sql after this schema to set lautaro@basement.studio as admin.

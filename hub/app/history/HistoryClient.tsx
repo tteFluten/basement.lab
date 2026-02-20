@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { getHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
-import { getAppIcon, getAppLabel } from "@/lib/appIcons";
-import { Download, Maximize2, ZoomIn, X } from "lucide-react";
+import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
+import { Download, Maximize2, ZoomIn, X, Trash2 } from "lucide-react";
 
 function apiItemToHistoryItem(row: {
   id: string;
@@ -14,6 +14,7 @@ function apiItemToHistoryItem(row: {
   height?: number | null;
   name?: string | null;
   createdAt: number;
+  tags?: string[];
 }): HistoryItem {
   const url = row.dataUrl || row.blobUrl || "";
   return {
@@ -25,8 +26,12 @@ function apiItemToHistoryItem(row: {
     height: row.height ?? undefined,
     mimeType: "image/png",
     createdAt: row.createdAt,
+    tags: Array.isArray(row.tags) ? row.tags : undefined,
   };
 }
+
+type Project = { id: string; name: string };
+type User = { id: string; email: string; full_name: string | null };
 
 export function HistoryClient() {
   const [apiItems, setApiItems] = useState<HistoryItem[]>([]);
@@ -35,12 +40,47 @@ export function HistoryClient() {
   const [lightboxItem, setLightboxItem] = useState<HistoryItem | null>(null);
   const [apiLoading, setApiLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [filterProjectId, setFilterProjectId] = useState("");
+  const [filterUserId, setFilterUserId] = useState("");
+  const [filterTag, setFilterTag] = useState("");
+  const [filterAppId, setFilterAppId] = useState("");
+  const [filterMinWidth, setFilterMinWidth] = useState("");
+  const [filterMaxWidth, setFilterMaxWidth] = useState("");
+  const [filterMinHeight, setFilterMinHeight] = useState("");
+  const [filterMaxHeight, setFilterMaxHeight] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("limit", "50");
+    if (filterProjectId) params.set("projectId", filterProjectId);
+    if (filterUserId) params.set("userId", filterUserId);
+    if (filterTag.trim()) params.set("tag", filterTag.trim());
+    if (filterAppId) params.set("appId", filterAppId);
+    if (filterMinWidth.trim()) params.set("minWidth", filterMinWidth.trim());
+    if (filterMaxWidth.trim()) params.set("maxWidth", filterMaxWidth.trim());
+    if (filterMinHeight.trim()) params.set("minHeight", filterMinHeight.trim());
+    if (filterMaxHeight.trim()) params.set("maxHeight", filterMaxHeight.trim());
+    return params.toString();
+  }, [
+    filterProjectId,
+    filterUserId,
+    filterTag,
+    filterAppId,
+    filterMinWidth,
+    filterMaxWidth,
+    filterMinHeight,
+    filterMaxHeight,
+  ]);
 
   const fetchApiHistory = useCallback(async () => {
     setApiError(null);
     setApiLoading(true);
     try {
-      const res = await fetch("/api/generations?limit=50");
+      const res = await fetch(`/api/generations?${queryString}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setApiError(json.error ?? `Error ${res.status}. Check Supabase and Blob setup.`);
@@ -55,11 +95,30 @@ export function HistoryClient() {
     } finally {
       setApiLoading(false);
     }
-  }, []);
+  }, [queryString]);
 
   useEffect(() => {
     fetchApiHistory();
   }, [fetchApiHistory]);
+
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((data) => setProjects(Array.isArray(data?.items) ? data.items : []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data?.items)) {
+          setUsers(data.items);
+          setIsAdmin(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setMemoryItems(getHistory());
@@ -88,9 +147,24 @@ export function HistoryClient() {
         i.appId.toLowerCase().includes(q) ||
         (i.name ?? "").toLowerCase().includes(q) ||
         (i.userName ?? "").toLowerCase().includes(q) ||
-        (i.projectName ?? "").toLowerCase().includes(q)
+        (i.projectName ?? "").toLowerCase().includes(q) ||
+        (i.tags ?? []).some((t) => t.toLowerCase().includes(q))
     );
   }, [items, search]);
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (deletingId) return;
+      setDeletingId(id);
+      try {
+        const res = await fetch(`/api/generations/${id}`, { method: "DELETE" });
+        if (res.ok) fetchApiHistory();
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [deletingId, fetchApiHistory]
+  );
 
   const handleDownload = (item: HistoryItem) => {
     const link = document.createElement("a");
@@ -140,10 +214,10 @@ export function HistoryClient() {
         Images saved via &quot;Download and add to history&quot;. View large, download, or request 4K upscale (when resolution is small).
       </p>
 
-      <div className="mb-6 flex flex-wrap items-center gap-4">
+      <div className="mb-4 flex flex-wrap items-center gap-4">
         <input
           type="text"
-          placeholder="Search by app, name, user, project..."
+          placeholder="Search by app, name, user, project, tags..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 min-w-[200px] max-w-md bg-[#111] border border-[#333] px-4 py-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
@@ -157,6 +231,83 @@ export function HistoryClient() {
             Retry
           </button>
         )}
+      </div>
+
+      <div className="mb-6 flex flex-wrap items-center gap-3 text-[10px]">
+        <span className="text-zinc-500 uppercase">Filters:</span>
+        <select
+          value={filterProjectId}
+          onChange={(e) => setFilterProjectId(e.target.value)}
+          className="bg-[#111] border border-[#333] px-2 py-1.5 text-zinc-300"
+        >
+          <option value="">All projects</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        {isAdmin && (
+          <select
+            value={filterUserId}
+            onChange={(e) => setFilterUserId(e.target.value)}
+            className="bg-[#111] border border-[#333] px-2 py-1.5 text-zinc-300"
+          >
+            <option value="">All users</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.full_name || u.email}
+              </option>
+            ))}
+          </select>
+        )}
+        <select
+          value={filterAppId}
+          onChange={(e) => setFilterAppId(e.target.value)}
+          className="bg-[#111] border border-[#333] px-2 py-1.5 text-zinc-300"
+        >
+          <option value="">All apps</option>
+          {getAppIds().map((appId) => (
+            <option key={appId} value={appId}>
+              {getAppLabel(appId)}
+            </option>
+          ))}
+        </select>
+        <input
+          type="text"
+          placeholder="Tag"
+          value={filterTag}
+          onChange={(e) => setFilterTag(e.target.value)}
+          className="w-24 bg-[#111] border border-[#333] px-2 py-1.5 text-zinc-300 placeholder:text-zinc-600"
+        />
+        <input
+          type="number"
+          placeholder="Min W"
+          value={filterMinWidth}
+          onChange={(e) => setFilterMinWidth(e.target.value)}
+          className="w-16 bg-[#111] border border-[#333] px-2 py-1.5 text-zinc-300 placeholder:text-zinc-600"
+        />
+        <input
+          type="number"
+          placeholder="Max W"
+          value={filterMaxWidth}
+          onChange={(e) => setFilterMaxWidth(e.target.value)}
+          className="w-16 bg-[#111] border border-[#333] px-2 py-1.5 text-zinc-300 placeholder:text-zinc-600"
+        />
+        <input
+          type="number"
+          placeholder="Min H"
+          value={filterMinHeight}
+          onChange={(e) => setFilterMinHeight(e.target.value)}
+          className="w-16 bg-[#111] border border-[#333] px-2 py-1.5 text-zinc-300 placeholder:text-zinc-600"
+        />
+        <input
+          type="number"
+          placeholder="Max H"
+          value={filterMaxHeight}
+          onChange={(e) => setFilterMaxHeight(e.target.value)}
+          className="w-16 bg-[#111] border border-[#333] px-2 py-1.5 text-zinc-300 placeholder:text-zinc-600"
+        />
       </div>
 
       {apiLoading && apiItems.length === 0 ? (
@@ -213,13 +364,19 @@ export function HistoryClient() {
                     </span>
                   </div>
                   <p className="text-[8px] text-zinc-600">{formatDate(item.createdAt)}</p>
+                  {(item.tags?.length ?? 0) > 0 && (
+                    <p className="text-[7px] text-zinc-600 truncate" title={item.tags!.join(", ")}>
+                      {item.tags!.slice(0, 3).join(", ")}
+                      {item.tags!.length > 3 ? "…" : ""}
+                    </p>
+                  )}
                   {(item.userName || item.projectName) && (
                     <p className="text-[8px] text-zinc-700 truncate">
                       {[item.userName, item.projectName].filter(Boolean).join(" · ")}
                     </p>
                   )}
                 </div>
-                <div className="flex border-t border-[#333]">
+                <div className="flex border-t border-[#333] flex-wrap">
                   <button
                     type="button"
                     onClick={() => isImage && setLightboxItem(item)}
@@ -248,6 +405,17 @@ export function HistoryClient() {
                     >
                       <ZoomIn className="w-3 h-3" />
                       4K
+                    </button>
+                  )}
+                  {!item.id.startsWith("h-") && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deletingId === item.id}
+                      className="py-2 px-2 flex items-center justify-center text-[8px] text-zinc-500 hover:bg-red-900/30 hover:text-red-400 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   )}
                 </div>

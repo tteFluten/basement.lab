@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
 import { uploadDataUrl, hasBlob, resolveBlobUrl } from "@/lib/blob";
 import { authOptions } from "@/lib/auth";
+import { generateImageTags } from "@/lib/generateImageTags";
 
 export const runtime = "nodejs";
 
@@ -79,12 +80,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    let tags: string[] = [];
+    try {
+      tags = await generateImageTags(dataUrl);
+      if (tags.length > 0) {
+        await supabase.from("generations").update({ tags }).eq("id", data.id);
+      }
+    } catch (tagErr) {
+      console.warn("Tag generation skipped:", tagErr);
+    }
+
     return NextResponse.json({
       ok: true,
       saved: true,
       id: data.id,
       created_at: data.created_at,
       blob_url: blobUrl,
+      tags,
     });
   } catch (e) {
     console.error("POST /api/generations:", e);
@@ -95,7 +107,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** GET: list generations (optional query: projectId, limit). Non-admins see only their own. */
+/** GET: list generations. Query: projectId, userId (admin), tag, appId, minWidth, maxWidth, minHeight, maxHeight, limit. Non-admins see only their own. */
 export async function GET(request: NextRequest) {
   if (!hasSupabase()) {
     return NextResponse.json(
@@ -112,13 +124,20 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("projectId") ?? undefined;
+    const userId = searchParams.get("userId") ?? undefined;
+    const tag = searchParams.get("tag") ?? undefined;
+    const appId = searchParams.get("appId") ?? undefined;
+    const minWidth = searchParams.get("minWidth");
+    const maxWidth = searchParams.get("maxWidth");
+    const minHeight = searchParams.get("minHeight");
+    const maxHeight = searchParams.get("maxHeight");
     const limit = Math.min(Number(searchParams.get("limit")) || 50, 100);
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
     const supabase = getSupabase();
     let q = supabase
       .from("generations")
-      .select("id, app_id, blob_url, width, height, name, created_at, user_id, project_id")
+      .select("id, app_id, blob_url, width, height, name, created_at, user_id, project_id, tags")
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -126,6 +145,21 @@ export async function GET(request: NextRequest) {
       q = q.eq("user_id", session.user.id);
     }
     if (projectId) q = q.eq("project_id", projectId);
+    if (userId && isAdmin) q = q.eq("user_id", userId);
+    if (appId) q = q.eq("app_id", appId);
+    if (tag) q = q.contains("tags", [tag]);
+    if (minWidth !== null && minWidth !== undefined && minWidth !== "") {
+      q = q.gte("width", Number(minWidth));
+    }
+    if (maxWidth !== null && maxWidth !== undefined && maxWidth !== "") {
+      q = q.lte("width", Number(maxWidth));
+    }
+    if (minHeight !== null && minHeight !== undefined && minHeight !== "") {
+      q = q.gte("height", Number(minHeight));
+    }
+    if (maxHeight !== null && maxHeight !== undefined && maxHeight !== "") {
+      q = q.lte("height", Number(maxHeight));
+    }
 
     const { data, error } = await q;
 
@@ -148,6 +182,7 @@ export async function GET(request: NextRequest) {
           createdAt: new Date(row.created_at).getTime(),
           userId: row.user_id,
           projectId: row.project_id,
+          tags: Array.isArray(row.tags) ? row.tags : [],
         };
       })
     );

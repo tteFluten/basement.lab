@@ -1,6 +1,7 @@
 "use client";
 
 import { addToHistory } from "@/lib/historyStore";
+import { getCurrentProjectId } from "@/lib/currentProject";
 
 type Props = {
   open: boolean;
@@ -95,6 +96,7 @@ export function DownloadActionModal({
       });
       triggerDownload();
       // Persist to Supabase + Blob when configured
+      const projectId = getCurrentProjectId();
       fetch("/api/generations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,6 +106,7 @@ export function DownloadActionModal({
           name,
           width,
           height,
+          ...(projectId ? { projectId } : {}),
         }),
       }).catch(() => {});
     };
