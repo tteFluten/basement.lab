@@ -135,33 +135,49 @@ export async function GET(request: NextRequest) {
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
     const supabase = getSupabase();
-    let q = supabase
-      .from("generations")
-      .select("id, app_id, blob_url, width, height, name, created_at, user_id, project_id, tags")
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const selectWithTags = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id, tags";
+    const selectWithoutTags = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id";
 
-    if (!isAdmin) {
-      q = q.eq("user_id", session.user.id);
-    }
-    if (projectId) q = q.eq("project_id", projectId);
-    if (userId && isAdmin) q = q.eq("user_id", userId);
-    if (appId) q = q.eq("app_id", appId);
-    if (tag) q = q.contains("tags", [tag]);
-    if (minWidth !== null && minWidth !== undefined && minWidth !== "") {
-      q = q.gte("width", Number(minWidth));
-    }
-    if (maxWidth !== null && maxWidth !== undefined && maxWidth !== "") {
-      q = q.lte("width", Number(maxWidth));
-    }
-    if (minHeight !== null && minHeight !== undefined && minHeight !== "") {
-      q = q.gte("height", Number(minHeight));
-    }
-    if (maxHeight !== null && maxHeight !== undefined && maxHeight !== "") {
-      q = q.lte("height", Number(maxHeight));
+    function buildQuery(selectColumns: string, includeTagFilter: boolean) {
+      let q = supabase
+        .from("generations")
+        .select(selectColumns)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (!isAdmin) q = q.eq("user_id", session.user.id);
+      if (projectId) q = q.eq("project_id", projectId);
+      if (userId && isAdmin) q = q.eq("user_id", userId);
+      if (appId) q = q.eq("app_id", appId);
+      if (includeTagFilter && tag) q = q.contains("tags", [tag]);
+      if (minWidth !== null && minWidth !== undefined && minWidth !== "") {
+        q = q.gte("width", Number(minWidth));
+      }
+      if (maxWidth !== null && maxWidth !== undefined && maxWidth !== "") {
+        q = q.lte("width", Number(maxWidth));
+      }
+      if (minHeight !== null && minHeight !== undefined && minHeight !== "") {
+        q = q.gte("height", Number(minHeight));
+      }
+      if (maxHeight !== null && maxHeight !== undefined && maxHeight !== "") {
+        q = q.lte("height", Number(maxHeight));
+      }
+      return q;
     }
 
-    const { data, error } = await q;
+    let data: (Record<string, unknown> & { blob_url: string; created_at: string })[] | null = null;
+    let error: { message: string } | null = null;
+    let hasTagsColumn = true;
+
+    let result = await buildQuery(selectWithTags, true);
+    data = result.data as typeof data;
+    error = result.error;
+
+    if (error && /does not exist|column.*tags/i.test(error.message)) {
+      hasTagsColumn = false;
+      result = await buildQuery(selectWithoutTags, false);
+      data = result.data as typeof data;
+      error = result.error;
+    }
 
     if (error) {
       console.error("Supabase generations select:", error);
@@ -182,7 +198,7 @@ export async function GET(request: NextRequest) {
           createdAt: new Date(row.created_at).getTime(),
           userId: row.user_id,
           projectId: row.project_id,
-          tags: Array.isArray(row.tags) ? row.tags : [],
+          tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
         };
       })
     );
