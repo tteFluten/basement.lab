@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
     const selectWithTags = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id, tags";
     const selectWithoutTags = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id";
 
-    function buildQuery(selectColumns: string, includeTagFilter: boolean) {
+    const buildQuery = (selectColumns: string, includeTagFilter: boolean) => {
       let q = supabase
         .from("generations")
         .select(selectColumns)
@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
         q = q.lte("height", Number(maxHeight));
       }
       return q;
-    }
+    };
 
     let data: (Record<string, unknown> & { blob_url: string; created_at: string })[] | null = null;
     let error: { message: string } | null = null;
