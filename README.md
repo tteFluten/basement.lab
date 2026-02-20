@@ -40,14 +40,28 @@ Repeat for any other app you want to run.
 ## Structure
 
 ```
-labtools/
+basement.lab/
+├── hub/         # Next.js Hub (auth, history, toolbar, admin) — run from hub/
 ├── avatar/      # Avatar style standardization
 ├── chronos/     # Time-shift for keyframes
 ├── cineprompt/  # Cinematic prompt generator
 ├── pov/         # POV / concept art
 ├── swag/        # Logo mockups
+├── PROJECT_IDEA.md
 └── README.md
 ```
+
+## Hub (Basement Lab)
+
+The Hub unifies all apps with login, shared history, projects, and admin. From the project root:
+
+```powershell
+cd hub
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Copy `hub/.env.example` to `hub/.env.local` and fill in values when you add Postgres, Blob, and NextAuth.
 
 ## License
 

@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Basement Lab design system: light gray on black, mono, no rounded corners */
+:root {
+  --font-mono: "JetBrains Mono", "Space Mono", ui-monospace, monospace;
+
+  /* Dark (default) */
+  --color-bg: #000000;
+  --color-bg-muted: #18181b;
+  --color-fg: #e4e4e7;
+  --color-fg-muted: #a1a1aa;
+  --color-border: #3f3f46;
+  --color-accent: #a1a1aa;
+}
+
+[data-theme="light"] {
+  --color-bg: #f4f4f5;
+  --color-bg-muted: #e4e4e7;
+  --color-fg: #18181b;
+  --color-fg-muted: #52525b;
+  --color-border: #d4d4d8;
+  --color-accent: #52525b;
+}
+
+* {
+  border-radius: 0;
+}
+
+html {
+  font-family: var(--font-mono);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+}
