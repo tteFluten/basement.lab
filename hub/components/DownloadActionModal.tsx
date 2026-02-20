@@ -82,16 +82,30 @@ export function DownloadActionModal({
 
     const img = new Image();
     img.onload = () => {
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
       addToHistory({
         dataUrl: assetDataUrl,
         appId,
         name,
         fileName: computedFileName,
         mimeType: inferredMimeType,
-        width: img.naturalWidth,
-        height: img.naturalHeight,
+        width,
+        height,
       });
       triggerDownload();
+      // Persist to Supabase + Blob when configured
+      fetch("/api/generations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataUrl: assetDataUrl,
+          appId,
+          name,
+          width,
+          height,
+        }),
+      }).catch(() => {});
     };
     img.onerror = () => {
       addToHistory({

@@ -1,20 +1,73 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { getHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel } from "@/lib/appIcons";
 import { Download, Maximize2, ZoomIn, X } from "lucide-react";
 
+function apiItemToHistoryItem(row: {
+  id: string;
+  appId: string;
+  dataUrl: string;
+  blobUrl?: string;
+  width?: number | null;
+  height?: number | null;
+  name?: string | null;
+  createdAt: number;
+}): HistoryItem {
+  const url = row.dataUrl || row.blobUrl || "";
+  return {
+    id: row.id,
+    dataUrl: url,
+    appId: row.appId,
+    name: row.name ?? undefined,
+    width: row.width ?? undefined,
+    height: row.height ?? undefined,
+    mimeType: "image/png",
+    createdAt: row.createdAt,
+  };
+}
+
 export function HistoryClient() {
-  const [items, setItems] = useState<HistoryItem[]>([]);
+  const [apiItems, setApiItems] = useState<HistoryItem[]>([]);
+  const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [lightboxItem, setLightboxItem] = useState<HistoryItem | null>(null);
 
+  const fetchApiHistory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/generations?limit=50");
+      if (!res.ok) return;
+      const json = await res.json();
+      const list = (json.items ?? []).map(apiItemToHistoryItem);
+      setApiItems(list);
+    } catch {
+      // Supabase not configured or network error
+    }
+  }, []);
+
   useEffect(() => {
-    setItems(getHistory());
-    const interval = setInterval(() => setItems(getHistory()), 2000);
+    fetchApiHistory();
+  }, [fetchApiHistory]);
+
+  useEffect(() => {
+    setMemoryItems(getHistory());
+    const interval = setInterval(() => setMemoryItems(getHistory()), 2000);
     return () => clearInterval(interval);
   }, []);
+
+  const items = useMemo(() => {
+    const combined = [...apiItems];
+    const seen = new Set(apiItems.map((i) => i.id));
+    for (const m of memoryItems) {
+      if (!seen.has(m.id)) {
+        seen.add(m.id);
+        combined.push(m);
+      }
+    }
+    combined.sort((a, b) => b.createdAt - a.createdAt);
+    return combined;
+  }, [apiItems, memoryItems]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
