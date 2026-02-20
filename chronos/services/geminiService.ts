@@ -1,6 +1,12 @@
 
 import { GoogleGenAI } from "@google/genai";
 
+function getHubApiBase(): string | null {
+  if (typeof window === "undefined") return null;
+  if (window.location.pathname.startsWith("/embed/")) return window.location.origin;
+  return null;
+}
+
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 export interface AnalysisResult {
@@ -12,6 +18,16 @@ export interface AnalysisResult {
  * Step 1: Analyze the frame to understand what came immediately BEFORE it.
  */
 export const analyzeCausality = async (imageBase64: string): Promise<AnalysisResult> => {
+  const hubBase = getHubApiBase();
+  if (hubBase) {
+    const res = await fetch(`${hubBase}/api/gemini/chronos/analyze`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64, direction: "PAST" }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "API error");
+    return data as AnalysisResult;
+  }
   const ai = getAI();
   const base64Data = imageBase64.split(',')[1] || imageBase64;
 
@@ -61,6 +77,16 @@ export const analyzeCausality = async (imageBase64: string): Promise<AnalysisRes
  * Step 1b: Analyze the frame to understand what comes immediately AFTER it.
  */
 export const analyzeConsequence = async (imageBase64: string): Promise<AnalysisResult> => {
+  const hubBase = getHubApiBase();
+  if (hubBase) {
+    const res = await fetch(`${hubBase}/api/gemini/chronos/analyze`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64, direction: "FUTURE" }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "API error");
+    return data as AnalysisResult;
+  }
   const ai = getAI();
   const base64Data = imageBase64.split(',')[1] || imageBase64;
 
@@ -115,6 +141,16 @@ export const reconstructFrame = async (
   aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "1:1",
   direction: "PAST" | "FUTURE" = "PAST"
 ): Promise<string> => {
+  const hubBase = getHubApiBase();
+  if (hubBase) {
+    const res = await fetch(`${hubBase}/api/gemini/chronos/reconstruct`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visualPrompt, sourceImageBase64, aspectRatio, direction }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "API error");
+    return data.dataUrl as string;
+  }
   const ai = getAI();
   const base64Data = sourceImageBase64.split(',')[1] || sourceImageBase64;
 

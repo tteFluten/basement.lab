@@ -1,17 +1,34 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const MODEL_NAME = 'gemini-3-pro-image-preview';
+function getHubApiBase(): string | null {
+  if (typeof window === "undefined") return null;
+  if (window.location.pathname.startsWith("/embed/")) return window.location.origin;
+  return null;
+}
+
+const MODEL_NAME = 'gemini-2.0-flash-exp';
 
 export async function generateProImage(params: {
   prompt: string;
-  imageInput?: string; // base64
+  imageInput?: string;
   isGrid: boolean;
   gridSize?: number;
   resolution: '1K' | '2K' | '4K';
   aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
 }) {
-  // Always create a new GoogleGenAI instance right before the call to ensure the latest API key is used
+  const hubBase = getHubApiBase();
+  if (hubBase) {
+    const res = await fetch(`${hubBase}/api/gemini/pov/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "AUTH_REQUIRED");
+    return data.dataUrl as string;
+  }
+
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   let finalPrompt = params.prompt;

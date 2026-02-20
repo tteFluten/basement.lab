@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { PromptConfig, Engine } from './types';
+import { hubGeminiGenerate, isEmbedMode } from './services/geminiProxy';
 import { CAMERA_TYPES, LENSES, MOVEMENTS, LIGHTING, ENGINES, STILL_STYLES } from './constants';
 import { OptionGrid } from './components/OptionGrid';
 import { OutputJSON } from './components/OutputJSON';
@@ -97,25 +98,29 @@ const App: React.FC = () => {
 
     setIsImproving(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const artStyle = STILL_STYLES.find(s => s.id === config.stillStyle);
       const movement = MOVEMENTS.find(m => m.id === config.movement);
       const lens = LENSES.find(l => l.id === config.lens);
       const lighting = LIGHTING.find(l => l.id === config.lighting);
-
       const systemPrompt = `Act as an elite Visual Stylist. Rewrite this scene. Style: ${artStyle?.technicalTerm}. Intensity: ${config.styleWeight}%. Tech: ${movement?.technicalTerm}, ${lens?.technicalTerm}, ${lighting?.technicalTerm}. Max 70 words. Narrative paragraph.`;
 
-      const contents = config.startImage 
-        ? { parts: [{ inlineData: { data: config.startImage.split(',')[1], mimeType: 'image/png' } }, { text: `${systemPrompt} Context: ${config.actionDescription || 'Cinematic scene'}` }] }
-        : { parts: [{ text: `${systemPrompt} Input: ${config.actionDescription}` }] };
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents,
-      });
-
-      if (response.text) {
-        setConfig(prev => ({ ...prev, actionDescription: response.text.trim() }));
+      if (isEmbedMode()) {
+        const promptText = config.startImage
+          ? `${systemPrompt} Context: ${config.actionDescription || 'Cinematic scene'}`
+          : `${systemPrompt} Input: ${config.actionDescription}`;
+        const result = await hubGeminiGenerate({
+          prompt: promptText,
+          imageBase64: config.startImage || undefined,
+          model: "gemini-2.0-flash-exp",
+        });
+        if (result.text) setConfig(prev => ({ ...prev, actionDescription: result.text!.trim() }));
+      } else {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const contents = config.startImage
+          ? { parts: [{ inlineData: { data: config.startImage.split(',')[1], mimeType: 'image/png' } }, { text: `${systemPrompt} Context: ${config.actionDescription || 'Cinematic scene'}` }] }
+          : { parts: [{ text: `${systemPrompt} Input: ${config.actionDescription}` }] };
+        const response = await ai.models.generateContent({ model: 'gemini-2.0-flash-exp', contents });
+        if (response.text) setConfig(prev => ({ ...prev, actionDescription: response.text.trim() }));
       }
     } catch (error) {
       console.error("AI Stylist failed:", error);
@@ -126,22 +131,32 @@ const App: React.FC = () => {
 
   const transformImage = useCallback(async (imageSource: string, customPrompt?: string) => {
     await ensureApiKey();
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const artStyle = STILL_STYLES.find(s => s.id === config.stillStyle);
-    
-    // Map resolution to API imageSize
     const imageSize = config.resolution === '4K' ? "4K" : "1K";
+    const promptText = `Apply style: ${artStyle?.technicalTerm} at ${config.styleWeight}% intensity. Subject: ${customPrompt || config.actionDescription}`;
 
+    if (isEmbedMode()) {
+      const result = await hubGeminiGenerate({
+        prompt: promptText,
+        imageBase64: imageSource,
+        model: "gemini-2.0-flash-exp",
+        aspectRatio: config.aspectRatio,
+        imageSize,
+      });
+      if (result.dataUrl) return result.dataUrl;
+      throw new Error("No image generated");
+    }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const parts: any[] = [
       { inlineData: { data: imageSource.split(',')[1], mimeType: 'image/png' } },
-      { text: `Apply style: ${artStyle?.technicalTerm} at ${config.styleWeight}% intensity. Subject: ${customPrompt || config.actionDescription}` }
+      { text: promptText }
     ];
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: { parts },
       config: { imageConfig: { aspectRatio: (config.aspectRatio as any), imageSize } }
     });
-    
     const imagePart = response.candidates?.[0]?.content?.parts.find(p => !!p.inlineData);
     if (imagePart?.inlineData) return `data:image/png;base64,${imagePart.inlineData.data}`;
     throw new Error("No image generated");
@@ -156,37 +171,46 @@ const App: React.FC = () => {
     
     try {
       await ensureApiKey();
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const artStyle = STILL_STYLES.find(s => s.id === config.stillStyle);
       const lens = LENSES.find(l => l.id === config.lens);
       const lighting = LIGHTING.find(l => l.id === config.lighting);
-      
-      // Map resolution to API imageSize
       const imageSize = config.resolution === '4K' ? "4K" : "1K";
 
-      let response;
-      if (config.startImage) {
-        const parts = [
-          { inlineData: { data: config.startImage.split(',')[1], mimeType: 'image/png' } },
-          { text: `Apply ${artStyle?.technicalTerm} style at ${config.styleWeight}% intensity. Lens: ${lens?.technicalTerm}. Lighting: ${lighting?.technicalTerm}. Context: ${config.actionDescription}` }
-        ];
-        response = await ai.models.generateContent({
-          model: 'gemini-3-pro-image-preview',
-          contents: { parts },
-          config: { imageConfig: { aspectRatio: (config.aspectRatio as any), imageSize } }
+      if (isEmbedMode()) {
+        const promptText = config.startImage
+          ? `Apply ${artStyle?.technicalTerm} style at ${config.styleWeight}% intensity. Lens: ${lens?.technicalTerm}. Lighting: ${lighting?.technicalTerm}. Context: ${config.actionDescription}`
+          : `STYLE: ${artStyle?.technicalTerm}. LENS: ${lens?.technicalTerm}. LIGHTING: ${lighting?.technicalTerm}. INTENSITY: ${config.styleWeight}%. SUBJECT: ${config.actionDescription}. Ultra-high fidelity visual.`;
+        const result = await hubGeminiGenerate({
+          prompt: promptText,
+          imageBase64: config.startImage || undefined,
+          model: "gemini-2.0-flash-exp",
+          aspectRatio: config.aspectRatio,
+          imageSize,
         });
+        if (result.dataUrl) setGeneratedStill(result.dataUrl);
       } else {
-        const prompt = `STYLE: ${artStyle?.technicalTerm}. LENS: ${lens?.technicalTerm}. LIGHTING: ${lighting?.technicalTerm}. INTENSITY: ${config.styleWeight}%. SUBJECT: ${config.actionDescription}. Ultra-high fidelity visual.`;
-        response = await ai.models.generateContent({
-          model: 'gemini-3-pro-image-preview',
-          contents: { parts: [{ text: prompt }] },
-          config: { imageConfig: { aspectRatio: (config.aspectRatio as any), imageSize } }
-        });
-      }
-      
-      const imagePart = response.candidates?.[0]?.content?.parts.find(p => !!p.inlineData);
-      if (imagePart?.inlineData) {
-        setGeneratedStill(`data:image/png;base64,${imagePart.inlineData.data}`);
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        let response;
+        if (config.startImage) {
+          const parts = [
+            { inlineData: { data: config.startImage.split(',')[1], mimeType: 'image/png' } },
+            { text: `Apply ${artStyle?.technicalTerm} style at ${config.styleWeight}% intensity. Lens: ${lens?.technicalTerm}. Lighting: ${lighting?.technicalTerm}. Context: ${config.actionDescription}` }
+          ];
+          response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash-exp',
+            contents: { parts },
+            config: { imageConfig: { aspectRatio: (config.aspectRatio as any), imageSize } }
+          });
+        } else {
+          const prompt = `STYLE: ${artStyle?.technicalTerm}. LENS: ${lens?.technicalTerm}. LIGHTING: ${lighting?.technicalTerm}. INTENSITY: ${config.styleWeight}%. SUBJECT: ${config.actionDescription}. Ultra-high fidelity visual.`;
+          response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash-exp',
+            contents: { parts: [{ text: prompt }] },
+            config: { imageConfig: { aspectRatio: (config.aspectRatio as any), imageSize } }
+          });
+        }
+        const imagePart = response.candidates?.[0]?.content?.parts.find(p => !!p.inlineData);
+        if (imagePart?.inlineData) setGeneratedStill(`data:image/png;base64,${imagePart.inlineData.data}`);
       }
     } catch (error: any) {
       console.error("Preview generation failed:", error);

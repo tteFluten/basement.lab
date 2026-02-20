@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
+import { hubGeminiGenerate, isEmbedMode } from '../services/geminiProxy';
 
 export interface BulkItem {
   id: string;
@@ -22,9 +23,17 @@ export const BulkProcessor: React.FC<BulkProcessorProps> = ({ items, setItems, o
 
   const analyzeImage = async (base64: string): Promise<string> => {
     try {
+      if (isEmbedMode()) {
+        const result = await hubGeminiGenerate({
+          prompt: "Concise description (max 15 words) of the main subject/action.",
+          imageBase64: base64,
+          model: "gemini-2.0-flash-exp",
+        });
+        return result.text?.trim() || "Cinematic scene";
+      }
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash-exp',
         contents: {
           parts: [
             { inlineData: { data: base64.split(',')[1], mimeType: 'image/png' } },

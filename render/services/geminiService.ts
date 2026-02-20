@@ -1,11 +1,29 @@
 
 import { GoogleGenAI } from "@google/genai";
 
+function getHubApiBase(): string | null {
+  if (typeof window === "undefined") return null;
+  if (window.location.pathname.startsWith("/embed/")) return window.location.origin;
+  return null;
+}
+
 export async function generateRender(
   previewBase64: string,
   prompt: string,
   referenceBase64?: string
 ): Promise<string> {
+  const base = getHubApiBase();
+  if (base) {
+    const res = await fetch(`${base}/api/gemini/render/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ previewBase64, prompt, referenceBase64 }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "API_KEY_ERROR");
+    return data.dataUrl as string;
+  }
+
   const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey?.trim()) throw new Error("API_KEY_ERROR");
   const ai = new GoogleGenAI({ apiKey });

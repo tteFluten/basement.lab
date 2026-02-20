@@ -2,6 +2,12 @@
 import { GoogleGenAI } from "@google/genai";
 import { StylingOptions, AspectRatio, QualityLevel } from "../types";
 
+function getHubApiBase(): string | null {
+  if (typeof window === "undefined") return null;
+  if (window.location.pathname.startsWith("/embed/")) return window.location.origin;
+  return null;
+}
+
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -15,12 +21,25 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export const analyzeReferenceStyle = async (referenceImage: File): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const base64 = await fileToBase64(referenceImage);
-  
+  const hubBase = getHubApiBase();
+  if (hubBase) {
+    try {
+      const res = await fetch(`${hubBase}/api/gemini/avatar/analyze-style`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64, mimeType: referenceImage.type }),
+      });
+      const data = await res.json();
+      if (!res.ok) return "STANDARD_PORTRAIT // NEUTRAL_LIGHT";
+      return data.result as string;
+    } catch { return "STANDARD_PORTRAIT // NEUTRAL_LIGHT"; }
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: {
         parts: [
           { inlineData: { data: base64, mimeType: referenceImage.type } },
@@ -44,12 +63,28 @@ export const transformImage = async (
   aspectRatio: AspectRatio,
   quality: QualityLevel
 ): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const isPro = quality === 'high';
-  const modelName = isPro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
-  
   const sourceBase64 = await fileToBase64(sourceImage);
   const referenceBase64 = await fileToBase64(referenceImage);
+
+  const hubBase = getHubApiBase();
+  if (hubBase) {
+    const res = await fetch(`${hubBase}/api/gemini/avatar/transform`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sourceBase64, sourceMime: sourceImage.type,
+        referenceBase64, referenceMime: referenceImage.type,
+        styleManifest, userPrompt, options, aspectRatio, quality,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "API error");
+    return data.dataUrl as string;
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const isPro = quality === 'high';
+  const modelName = isPro ? 'gemini-2.0-flash-exp' : 'gemini-2.0-flash-exp';
 
   const activeLocks = [];
   if (options.matchBackground) activeLocks.push("SYNC_BACKGROUND: Copia exacta del fondo de la IMAGEN_2.");
