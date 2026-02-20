@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "set-password": "node scripts/set-password.js"
   },
   "dependencies": {
     "@google/genai": "^1.41.0",

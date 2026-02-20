@@ -33,12 +33,12 @@
    SETUP_PASSWORD_SECRET=<otro-secreto-para-setear-contraseña>
    ```
    Para generar un secreto: en PowerShell podés usar `[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])`.
-2. Para definir la contraseña del admin `lautaro@basement.studio` (una vez por entorno), llamá al endpoint con el secreto. En PowerShell:
+2. Para definir la contraseña del admin `lautaro@basement.studio` (una vez por entorno), podés usar **el script** (no hace falta tener el Hub corriendo):
    ```powershell
-   $body = @{ email = "lautaro@basement.studio"; password = "TU_CONTRASEÑA" } | ConvertTo-Json
-   Invoke-RestMethod -Uri "http://localhost:3000/api/setup-password" -Method POST -Body $body -ContentType "application/json" -Headers @{ "Authorization" = "Bearer TU_SETUP_PASSWORD_SECRET" }
+   cd hub
+   node scripts/set-password.js lautaro@basement.studio LaContraseñaQueQuieras
    ```
-   (Reemplazá `TU_CONTRASEÑA` y `TU_SETUP_PASSWORD_SECRET` por los valores reales. El servidor del Hub debe estar corriendo.)
+   El script lee `hub/.env.local` y usa Supabase para actualizar el `password_hash`. O bien, si preferís el endpoint: el Hub debe estar corriendo y llamar a `POST /api/setup-password` con header `Authorization: Bearer SETUP_PASSWORD_SECRET` y body `{ "email", "password" }` (ver paso anterior en la doc).
 3. Después de eso podés entrar con ese email y contraseña en `/login`.
 
 ## 2. Vercel Blob (imágenes)
