@@ -20,14 +20,28 @@ const ANALYZE_PROMPT = `As a Senior Digital Imaging Technician (DIT), analyze th
 3. Cinematic DNA: Specific LUT (Look Up Table), color grading (e.g. Teal/Orange, bleach bypass), film grain intensity, lens flare/distortion, and light color temperature (Kelvin).
 Return as a structured JSON object.`;
 
+function isApiKeyError(err: any): boolean {
+  const msg = String(err?.message ?? err?.error?.message ?? '');
+  return msg.includes('API key not valid') || msg.includes('Requested entity was not found') || err?.status === 400;
+}
+
 export class GeminiService {
   private static getClient() {
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey?.trim()) throw new Error('API_KEY_ERROR');
+    return new GoogleGenAI({ apiKey });
+  }
+
+  private static wrapApiKeyError<T>(p: Promise<T>): Promise<T> {
+    return p.catch((err) => {
+      if (isApiKeyError(err)) throw new Error('API_KEY_ERROR');
+      throw err;
+    });
   }
 
   static async analyzeImage(base64Image: string): Promise<SceneAnalysis> {
     const ai = this.getClient();
-    const response = await ai.models.generateContent({
+    const response = await this.wrapApiKeyError(ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
         parts: [
@@ -49,7 +63,7 @@ export class GeminiService {
           required: ["description", "actor", "environment", "style", "lighting"]
         }
       }
-    });
+    }));
     return JSON.parse(response.text || "{}");
   }
 
@@ -69,7 +83,7 @@ export class GeminiService {
     
     Return as JSON array of {title, description}.`;
 
-    const response = await ai.models.generateContent({
+    const response = await this.wrapApiKeyError(ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
@@ -86,7 +100,7 @@ export class GeminiService {
           }
         }
       }
-    });
+    }));
     return JSON.parse(response.text || "[]");
   }
 
@@ -106,7 +120,7 @@ export class GeminiService {
     
     Output: Clean 3x3 contact sheet image.`;
 
-    const response = await ai.models.generateContent({
+    const response = await this.wrapApiKeyError(ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
       contents: {
         parts: [
@@ -117,7 +131,7 @@ export class GeminiService {
       config: {
         imageConfig: { aspectRatio: "1:1", imageSize: "1K" }
       }
-    });
+    }));
 
     const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
     if (!part?.inlineData) throw new Error("Contact sheet failed.");
@@ -149,7 +163,7 @@ export class GeminiService {
     
     The resulting image must look like the original cinema camera capture for: ${prompt}.`;
 
-    const response = await ai.models.generateContent({
+    const response = await this.wrapApiKeyError(ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
       contents: {
         parts: [
@@ -161,7 +175,7 @@ export class GeminiService {
       config: {
         imageConfig: { aspectRatio: "16:9", imageSize: size }
       }
-    });
+    }));
 
     const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
     if (!part?.inlineData) throw new Error("Final render failed.");

@@ -6,7 +6,9 @@ export async function generateRender(
   prompt: string,
   referenceBase64?: string
 ): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey?.trim()) throw new Error("API_KEY_ERROR");
+  const ai = new GoogleGenAI({ apiKey });
   
   const parts = [];
 
@@ -55,7 +57,8 @@ export async function generateRender(
     
     throw new Error("No image data returned from model");
   } catch (error: any) {
-    if (error?.message?.includes("Requested entity was not found")) {
+    const msg = error?.message ?? '';
+    if (msg.includes("Requested entity was not found") || msg.includes("API key not valid") || error?.status === 400) {
       throw new Error("API_KEY_ERROR");
     }
     throw error;
