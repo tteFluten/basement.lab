@@ -4,9 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const rootDir = path.resolve(__dirname, '..');
-    const rootEnv = loadEnv(mode, rootDir, '');
-    const appEnv = loadEnv(mode, __dirname, '');
-    const env = { ...rootEnv, ...appEnv };
+    const env = { ...loadEnv(mode, rootDir, ''), ...loadEnv(mode, __dirname, '') };
     return {
       base: '/embed/frame-variator/',
       server: {
