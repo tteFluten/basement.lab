@@ -2,9 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Basement Lab design system: light gray on black, mono, no rounded corners */
+/* Basement Lab design system: Geist Mono, light gray on black, no rounded corners */
 :root {
-  --font-mono: "JetBrains Mono", "Space Mono", ui-monospace, monospace;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
 
   /* Dark (default) */
   --color-bg: #000000;

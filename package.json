@@ -1,0 +1,17 @@
+{
+  "name": "basement-lab",
+  "private": true,
+  "scripts": {
+    "dev": "cd hub && npm run dev",
+    "dev:hub": "cd hub && npm run dev",
+    "dev:cineprompt": "cd cineprompt && npm run dev",
+    "dev:pov": "cd pov && npm run dev",
+    "dev:chronos": "cd chronos && npm run dev",
+    "dev:swag": "cd swag && npm run dev",
+    "dev:avatar": "cd avatar && npm run dev",
+    "dev:all": "concurrently -n hub,cp,pov,chrono,swag,avatar \"npm run dev:hub\" \"npm run dev:cineprompt\" \"npm run dev:pov\" \"npm run dev:chronos\" \"npm run dev:swag\" \"npm run dev:avatar\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

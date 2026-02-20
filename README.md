@@ -53,7 +53,9 @@ basement.lab/
 
 ## Hub (Basement Lab)
 
-The Hub unifies all apps with login, shared history, projects, and admin. From the project root:
+The Hub uses **Geist Mono** for all UI and unifies all apps with a shared toolbar (app links, history, project, user, day/night). Apps run in iframes; the hub is on port 3000, apps on 5173–5177.
+
+**Run only the Hub:**
 
 ```powershell
 cd hub
@@ -61,7 +63,18 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Copy `hub/.env.example` to `hub/.env.local` and fill in values when you add Postgres, Blob, and NextAuth.
+Open [http://localhost:3000](http://localhost:3000). App links will point to localhost:5173 etc.; start each app in another terminal if needed.
+
+**Run Hub + all apps (one command from repo root):**
+
+```powershell
+npm install
+npm run dev:all
+```
+
+Then open [http://localhost:3000](http://localhost:3000) and use the toolbar to open CinePrompt, POV, Chronos, Swag, or Avatar.
+
+Copy `hub/.env.example` to `hub/.env.local` for Postgres, Blob, NextAuth, or app URL overrides when you add them.
 
 ## License
 

@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { GeistMono } from "geist/font/mono";
+import { Toolbar } from "@/components/Toolbar";
 import "./globals.css";
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-});
 
 export const metadata: Metadata = {
   title: "Basement Lab",
@@ -18,9 +14,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${jetbrainsMono.variable} font-mono antialiased`}>
-        {children}
+    <html lang="en" className={GeistMono.className} suppressHydrationWarning>
+      <body className="font-mono antialiased min-h-screen flex flex-col">
+        <Toolbar />
+        <div className="flex-1">{children}</div>
       </body>
     </html>
   );
