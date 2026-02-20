@@ -1,0 +1,7 @@
+{
+  "name": "AVATAR",
+  "description": "Professional tool for standardizing corporate avatars. Upload bulk source images and a single reference image to apply consistent style, color, and framing using Gemini AI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

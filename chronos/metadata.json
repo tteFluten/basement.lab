@@ -1,0 +1,7 @@
+{
+  "name": "CHRONOS",
+  "description": "A sophisticated AI-powered 'Time Machine' that reverses any image by 5 seconds, helping you generate the perfect initial frame for your video sequences.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

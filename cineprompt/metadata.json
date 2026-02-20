@@ -1,0 +1,7 @@
+{
+  "name": "CinePROMPT",
+  "description": "A high-end cinematic video prompt generator that produces structured JSON for advanced AI video models, featuring visual selectors for camera, lens, and movement.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

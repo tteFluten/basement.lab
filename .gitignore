@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist
+dist-ssr
+.next
+out
+
+# Env and secrets (do not commit API keys)
+.env
+.env.local
+.env.*.local
+*.local
+
+# Logs and debug
+logs
+*.log
+npm-debug.log*
+.DS_Store
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
