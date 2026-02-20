@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
-import { uploadDataUrl, hasBlob } from "@/lib/blob";
+import { uploadDataUrl, hasBlob, resolveBlobUrl } from "@/lib/blob";
 
 export const runtime = "nodejs";
 
@@ -45,12 +45,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const storedUrl = blobUrl ?? dataUrl;
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("generations")
       .insert({
         app_id: appId,
-        blob_url: blobUrl ?? dataUrl,
+        blob_url: storedUrl,
         width: width ?? null,
         height: height ?? null,
         name: name ?? null,
@@ -113,18 +114,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const items = (data ?? []).map((row) => ({
-      id: row.id,
-      appId: row.app_id,
-      dataUrl: row.blob_url,
-      blobUrl: row.blob_url,
-      width: row.width,
-      height: row.height,
-      name: row.name,
-      createdAt: new Date(row.created_at).getTime(),
-      userId: row.user_id,
-      projectId: row.project_id,
-    }));
+    const items = await Promise.all(
+      (data ?? []).map(async (row) => {
+        const resolvedUrl = await resolveBlobUrl(row.blob_url);
+        return {
+          id: row.id,
+          appId: row.app_id,
+          dataUrl: resolvedUrl,
+          blobUrl: row.blob_url,
+          width: row.width,
+          height: row.height,
+          name: row.name,
+          createdAt: new Date(row.created_at).getTime(),
+          userId: row.user_id,
+          projectId: row.project_id,
+        };
+      })
+    );
 
     return NextResponse.json({ items });
   } catch (e) {

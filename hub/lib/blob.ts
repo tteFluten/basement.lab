@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { put, getDownloadUrl } from "@vercel/blob";
 
 const token = process.env.BLOB_READ_WRITE_TOKEN;
 
@@ -8,7 +8,7 @@ export function hasBlob(): boolean {
 
 /**
  * Upload a data URL (e.g. image) to Vercel Blob.
- * Returns the blob URL or null if token is missing.
+ * Tries public first; falls back to private. Returns blob URL or null.
  */
 export async function uploadDataUrl(
   dataUrl: string,
@@ -19,10 +19,31 @@ export async function uploadDataUrl(
   const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
   if (!base64) return null;
 
-  const buffer = Buffer.from(base64, "base64");
-  const blob = await put(pathname, buffer, {
-    access: "public",
-    addRandomSuffix: true,
-  });
-  return blob.url;
+  try {
+    const buffer = Buffer.from(base64, "base64");
+    try {
+      const blob = await put(pathname, buffer, { access: "public", addRandomSuffix: true });
+      return blob.url;
+    } catch {
+      const blob = await put(pathname, buffer, { access: "private", addRandomSuffix: true });
+      return blob.url;
+    }
+  } catch (err) {
+    console.error("Blob upload failed, skipping:", err);
+    return null;
+  }
+}
+
+/**
+ * For private blob URLs, generate a short-lived download URL.
+ * For public URLs (or non-blob URLs like data:), returns the original.
+ */
+export async function resolveBlobUrl(url: string): Promise<string> {
+  if (!url || url.startsWith("data:") || !token) return url;
+  try {
+    const downloadUrl = await getDownloadUrl(url);
+    return downloadUrl;
+  } catch {
+    return url;
+  }
 }
