@@ -8,6 +8,8 @@ export interface HistoryItem {
   appId: string;
   createdAt: number;
   name?: string;
+  fileName?: string;
+  mimeType?: string;
   width?: number;
   height?: number;
   /** Placeholder until we have auth: user display name */

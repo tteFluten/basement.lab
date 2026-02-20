@@ -12,7 +12,16 @@ import {
   BASEMENT_DOWNLOAD_DONE,
 } from "@/lib/bridgeTypes";
 
-const VALID_SLUGS = ["cineprompt", "pov", "chronos", "swag", "avatar", "render", "frame-variator"] as const;
+const VALID_SLUGS = [
+  "cineprompt",
+  "pov",
+  "chronos",
+  "swag",
+  "avatar",
+  "render",
+  "frame-variator",
+  "connect",
+] as const;
 
 export function AppFrameClient() {
   const params = useParams();
@@ -22,8 +31,10 @@ export function AppFrameClient() {
   const [refPickerOpen, setRefPickerOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [downloadPayload, setDownloadPayload] = useState<{
-    imageDataUrl: string;
+    assetDataUrl: string;
     appId: string;
+    mimeType?: string;
+    fileName?: string;
   } | null>(null);
   const pendingRef = useRef<{
     source: MessageEventSource | null;
@@ -53,8 +64,10 @@ export function AppFrameClient() {
         case BASEMENT_OPEN_DOWNLOAD_ACTION: {
           pendingRef.current = { source: event.source, requestId: data.requestId ?? "" };
           setDownloadPayload({
-            imageDataUrl: data.imageDataUrl ?? "",
+            assetDataUrl: data.assetDataUrl ?? data.imageDataUrl ?? "",
             appId: data.appId ?? slug ?? "app",
+            mimeType: data.mimeType,
+            fileName: data.fileName,
           });
           setDownloadOpen(true);
           break;
@@ -131,8 +144,10 @@ export function AppFrameClient() {
           setDownloadPayload(null);
           pendingRef.current = { source: null, requestId: "" };
         }}
-        imageDataUrl={downloadPayload?.imageDataUrl ?? null}
+        assetDataUrl={downloadPayload?.assetDataUrl ?? null}
         appId={downloadPayload?.appId ?? ""}
+        mimeType={downloadPayload?.mimeType}
+        fileName={downloadPayload?.fileName}
         onDone={handleDownloadDone}
       />
     </>

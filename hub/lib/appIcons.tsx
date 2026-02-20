@@ -8,6 +8,7 @@ import {
   UserCircle,
   ImagePlus,
   Layers,
+  Blocks,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ const APP_ICONS: Record<string, LucideIcon> = {
   avatar: UserCircle,
   render: ImagePlus,
   "frame-variator": Layers,
+  connect: Blocks,
 };
 
 export function getAppIcon(appId: string): LucideIcon {
@@ -34,6 +36,7 @@ export function getAppLabel(appId: string): string {
     avatar: "Avatar",
     render: "Render",
     "frame-variator": "Frame Variator",
+    connect: "Connect",
   };
   return labels[appId] ?? appId;
 }

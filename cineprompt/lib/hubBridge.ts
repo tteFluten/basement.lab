@@ -49,8 +49,9 @@ export function openReferencePicker(): Promise<string> {
 
 /** Open Hub modal: download only or download and add to history. Resolves when done. */
 export function openDownloadAction(
-  imageDataUrl: string,
-  appId: string
+  assetDataUrl: string,
+  appId: string,
+  options?: { mimeType?: string; fileName?: string }
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.self === window.top) {
@@ -70,8 +71,11 @@ export function openDownloadAction(
       {
         type: REQUEST_OPEN_DOWNLOAD,
         requestId,
-        imageDataUrl,
+        imageDataUrl: assetDataUrl,
+        assetDataUrl,
         appId,
+        mimeType: options?.mimeType,
+        fileName: options?.fileName,
       },
       "*"
     );

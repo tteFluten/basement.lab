@@ -31,7 +31,7 @@ export function HistoryClient() {
   const handleDownload = (item: HistoryItem) => {
     const link = document.createElement("a");
     link.href = item.dataUrl;
-    link.download = `${item.name ?? item.id}.png`;
+    link.download = item.fileName ?? `${item.name ?? item.id}.${extensionFromMime(item.mimeType)}`;
     link.click();
   };
 
@@ -48,6 +48,19 @@ export function HistoryClient() {
     const h = item.height ?? 0;
     return w > 0 && h > 0 && (w < SMALL_RESOLUTION_THRESHOLD || h < SMALL_RESOLUTION_THRESHOLD);
   };
+
+  const isImageItem = (item: HistoryItem) => (item.mimeType || "image/png").startsWith("image/");
+
+  function extensionFromMime(value?: string) {
+    if (!value) return "png";
+    if (value === "image/png") return "png";
+    if (value === "image/jpeg") return "jpg";
+    if (value === "image/webp") return "webp";
+    if (value === "image/svg+xml") return "svg";
+    if (value === "application/json" || value === "text/json") return "json";
+    if (value.startsWith("text/")) return "txt";
+    return "bin";
+  }
 
   const formatDate = (ts: number) => {
     const d = new Date(ts);
@@ -82,6 +95,7 @@ export function HistoryClient() {
           {filtered.map((item) => {
             const Icon = getAppIcon(item.appId);
             const small = isSmallResolution(item);
+            const isImage = isImageItem(item);
             return (
               <div
                 key={item.id}
@@ -89,17 +103,26 @@ export function HistoryClient() {
               >
                 <button
                   type="button"
-                  onClick={() => setLightboxItem(item)}
+                  onClick={() => isImage && setLightboxItem(item)}
                   className="w-full aspect-square relative block overflow-hidden focus:outline-none focus:ring-2 focus:ring-zinc-500"
                 >
-                  <img
-                    src={item.dataUrl}
-                    alt=""
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                  {isImage ? (
+                    <>
+                      <img
+                        src={item.dataUrl}
+                        alt=""
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-500 bg-[#0f0f0f]">
+                      <span className="text-[8px] uppercase tracking-widest">File</span>
+                      <span className="text-[10px]">{extensionFromMime(item.mimeType).toUpperCase()}</span>
+                    </div>
+                  )}
                 </button>
                 <div className="p-2 border-t border-[#333] space-y-1">
                   <div className="flex items-center gap-2">
@@ -120,9 +143,10 @@ export function HistoryClient() {
                 <div className="flex border-t border-[#333]">
                   <button
                     type="button"
-                    onClick={() => setLightboxItem(item)}
+                    onClick={() => isImage && setLightboxItem(item)}
                     className="flex-1 py-2 flex items-center justify-center gap-1 text-[8px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-300 transition-colors"
-                    title="View large"
+                    title={isImage ? "View large" : "Preview not available"}
+                    disabled={!isImage}
                   >
                     <Maximize2 className="w-3 h-3" />
                     View
@@ -136,7 +160,7 @@ export function HistoryClient() {
                     <Download className="w-3 h-3" />
                     Download
                   </button>
-                  {small && (
+                  {small && isImage && (
                     <button
                       type="button"
                       onClick={() => handleUpscale4K(item)}

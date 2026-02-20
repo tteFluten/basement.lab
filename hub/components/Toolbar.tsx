@@ -17,7 +17,6 @@ import {
   ChevronDown,
   LogOut,
   User as UserIcon,
-  ExternalLink,
 } from "lucide-react";
 
 const APP_LINKS = [
@@ -35,16 +34,19 @@ const PROJECT_APP_LINKS = [
     key: "native-connect",
     label: "Connect",
     project: "Native",
-    href:
-      process.env.NEXT_PUBLIC_PROJECT_NATIVE_CONNECT_URL || "http://localhost:3100",
+    slug: "connect",
   },
 ] as const;
 
 const iconSize = 18;
 
 function ProjectAppsMenu() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const hasActiveProjectApp = PROJECT_APP_LINKS.some(
+    ({ slug }) => pathname === `/apps/${slug}`
+  );
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -62,7 +64,11 @@ function ProjectAppsMenu() {
         type="button"
         title="Apps nativas"
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1 p-1.5 shrink-0 ${open ? "text-fg border-b border-fg" : "text-fg-muted hover:text-fg"}`}
+        className={`flex items-center gap-1 p-1.5 shrink-0 ${
+          open || hasActiveProjectApp
+            ? "text-fg border-b border-fg"
+            : "text-fg-muted hover:text-fg"
+        }`}
         aria-expanded={open}
         aria-haspopup="true"
       >
@@ -74,20 +80,17 @@ function ProjectAppsMenu() {
           className="absolute left-0 top-full mt-1 min-w-[220px] border border-border bg-bg-muted py-1 z-50"
           role="menu"
         >
-          {PROJECT_APP_LINKS.map(({ key, label, project, href }) => (
+          {PROJECT_APP_LINKS.map(({ key, label, project, slug }) => (
             <li key={key} role="none">
-              <a
-                href={href}
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                href={`/apps/${slug}`}
                 className="flex items-center justify-between gap-3 px-3 py-2 text-sm text-fg hover:bg-bg"
                 role="menuitem"
                 onClick={() => setOpen(false)}
               >
                 <span className="truncate">{label}</span>
                 <span className="text-xs text-fg-muted shrink-0">{project}</span>
-                <ExternalLink size={13} className="text-fg-muted shrink-0" />
-              </a>
+              </Link>
             </li>
           ))}
         </ul>

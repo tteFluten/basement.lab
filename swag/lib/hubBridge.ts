@@ -46,8 +46,9 @@ export function openReferencePicker(): Promise<string> {
 }
 
 export function openDownloadAction(
-  imageDataUrl: string,
-  appId: string
+  assetDataUrl: string,
+  appId: string,
+  options?: { mimeType?: string; fileName?: string }
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.self === window.top) {
@@ -64,7 +65,15 @@ export function openDownloadAction(
     };
     window.addEventListener("message", handler);
     window.parent.postMessage(
-      { type: REQUEST_OPEN_DOWNLOAD, requestId, imageDataUrl, appId },
+      {
+        type: REQUEST_OPEN_DOWNLOAD,
+        requestId,
+        imageDataUrl: assetDataUrl,
+        assetDataUrl,
+        appId,
+        mimeType: options?.mimeType,
+        fileName: options?.fileName,
+      },
       "*"
     );
     setTimeout(() => {

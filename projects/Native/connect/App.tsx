@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { DEFAULT_CONFIG } from './constants';
 import { ArtConfig, Point } from './types';
 import { Download, RefreshCw, Moon, Sun, Maximize, Plus, Minus, Shuffle, Save, Upload } from 'lucide-react';
+import { isHubEnv, openDownloadAction } from './lib/hubBridge';
 
 const App: React.FC = () => {
   const [config, setConfig] = useState<ArtConfig>(DEFAULT_CONFIG);
@@ -68,10 +69,17 @@ const App: React.FC = () => {
     handleUpdate({ theme: config.theme === 'dark' ? 'light' : 'dark' });
   };
 
-  const saveConfigJSON = useCallback(() => {
+  const saveConfigJSON = useCallback(async () => {
     const dataStr = JSON.stringify(config, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const exportFileDefaultName = `${config.label || 'CONFIG'}.json`;
+    if (isHubEnv()) {
+      await openDownloadAction(dataUri, 'connect', {
+        mimeType: 'application/json',
+        fileName: exportFileDefaultName,
+      });
+      return;
+    }
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
@@ -99,15 +107,23 @@ const App: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  const downloadSVG = useCallback(() => {
+  const downloadSVG = useCallback(async () => {
     const svg = document.getElementById('art-svg');
     if (!svg) return;
     const serializer = new XMLSerializer();
     const source = serializer.serializeToString(svg);
     const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+    const fileName = `${config.label || 'PARAM_ART'}.svg`;
+    if (isHubEnv()) {
+      await openDownloadAction(url, 'connect', {
+        mimeType: 'image/svg+xml',
+        fileName,
+      });
+      return;
+    }
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${config.label || 'PARAM_ART'}.svg`;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -137,12 +153,23 @@ const App: React.FC = () => {
       img.onload = () => {
         ctx.drawImage(img, 0, 0, size, size);
         const pngUrl = canvas.toDataURL('image/png', 1.0);
-        const link = document.createElement('a');
-        link.href = pngUrl;
-        link.download = `${config.label || 'RENDER'}_4K.png`;
-        link.click();
-        URL.revokeObjectURL(url);
-        setIsExporting(false);
+        const finish = async () => {
+          const fileName = `${config.label || 'RENDER'}_4K.png`;
+          if (isHubEnv()) {
+            await openDownloadAction(pngUrl, 'connect', {
+              mimeType: 'image/png',
+              fileName,
+            });
+          } else {
+            const link = document.createElement('a');
+            link.href = pngUrl;
+            link.download = fileName;
+            link.click();
+          }
+          URL.revokeObjectURL(url);
+          setIsExporting(false);
+        };
+        void finish();
       };
       img.src = url;
     } catch (e) {

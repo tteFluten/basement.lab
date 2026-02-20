@@ -5,24 +5,49 @@ import { addToHistory } from "@/lib/historyStore";
 type Props = {
   open: boolean;
   onClose: () => void;
-  imageDataUrl: string | null;
+  assetDataUrl: string | null;
   appId: string;
+  mimeType?: string;
+  fileName?: string;
   onDone: () => void;
 };
 
 export function DownloadActionModal({
   open,
   onClose,
-  imageDataUrl,
+  assetDataUrl,
   appId,
+  mimeType,
+  fileName,
   onDone,
 }: Props) {
-  if (!open || !imageDataUrl) return null;
+  if (!open || !assetDataUrl) return null;
+
+  const inferredMimeType =
+    mimeType ||
+    (assetDataUrl.startsWith("data:")
+      ? assetDataUrl.slice(5).split(";")[0] || undefined
+      : undefined);
+  const isImageAsset = (inferredMimeType || "").startsWith("image/");
+
+  const extensionFromMime = (value?: string) => {
+    if (!value) return "bin";
+    if (value === "image/png") return "png";
+    if (value === "image/jpeg") return "jpg";
+    if (value === "image/webp") return "webp";
+    if (value === "image/svg+xml") return "svg";
+    if (value === "application/json" || value === "text/json") return "json";
+    if (value.startsWith("text/")) return "txt";
+    return "bin";
+  };
+
+  const computedFileName =
+    fileName || `basement-${appId}-${Date.now()}.${extensionFromMime(inferredMimeType)}`;
 
   const handleDownloadOnly = () => {
     const link = document.createElement("a");
-    link.href = imageDataUrl;
-    link.download = `basement-${appId}-${Date.now()}.png`;
+    link.href = assetDataUrl;
+    link.download = computedFileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -32,8 +57,8 @@ export function DownloadActionModal({
 
   const triggerDownload = () => {
     const link = document.createElement("a");
-    link.href = imageDataUrl;
-    link.download = `basement-${appId}-${Date.now()}.png`;
+    link.href = assetDataUrl;
+    link.download = computedFileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -43,22 +68,42 @@ export function DownloadActionModal({
 
   const handleDownloadAndSave = () => {
     const name = `${appId}-${Date.now()}`;
+    if (!isImageAsset) {
+      addToHistory({
+        dataUrl: assetDataUrl,
+        appId,
+        name,
+        fileName: computedFileName,
+        mimeType: inferredMimeType,
+      });
+      triggerDownload();
+      return;
+    }
+
     const img = new Image();
     img.onload = () => {
       addToHistory({
-        dataUrl: imageDataUrl,
+        dataUrl: assetDataUrl,
         appId,
         name,
+        fileName: computedFileName,
+        mimeType: inferredMimeType,
         width: img.naturalWidth,
         height: img.naturalHeight,
       });
       triggerDownload();
     };
     img.onerror = () => {
-      addToHistory({ dataUrl: imageDataUrl, appId, name });
+      addToHistory({
+        dataUrl: assetDataUrl,
+        appId,
+        name,
+        fileName: computedFileName,
+        mimeType: inferredMimeType,
+      });
       triggerDownload();
     };
-    img.src = imageDataUrl;
+    img.src = assetDataUrl;
   };
 
   return (

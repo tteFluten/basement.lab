@@ -18,8 +18,16 @@ export type BridgeReferenceSelected = {
 export type BridgeOpenDownloadAction = {
   type: typeof BASEMENT_OPEN_DOWNLOAD_ACTION;
   requestId: string;
-  imageDataUrl: string;
+  /**
+   * Backward compatibility:
+   * - imageDataUrl: legacy image payload
+   * - assetDataUrl: generic payload (image/svg/json/etc.)
+   */
+  imageDataUrl?: string;
+  assetDataUrl?: string;
   appId: string;
+  mimeType?: string;
+  fileName?: string;
 };
 
 export type BridgeDownloadDone = {
