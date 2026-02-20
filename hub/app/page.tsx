@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { Film, ScanEye, Clock, Shirt, UserCircle } from "lucide-react";
 
 const APPS = [
-  { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style" },
-  { slug: "pov", label: "POV", desc: "Change point of view of an image" },
-  { slug: "chronos", label: "Chronos", desc: "Change temporality of an image" },
-  { slug: "swag", label: "Swag", desc: "Logo placement and mockups" },
-  { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization" },
+  { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film },
+  { slug: "pov", label: "POV", desc: "Change point of view of an image", Icon: ScanEye },
+  { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock },
+  { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt },
+  { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization", Icon: UserCircle },
 ];
 
 export default function HomePage() {
@@ -18,14 +19,19 @@ export default function HomePage() {
         Pick an app from the toolbar or below.
       </p>
       <ul className="grid gap-4 max-w-xl">
-        {APPS.map(({ slug, label, desc }) => (
+        {APPS.map(({ slug, label, desc, Icon }) => (
           <li key={slug}>
             <Link
               href={`/apps/${slug}`}
-              className="block p-4 border border-border hover:border-fg-muted bg-bg-muted hover:bg-bg text-fg"
+              className="flex items-center gap-3 p-4 border border-border hover:border-fg-muted bg-bg-muted hover:bg-bg text-fg"
             >
-              <span className="font-medium">{label}</span>
-              <span className="text-fg-muted text-sm ml-2">— {desc}</span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-border text-fg-muted">
+                <Icon size={18} strokeWidth={1.5} />
+              </span>
+              <span>
+                <span className="font-medium">{label}</span>
+                <span className="text-fg-muted text-sm ml-2">— {desc}</span>
+              </span>
             </Link>
           </li>
         ))}
