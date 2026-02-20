@@ -184,8 +184,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    type GenRow = {
+      id: string;
+      app_id: string;
+      blob_url: string;
+      width: number;
+      height: number;
+      name: string;
+      created_at: string;
+      user_id: string;
+      project_id: string | null;
+      tags?: string[];
+    };
+    const rows: GenRow[] = (data ?? []) as GenRow[];
     const items = await Promise.all(
-      (data ?? []).map(async (row) => {
+      rows.map(async (row) => {
         const resolvedUrl = await resolveBlobUrl(row.blob_url);
         return {
           id: row.id,
