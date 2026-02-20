@@ -12,6 +12,7 @@
    SUPABASE_SERVICE_ROLE_KEY=eyJ...
    ```
 4. En Supabase, abrí **SQL Editor** y ejecutá el contenido de `hub/supabase/schema.sql` (crea tablas `users`, `projects`, `project_members`, `generations`).
+5. Para crear el usuario admin, ejecutá también `hub/supabase/seed.sql` (define a `lautaro@basement.studio` como admin).
 
 ## 2. Vercel Blob (imágenes)
 
@@ -27,6 +28,7 @@
 - Con Supabase y Blob configurados, al usar **"Download and add to history"** en cualquier app:
   - La imagen se sube a Blob.
   - Se inserta una fila en `generations` con `blob_url`, `app_id`, `width`, `height`, etc.
+- La página **History** del Hub llama a `GET /api/generations`; si falla, verás el mensaje de error y un botón "Retry". Revisá que `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` estén en `hub/.env.local` y que las tablas existan (schema.sql + seed.sql).
 - Sin Supabase: el Hub sigue funcionando; el historial en memoria sigue disponible; la API devuelve 503 en GET y no persiste en POST.
 - Sin Blob: la API puede seguir guardando en Supabase usando la data URL en `blob_url` (solo recomendable para pruebas; en producción usá Blob).
 

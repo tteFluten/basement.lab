@@ -53,5 +53,4 @@ create index if not exists idx_generations_user_id on public.generations(user_id
 create index if not exists idx_generations_project_id on public.generations(project_id);
 create index if not exists idx_generations_created_at on public.generations(created_at desc);
 
--- Optional: default admin (run after first user create or use your auth)
--- insert into public.users (email, full_name, role) values ('lautaro@basement.studio', 'Lautaro', 'admin') on conflict (email) do nothing;
+-- Optional: seed admin. Run hub/supabase/seed.sql after this schema to set lautaro@basement.studio as admin.

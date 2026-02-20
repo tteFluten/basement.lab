@@ -33,16 +33,27 @@ export function HistoryClient() {
   const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [lightboxItem, setLightboxItem] = useState<HistoryItem | null>(null);
+  const [apiLoading, setApiLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const fetchApiHistory = useCallback(async () => {
+    setApiError(null);
+    setApiLoading(true);
     try {
       const res = await fetch("/api/generations?limit=50");
-      if (!res.ok) return;
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setApiError(json.error ?? `Error ${res.status}. Check Supabase and Blob setup.`);
+        setApiItems([]);
+        return;
+      }
       const list = (json.items ?? []).map(apiItemToHistoryItem);
       setApiItems(list);
-    } catch {
-      // Supabase not configured or network error
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : "Network error. Check Hub env (Supabase).");
+      setApiItems([]);
+    } finally {
+      setApiLoading(false);
     }
   }, []);
 
@@ -137,13 +148,28 @@ export function HistoryClient() {
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 min-w-[200px] max-w-md bg-[#111] border border-[#333] px-4 py-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
         />
+        {apiError && (
+          <button
+            type="button"
+            onClick={() => fetchApiHistory()}
+            className="px-4 py-2 border border-amber-600 text-amber-400 text-[10px] uppercase hover:bg-amber-600/20 transition-colors"
+          >
+            Retry
+          </button>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
+      {apiLoading && apiItems.length === 0 ? (
+        <p className="text-zinc-500 text-[10px]">Loading history...</p>
+      ) : apiError && apiItems.length === 0 ? (
+        <p className="text-amber-400/90 text-[10px] mb-2">{apiError}</p>
+      ) : null}
+
+      {filtered.length === 0 && !apiLoading ? (
         <p className="text-zinc-600 text-[10px]">
-          {items.length === 0 ? "No items yet." : "No items match the search."}
+          {items.length === 0 ? "No items yet. Use &quot;Download and add to history&quot; in an app." : "No items match the search."}
         </p>
-      ) : (
+      ) : filtered.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
           {filtered.map((item) => {
             const Icon = getAppIcon(item.appId);
@@ -229,7 +255,7 @@ export function HistoryClient() {
             );
           })}
         </div>
-      )}
+      ) : null}
 
       {lightboxItem && (
         <div
