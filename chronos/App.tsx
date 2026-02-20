@@ -181,13 +181,13 @@ const App: React.FC = () => {
   const IconSparkles = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" /></svg>;
 
   return (
-    <div className="flex flex-col h-screen bg-[#050505] text-gray-400 font-mono overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#050505] text-zinc-400 font-mono overflow-hidden">
       {/* TOP HEADER */}
       <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/80 backdrop-blur-md z-20">
         <div className="flex items-center gap-4">
-          <h1 className="text-sm font-bold tracking-[0.3em] text-white">CHRONOS <span className="text-gray-600 font-light">//</span> V4.6</h1>
+          <h1 className="text-sm font-bold tracking-[0.3em] text-white">CHRONOS <span className="text-zinc-600 font-light">//</span> V4.6</h1>
           <div className="h-3 w-[1px] bg-white/10"></div>
-          <span className="text-[10px] text-gray-500 uppercase tracking-widest">{aspectRatio}_RATIO_LOCKED</span>
+          <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{aspectRatio}_RATIO_LOCKED</span>
         </div>
         
         <div className="flex items-center gap-6">
@@ -199,7 +199,7 @@ const App: React.FC = () => {
               <IconTrash /> RESET_SESSION
             </button>
           )}
-          <div className="text-[10px] text-gray-600 flex items-center gap-2">
+          <div className="text-[10px] text-zinc-600 flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${isProcessing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
             {isProcessing ? 'PROCESSING_TEMPORAL_WAVES' : 'ENGINE_READY'}
           </div>
@@ -211,7 +211,7 @@ const App: React.FC = () => {
         
         {/* TIMELINE SIDEBAR */}
         <aside className="w-28 border-r border-white/5 flex flex-col bg-black/40 overflow-hidden">
-          <div className="p-3 text-[9px] font-bold text-gray-600 border-b border-white/5 uppercase tracking-widest text-center">Timeline</div>
+          <div className="p-3 text-[9px] font-bold text-zinc-600 border-b border-white/5 uppercase tracking-widest text-center">Timeline</div>
           <div ref={scrollRef} className="flex-grow overflow-y-auto no-scrollbar py-2">
             {timeline.map((frame, idx) => (
               <button
@@ -222,7 +222,7 @@ const App: React.FC = () => {
                 <div className={`aspect-square bg-black border ${selectedIndex === idx ? 'border-white/40' : 'border-white/5'} overflow-hidden rounded-sm mb-1`}>
                   <img src={frame.data} className="w-full h-full object-cover" alt="" />
                 </div>
-                <div className={`text-[8px] text-center uppercase tracking-tighter font-bold ${frame.step === 0 ? 'text-white' : 'text-gray-500'}`}>
+                <div className={`text-[8px] text-center uppercase tracking-tighter font-bold ${frame.step === 0 ? 'text-white' : 'text-zinc-500'}`}>
                   {frame.timeLabel}
                 </div>
                 {selectedIndex === idx && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-8 bg-white"></div>}
@@ -230,7 +230,7 @@ const App: React.FC = () => {
             ))}
             {timeline.length === 0 && (
               <div className="flex-grow flex items-center justify-center p-4">
-                <div className="text-[8px] rotate-90 text-gray-800 whitespace-nowrap uppercase tracking-widest opacity-30">Void_State</div>
+                <div className="text-[8px] rotate-90 text-zinc-800 whitespace-nowrap uppercase tracking-widest opacity-30">Void_State</div>
               </div>
             )}
           </div>
@@ -290,8 +290,8 @@ const App: React.FC = () => {
                   <IconUpload />
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] tracking-[0.4em] uppercase text-gray-500 group-hover:text-white transition-colors">Select_Reference_Frame</p>
-                  <p className="text-[8px] text-gray-700 mt-3 uppercase tracking-widest">Initial_Injection</p>
+                  <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 group-hover:text-white transition-colors">Select_Reference_Frame</p>
+                  <p className="text-[8px] text-zinc-700 mt-3 uppercase tracking-widest">Initial_Injection</p>
                 </div>
                 <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
               </label>
@@ -310,10 +310,10 @@ const App: React.FC = () => {
               
               {/* Analysis Log */}
               <div className="col-span-4 flex flex-col gap-3">
-                <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase tracking-widest">
-                  <div className="w-1 h-1 bg-gray-700"></div> Temporal_Causality_Analysis
+                <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
+                  <div className="w-1 h-1 bg-zinc-700"></div> Temporal_Causality_Analysis
                 </div>
-                <div className="h-28 border border-white/5 bg-black/40 p-3 overflow-y-auto text-[11px] leading-relaxed text-gray-400 scrollbar-hide font-light italic">
+                <div className="h-28 border border-white/5 bg-black/40 p-3 overflow-y-auto text-[11px] leading-relaxed text-zinc-400 scrollbar-hide font-light italic">
                   {currentFrame?.analysis || 'System Standby. Injection Required.'}
                 </div>
               </div>
@@ -321,8 +321,8 @@ const App: React.FC = () => {
               {/* Prompt Buffer */}
               <div className="col-span-4 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase tracking-widest">
-                    <div className="w-1 h-1 bg-gray-700"></div> Continuity_Refinement_Buffer
+                  <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
+                    <div className="w-1 h-1 bg-zinc-700"></div> Continuity_Refinement_Buffer
                   </div>
                   {currentFrame && currentFrame.step !== 0 && (
                     <button 
@@ -345,8 +345,8 @@ const App: React.FC = () => {
 
               {/* Command Interface */}
               <div className="col-span-4 flex flex-col gap-3">
-                <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase tracking-widest">
-                  <div className="w-1 h-1 bg-gray-700"></div> Command_Matrix
+                <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
+                  <div className="w-1 h-1 bg-zinc-700"></div> Command_Matrix
                 </div>
                 <div className="grid grid-cols-3 gap-2 h-20">
                   <button 
@@ -355,7 +355,7 @@ const App: React.FC = () => {
                     className="flex flex-col items-center justify-center border border-white/5 hover:bg-white/[0.03] hover:border-white/20 transition-all disabled:opacity-5 group rounded-sm px-1"
                   >
                     <IconBackwards />
-                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-gray-500 group-hover:text-white">Reverse_5S</span>
+                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white">Reverse_5S</span>
                   </button>
 
                   <button 
@@ -364,7 +364,7 @@ const App: React.FC = () => {
                     className="flex flex-col items-center justify-center border border-white/5 hover:bg-white/[0.03] hover:border-white/20 transition-all disabled:opacity-5 group rounded-sm px-1"
                   >
                     <IconForwards />
-                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-gray-500 group-hover:text-white">Advance_5S</span>
+                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white">Advance_5S</span>
                   </button>
                   
                   <button 
@@ -375,7 +375,7 @@ const App: React.FC = () => {
                     className="flex flex-col items-center justify-center border border-white/5 hover:bg-white/[0.03] hover:border-white/20 transition-all disabled:opacity-5 group rounded-sm px-1"
                   >
                     <IconCompare />
-                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-gray-500 group-hover:text-white">Compare</span>
+                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white">Compare</span>
                   </button>
                 </div>
                 
@@ -395,10 +395,10 @@ const App: React.FC = () => {
       </div>
 
       {/* FOOTER */}
-      <footer className="flex-shrink-0 h-8 border-t border-white/5 bg-black flex items-center justify-between px-6 text-[8px] text-gray-700 tracking-[0.3em] uppercase z-20">
+      <footer className="flex-shrink-0 h-8 border-t border-white/5 bg-black flex items-center justify-between px-6 text-[8px] text-zinc-700 tracking-[0.3em] uppercase z-20">
         <div className="flex gap-8">
-          <span className="flex items-center gap-2"><div className="w-1 h-1 bg-gray-800 rounded-full"></div> Bi-Directional_Flux: Active</span>
-          <span className="flex items-center gap-2"><div className="w-1 h-1 bg-gray-800 rounded-full"></div> Frame_Buffer: {timeline.length}</span>
+          <span className="flex items-center gap-2"><div className="w-1 h-1 bg-zinc-800 rounded-full"></div> Bi-Directional_Flux: Active</span>
+          <span className="flex items-center gap-2"><div className="w-1 h-1 bg-zinc-800 rounded-full"></div> Frame_Buffer: {timeline.length}</span>
         </div>
         <div>
           {timeline.length > 0 ? `Range: ${timeline[0].timeLabel} to ${timeline[timeline.length - 1].timeLabel}` : 'SYSTEM_IDLE'}

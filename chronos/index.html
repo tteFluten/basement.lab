@@ -1,53 +1,25 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CHRONOS // T-5S</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            box-sizing: border-box;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        body {
-            font-family: 'JetBrains Mono', monospace;
-            background-color: #000000;
-            color: #9ca3af;
-            line-height: 1.2;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-            margin: 0;
-        }
-        #root {
-            height: 100%;
-            width: 100%;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        ::selection {
-            background-color: #ffffff;
-            color: #000000;
-        }
-        /* Fix for mobile keyboard pushing things up */
-        @media screen and (max-height: 600px) {
-            .workspace-controls {
-                padding-top: 1rem;
-                padding-bottom: 1rem;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Chronos // T-5S</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'JetBrains Mono', monospace; background-color: #000; color: #a1a1aa; line-height: 1.2; overflow: hidden; height: 100vh; width: 100vw; margin: 0; }
+    #root { height: 100%; width: 100%; }
+    * { border-radius: 0 !important; box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: #27272a; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    ::selection { background-color: #fff; color: #000; }
+  </style>
 <script type="importmap">
 {
   "imports": {
@@ -61,7 +33,7 @@
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="antialiased">
-    <div id="root"></div>
+  <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
