@@ -26,9 +26,20 @@ export async function PATCH(
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   const body = await request.json().catch(() => ({}));
-  const updates: { name?: string; client?: string } = {};
+  const updates: {
+    name?: string;
+    client?: string;
+    thumbnail_url?: string;
+    links?: Record<string, unknown>;
+    start_date?: string | null;
+    end_date?: string | null;
+  } = {};
   if (typeof body.name === "string" && body.name.trim()) updates.name = body.name.trim();
   if (typeof body.client === "string") updates.client = body.client.trim() || null;
+  if (typeof body.thumbnail_url === "string") updates.thumbnail_url = body.thumbnail_url.trim() || null;
+  if (body.links && typeof body.links === "object") updates.links = body.links as Record<string, unknown>;
+  if (typeof body.start_date === "string") updates.start_date = body.start_date.trim() || null;
+  if (typeof body.end_date === "string") updates.end_date = body.end_date.trim() || null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "no fields to update" }, { status: 400 });

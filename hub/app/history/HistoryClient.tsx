@@ -7,6 +7,7 @@ import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow,
 } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 
 /* ─── helpers ─── */
 
@@ -14,6 +15,7 @@ function toItem(row: {
   id: string; appId: string; dataUrl?: string | null; blobUrl?: string;
   width?: number | null; height?: number | null; name?: string | null;
   createdAt: number; tags?: string[]; projectId?: string | null;
+  user?: { fullName?: string | null; avatarUrl?: string | null };
 }): HistoryItem {
   return {
     id: row.id, dataUrl: row.dataUrl || "", appId: row.appId,
@@ -22,6 +24,8 @@ function toItem(row: {
     createdAt: row.createdAt,
     tags: Array.isArray(row.tags) ? row.tags : undefined,
     blobUrl: row.blobUrl, projectId: row.projectId ?? undefined,
+    userName: row.user?.fullName ?? undefined,
+    userAvatarUrl: row.user?.avatarUrl ?? undefined,
   };
 }
 
@@ -259,19 +263,29 @@ function LargeCard({
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
+    <div className="history-card border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-full h-56 sm:h-64 relative block overflow-hidden focus:outline-none">
         {image && url ? (
           <>
             <LazyImg src={url} appId={item.appId} className="object-cover transition-transform duration-500 group-hover:scale-105" />
+            {projectName && (
+              <span className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-black/70 text-white text-[10px] font-medium uppercase tracking-wider border border-white/20 max-w-[80%] truncate" title={projectName}>
+                <FolderIcon className="w-2.5 h-2.5 shrink-0" /> {projectName}
+              </span>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <div className="absolute inset-0 flex items-center justify-center">
               <ZoomIn className="w-7 h-7 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg" />
             </div>
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: APP_BG[item.appId] ?? "#151515" }}>
+          <div className="w-full h-full flex items-center justify-center relative" style={{ backgroundColor: APP_BG[item.appId] ?? "#151515" }}>
+            {projectName && (
+              <span className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-black/70 text-white text-[10px] font-medium uppercase tracking-wider border border-white/20 max-w-[80%] truncate" title={projectName}>
+                <FolderIcon className="w-2.5 h-2.5 shrink-0" /> {projectName}
+              </span>
+            )}
             <Icon className="w-6 h-6 text-zinc-600 animate-pulse" />
           </div>
         )}
@@ -285,10 +299,10 @@ function LargeCard({
             <p className="text-sm text-fg font-medium truncate">{item.name || getAppLabel(item.appId)}</p>
             <p className="text-xs text-fg-muted mt-0.5">{fmtDate(item.createdAt)}</p>
           </div>
+          {(item.userName || item.userAvatarUrl) && (
+            <Avatar src={item.userAvatarUrl} name={item.userName} size="sm" className="shrink-0" />
+          )}
         </div>
-        {projectName && (
-          <p className="text-[10px] text-fg-muted flex items-center gap-1"><FolderIcon className="w-2.5 h-2.5" /> {projectName}</p>
-        )}
         {(item.tags?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {item.tags!.slice(0, 4).map((t) => (
@@ -323,24 +337,34 @@ function LargeCard({
 }
 
 function SmallCard({
-  item, deleting, onDelete, onView, onEdit,
-}: { item: HistoryItem; deleting: boolean; onDelete: () => void; onView: () => void; onEdit: () => void }) {
+  item, deleting, onDelete, onView, onEdit, projectName,
+}: { item: HistoryItem; deleting: boolean; onDelete: () => void; onView: () => void; onEdit: () => void; projectName?: string }) {
   const Icon = getAppIcon(item.appId);
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
+    <div className="history-card border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-full h-36 sm:h-44 relative block overflow-hidden focus:outline-none">
         {image && url ? (
           <>
             <LazyImg src={url} appId={item.appId} className="object-cover transition-transform duration-500 group-hover:scale-105" />
+            {projectName && (
+              <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-medium uppercase tracking-wider border border-white/20 max-w-[85%] truncate" title={projectName}>
+                <FolderIcon className="w-2 h-2 shrink-0" /> {projectName}
+              </span>
+            )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
               <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: APP_BG[item.appId] ?? "#151515" }}>
+          <div className="w-full h-full flex items-center justify-center relative" style={{ backgroundColor: APP_BG[item.appId] ?? "#151515" }}>
+            {projectName && (
+              <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-medium uppercase tracking-wider border border-white/20 max-w-[85%] truncate" title={projectName}>
+                <FolderIcon className="w-2 h-2 shrink-0" /> {projectName}
+              </span>
+            )}
             <Icon className="w-5 h-5 text-zinc-600 animate-pulse" />
           </div>
         )}
@@ -348,7 +372,10 @@ function SmallCard({
       <div className="px-3 py-2 space-y-1">
         <div className="flex items-center gap-2">
           <Icon className="w-3.5 h-3.5 text-fg-muted shrink-0" />
-          <span className="text-xs text-fg truncate">{getAppLabel(item.appId)}</span>
+          <span className="text-xs text-fg truncate flex-1 min-w-0">{getAppLabel(item.appId)}</span>
+          {(item.userName || item.userAvatarUrl) && (
+            <Avatar src={item.userAvatarUrl} name={item.userName} size="sm" className="shrink-0" />
+          )}
         </div>
         <p className="text-[10px] text-fg-muted">{fmtDate(item.createdAt)}</p>
       </div>
@@ -383,18 +410,28 @@ function ListRow({
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="flex items-center gap-4 px-4 py-3 border border-border bg-bg-muted hover:border-fg-muted transition-colors group">
+    <div className="history-card flex items-center gap-4 px-4 py-3 border border-border bg-bg-muted hover:border-fg-muted transition-colors group">
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-20 h-20 shrink-0 overflow-hidden relative focus:outline-none">
         {image && url ? (
           <>
             <LazyImg src={url} appId={item.appId} className="object-cover" />
+            {projectName && (
+              <span className="absolute top-0.5 left-0.5 px-1 py-0.5 bg-black/70 text-white text-[8px] font-medium uppercase tracking-wider border border-white/20 max-w-[90%] truncate" title={projectName}>
+                <FolderIcon className="w-1.5 h-1.5 inline shrink-0 mr-0.5 align-middle" /> {projectName}
+              </span>
+            )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
               <ZoomIn className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: APP_BG[item.appId] ?? "#151515" }}>
+          <div className="w-full h-full flex items-center justify-center relative" style={{ backgroundColor: APP_BG[item.appId] ?? "#151515" }}>
+            {projectName && (
+              <span className="absolute top-0.5 left-0.5 px-1 py-0.5 bg-black/70 text-white text-[8px] font-medium uppercase max-w-[90%] truncate" title={projectName}>
+                <FolderIcon className="w-1.5 h-1.5 inline shrink-0" /> {projectName}
+              </span>
+            )}
             <Icon className="w-5 h-5 text-zinc-600 animate-pulse" />
           </div>
         )}
@@ -403,6 +440,9 @@ function ListRow({
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-fg-muted shrink-0" />
           <span className="text-sm text-fg font-medium truncate">{item.name || getAppLabel(item.appId)}</span>
+          {(item.userName || item.userAvatarUrl) && (
+            <Avatar src={item.userAvatarUrl} name={item.userName} size="sm" className="shrink-0" />
+          )}
         </div>
         <p className="text-xs text-fg-muted">
           {fmtDate(item.createdAt)}
@@ -524,7 +564,8 @@ function RenderItems({
           projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
       ) : (
         <SmallCard key={item.id} item={item} deleting={deletingId === item.id}
-          onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)} />
+          onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
+          projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
       ))}
     </div>
   );

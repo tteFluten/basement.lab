@@ -181,19 +181,37 @@ export async function GET(request: NextRequest) {
       tags?: string[];
     };
     const rows: GenRow[] = (data ?? []) as GenRow[];
-    const items = rows.map((row) => ({
-      id: row.id,
-      appId: row.app_id,
-      dataUrl: null as string | null,
-      blobUrl: row.blob_url,
-      width: row.width,
-      height: row.height,
-      name: row.name,
-      createdAt: new Date(row.created_at).getTime(),
-      userId: row.user_id,
-      projectId: row.project_id,
-      tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
-    }));
+    const userIds = [...new Set((rows.map((r) => r.user_id).filter(Boolean) as string[]))];
+    let userMap: Map<string, { fullName: string | null; avatarUrl: string | null }> = new Map();
+    if (userIds.length > 0) {
+      const { data: userRows } = await supabase
+        .from("users")
+        .select("id, full_name, avatar_url")
+        .in("id", userIds);
+      for (const u of userRows ?? []) {
+        userMap.set(u.id, {
+          fullName: u.full_name ?? null,
+          avatarUrl: u.avatar_url ?? null,
+        });
+      }
+    }
+    const items = rows.map((row) => {
+      const user = row.user_id ? userMap.get(row.user_id) : undefined;
+      return {
+        id: row.id,
+        appId: row.app_id,
+        dataUrl: null as string | null,
+        blobUrl: row.blob_url,
+        width: row.width,
+        height: row.height,
+        name: row.name,
+        createdAt: new Date(row.created_at).getTime(),
+        userId: row.user_id,
+        projectId: row.project_id,
+        tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
+        user: user ? { fullName: user.fullName, avatarUrl: user.avatarUrl } : undefined,
+      };
+    });
 
     return NextResponse.json({ items });
   } catch (e) {

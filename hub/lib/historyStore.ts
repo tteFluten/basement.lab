@@ -13,6 +13,8 @@ export interface HistoryItem {
   width?: number;
   height?: number;
   userName?: string;
+  /** Avatar URL of the user who created the generation (from API) */
+  userAvatarUrl?: string;
   projectName?: string;
   /** Descriptive tags for search (from API) */
   tags?: string[];

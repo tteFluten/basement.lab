@@ -25,7 +25,7 @@ export async function GET() {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("users")
-    .select("id, email, full_name, nickname, role")
+    .select("id, email, full_name, nickname, avatar_url, role")
     .order("email");
 
   if (error) {

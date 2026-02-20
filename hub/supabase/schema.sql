@@ -56,4 +56,23 @@ create index if not exists idx_generations_created_at on public.generations(crea
 create index if not exists idx_generations_tags on public.generations using gin(tags);
 create index if not exists idx_generations_app_id on public.generations(app_id);
 
+-- User-submitted apps (title, description, deploy/edit links, optional thumbnail; listed separately from lab apps)
+create table if not exists public.submitted_apps (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete set null,
+  title text not null,
+  description text,
+  deploy_link text not null,
+  edit_link text,
+  thumbnail_url text,
+  version text default '1.0',
+  tags text[] default '{}',
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_submitted_apps_user_id on public.submitted_apps(user_id);
+create index if not exists idx_submitted_apps_created_at on public.submitted_apps(created_at desc);
+create index if not exists idx_submitted_apps_title on public.submitted_apps(lower(title));
+create index if not exists idx_submitted_apps_tags on public.submitted_apps using gin(tags);
+
 -- Optional: seed admin. Run hub/supabase/seed.sql after this schema to set lautaro@basement.studio as admin.
