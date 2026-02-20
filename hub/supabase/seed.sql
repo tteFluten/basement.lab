@@ -1,9 +1,48 @@
--- Seed admin user. Run in Supabase SQL Editor after schema.sql.
--- Uses upsert so you can run multiple times.
+-- Seed all users. Run in Supabase SQL Editor after schema.sql.
+-- Uses upsert so you can run multiple times safely.
 
-insert into public.users (email, full_name, role)
-values ('lautaro@basement.studio', 'Lautaro', 'admin')
+insert into public.users (email, nickname, full_name, role) values
+  ('lautaro@basement.studio',            'Lautaro',    'Lautaro',            'admin'),
+  ('alex@basement.studio',               'Alex',       'Alex',               'member'),
+  ('bautista@basement.studio',           'Bauti',      'Bautista',           'member'),
+  ('bernabe@basement.studio',            'Berna',      'Bernabé',            'member'),
+  ('gonzalo@basement.studio',            'Gonza',      'Gonzalo',            'member'),
+  ('david@basement.studio',              'David',      'David',              'member'),
+  ('delfina@basement.studio',            'Delfi',      'Delfina',            'member'),
+  ('emanuel@basement.studio',            'Ema',        'Emanuel',            'member'),
+  ('fsantana@basement.studio',           'Falan',      'F. Santana',         'member'),
+  ('francog@basement.studio',            'Franco',     'Franco G.',          'member'),
+  ('franco@basement.studio',             'FrancoMotion','Franco',            'member'),
+  ('josefina@basement.studio',           'JJ',         'Josefina',           'member'),
+  ('kalil@basement.studio',              'Kalil',      'Kalil',              'member'),
+  ('carlac@basement.studio',             'Kalu',       'Carla C.',           'member'),
+  ('lisandro@basement.studio',           'Lis',        'Lisandro',           'member'),
+  ('macarenab@basement.studio',          'Maca',       'Macarena B.',        'member'),
+  ('malena@basement.studio',             'Male',       'Malena',             'member'),
+  ('mariana@basement.studio',            'Mar',        'Mariana',            'member'),
+  ('mateo@basement.studio',              'Mago',       'Mateo',              'member'),
+  ('miqueas@basement.studio',            'Mike',       'Miqueas',            'member'),
+  ('ignacio@basement.studio',            'Nacho',      'Ignacio',            'member'),
+  ('natalia@basement.studio',            'Nat',        'Natalia',            'member'),
+  ('nicolas@basement.studio',            'Nico',       'Nicolás',            'member'),
+  ('nicomartins@basement.studio',        'YoungNico',  'Nico Martins',       'member'),
+  ('jose@basement.studio',               'Tigre',      'José',               'member'),
+  ('stefania@basement.studio',           'Stef',       'Stefanía',           'member'),
+  ('tobias@basement.studio',             'Tobi',       'Tobías',             'member'),
+  ('tomas.vinella@basement.studio',      'Tomi',       'Tomás Vinella',      'member'),
+  ('tomas@basement.studio',              'Pucho',      'Tomás',              'member'),
+  ('valentina@basement.studio',          'Vale',       'Valentina',          'member'),
+  ('vittorio@basement.studio',           'Vitto',      'Vittorio',           'member'),
+  ('wanda@basement.studio',              'Wanda',      'Wanda',              'member'),
+  ('camila@basement.studio',              null,         'Camila',             'member'),
+  ('gonzalo.moreira@basement.studio',     null,         'Gonzalo Moreira',    'member'),
+  ('federico@basement.studio',            null,         'Federico',           'member'),
+  ('barreirom@basement.studio',           null,         'Barreiro M.',        'member'),
+  ('martina.lanfranconi@basement.studio', null,         'Martina Lanfranconi','member'),
+  ('francisco@basement.studio',           null,         'Francisco',          'member'),
+  ('matiasc@basement.studio',             null,         'Matías C.',          'member')
 on conflict (email) do update set
+  nickname  = excluded.nickname,
   full_name = excluded.full_name,
-  role = excluded.role,
+  role      = excluded.role,
   updated_at = now();
