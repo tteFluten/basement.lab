@@ -13,10 +13,11 @@ import {
   Layers,
   History,
   FolderOpen,
-  User,
+  Blocks,
   ChevronDown,
   LogOut,
   User as UserIcon,
+  ExternalLink,
 } from "lucide-react";
 
 const APP_LINKS = [
@@ -29,7 +30,71 @@ const APP_LINKS = [
   { slug: "frame-variator", label: "Frame Variator", Icon: Layers },
 ] as const;
 
+const PROJECT_APP_LINKS = [
+  {
+    key: "native-connect",
+    label: "Connect",
+    project: "Native",
+    href:
+      process.env.NEXT_PUBLIC_PROJECT_NATIVE_CONNECT_URL || "http://localhost:3100",
+  },
+] as const;
+
 const iconSize = 18;
+
+function ProjectAppsMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Apps nativas"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1 p-1.5 shrink-0 ${open ? "text-fg border-b border-fg" : "text-fg-muted hover:text-fg"}`}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        <Blocks size={iconSize} strokeWidth={1.5} />
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <ul
+          className="absolute left-0 top-full mt-1 min-w-[220px] border border-border bg-bg-muted py-1 z-50"
+          role="menu"
+        >
+          {PROJECT_APP_LINKS.map(({ key, label, project, href }) => (
+            <li key={key} role="none">
+              <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between gap-3 px-3 py-2 text-sm text-fg hover:bg-bg"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+              >
+                <span className="truncate">{label}</span>
+                <span className="text-xs text-fg-muted shrink-0">{project}</span>
+                <ExternalLink size={13} className="text-fg-muted shrink-0" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function UserMenu() {
   const [open, setOpen] = useState(false);
@@ -124,6 +189,7 @@ export function Toolbar() {
             </Link>
           );
         })}
+        <ProjectAppsMenu />
 
         <span className="flex-1 min-w-4" />
 
