@@ -2,6 +2,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SceneAnalysis, NarrativeSuggestion, Variation } from "../types";
 
+/** When running inside the Hub embed, use the Hub API so the API key stays server-side. */
+function getHubApiBase(): string | null {
+  if (typeof window === "undefined") return null;
+  if (window.location.pathname.startsWith("/embed/")) return window.location.origin;
+  return null;
+}
+
 export const CAMERA_POVS = [
   "Gran Plano General (Extreme Wide Shot), focus on architecture and environment context",
   "Plano Americano (Medium Long Shot), frame from knees up, balancing figure and space",
@@ -40,9 +47,20 @@ export class GeminiService {
   }
 
   static async analyzeImage(base64Image: string): Promise<SceneAnalysis> {
+    const base = getHubApiBase();
+    if (base) {
+      const res = await fetch(`${base}/api/gemini/frame-variator/analyze-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64Image }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "API_KEY_ERROR");
+      return data as SceneAnalysis;
+    }
     const ai = this.getClient();
     const response = await this.wrapApiKeyError(ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash-exp",
       contents: {
         parts: [
           { inlineData: { data: base64Image.split(',')[1], mimeType: "image/jpeg" } },
@@ -68,6 +86,17 @@ export class GeminiService {
   }
 
   static async getNarrativeSuggestions(analysis: SceneAnalysis, topic?: string): Promise<NarrativeSuggestion[]> {
+    const base = getHubApiBase();
+    if (base) {
+      const res = await fetch(`${base}/api/gemini/frame-variator/narrative-suggestions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysis, topic }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "API_KEY_ERROR");
+      return data as NarrativeSuggestion[];
+    }
     const ai = this.getClient();
     const prompt = `Based on technical plate analysis: ${JSON.stringify(analysis)}. 
     Exploration Topic: ${topic || 'Narrative variation'}.
@@ -84,7 +113,7 @@ export class GeminiService {
     Return as JSON array of {title, description}.`;
 
     const response = await this.wrapApiKeyError(ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash-exp",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -105,6 +134,17 @@ export class GeminiService {
   }
 
   static async generateGrid(originalBase64: string, analysis: SceneAnalysis, variations: Variation[]): Promise<string> {
+    const base = getHubApiBase();
+    if (base) {
+      const res = await fetch(`${base}/api/gemini/frame-variator/generate-grid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ originalBase64, analysis, variations }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "API error");
+      return data.dataUrl as string;
+    }
     const ai = this.getClient();
     const gridPrompt = `TASK: Technical 3x3 Contact Sheet Render.
     TECHNICAL MANDATE: 
@@ -121,7 +161,7 @@ export class GeminiService {
     Output: Clean 3x3 contact sheet image.`;
 
     const response = await this.wrapApiKeyError(ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: "gemini-2.0-flash-exp",
       contents: {
         parts: [
           { inlineData: { data: originalBase64.split(',')[1], mimeType: "image/jpeg" } },
@@ -139,13 +179,24 @@ export class GeminiService {
   }
 
   static async generateSingle(
-    originalBase64: string, 
-    gridBase64: string, 
-    analysis: SceneAnalysis, 
-    selectedIndex: number, 
-    prompt: string, 
+    originalBase64: string,
+    gridBase64: string,
+    _analysis: SceneAnalysis,
+    selectedIndex: number,
+    prompt: string,
     size: "1K" | "2K" | "4K" = "4K"
   ): Promise<string> {
+    const base = getHubApiBase();
+    if (base) {
+      const res = await fetch(`${base}/api/gemini/frame-variator/generate-single`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ originalBase64, gridBase64, selectedIndex, prompt, size }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "API error");
+      return data.dataUrl as string;
+    }
     const ai = this.getClient();
     const row = Math.floor(selectedIndex / 3) + 1;
     const col = (selectedIndex % 3) + 1;
@@ -164,7 +215,7 @@ export class GeminiService {
     The resulting image must look like the original cinema camera capture for: ${prompt}.`;
 
     const response = await this.wrapApiKeyError(ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: "gemini-2.0-flash-exp",
       contents: {
         parts: [
           { inlineData: { data: originalBase64.split(',')[1], mimeType: "image/jpeg" } },
