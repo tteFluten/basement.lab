@@ -8,6 +8,12 @@ export interface HistoryItem {
   appId: string;
   createdAt: number;
   name?: string;
+  width?: number;
+  height?: number;
+  /** Placeholder until we have auth: user display name */
+  userName?: string;
+  /** Placeholder until we have projects: project name */
+  projectName?: string;
 }
 
 const MAX_ITEMS = 30;
@@ -29,6 +35,9 @@ export function addToHistory(
   memory = memory.slice(0, MAX_ITEMS);
   return newItem;
 }
+
+/** Threshold below which we show "Upscale to 4K" option (e.g. 1920) */
+export const SMALL_RESOLUTION_THRESHOLD = 1920;
 
 export function removeFromHistory(id: string): void {
   memory = memory.filter((i) => i.id !== id);

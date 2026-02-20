@@ -30,8 +30,7 @@ export function DownloadActionModal({
     onClose();
   };
 
-  const handleDownloadAndSave = () => {
-    addToHistory({ dataUrl: imageDataUrl, appId, name: `${appId}-${Date.now()}` });
+  const triggerDownload = () => {
     const link = document.createElement("a");
     link.href = imageDataUrl;
     link.download = `basement-${appId}-${Date.now()}.png`;
@@ -40,6 +39,26 @@ export function DownloadActionModal({
     document.body.removeChild(link);
     onDone();
     onClose();
+  };
+
+  const handleDownloadAndSave = () => {
+    const name = `${appId}-${Date.now()}`;
+    const img = new Image();
+    img.onload = () => {
+      addToHistory({
+        dataUrl: imageDataUrl,
+        appId,
+        name,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
+      triggerDownload();
+    };
+    img.onerror = () => {
+      addToHistory({ dataUrl: imageDataUrl, appId, name });
+      triggerDownload();
+    };
+    img.src = imageDataUrl;
   };
 
   return (

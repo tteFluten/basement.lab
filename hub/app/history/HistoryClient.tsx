@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getHistory, type HistoryItem } from "@/lib/historyStore";
+import { useEffect, useState, useMemo } from "react";
+import { getHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
+import { getAppIcon, getAppLabel } from "@/lib/appIcons";
+import { Download, Maximize2, ZoomIn, X } from "lucide-react";
 
 export function HistoryClient() {
   const [items, setItems] = useState<HistoryItem[]>([]);
+  const [search, setSearch] = useState("");
+  const [lightboxItem, setLightboxItem] = useState<HistoryItem | null>(null);
 
   useEffect(() => {
     setItems(getHistory());
@@ -12,35 +16,191 @@ export function HistoryClient() {
     return () => clearInterval(interval);
   }, []);
 
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.trim().toLowerCase();
+    return items.filter(
+      (i) =>
+        i.appId.toLowerCase().includes(q) ||
+        (i.name ?? "").toLowerCase().includes(q) ||
+        (i.userName ?? "").toLowerCase().includes(q) ||
+        (i.projectName ?? "").toLowerCase().includes(q)
+    );
+  }, [items, search]);
+
+  const handleDownload = (item: HistoryItem) => {
+    const link = document.createElement("a");
+    link.href = item.dataUrl;
+    link.download = `${item.name ?? item.id}.png`;
+    link.click();
+  };
+
+  const handleUpscale4K = (item: HistoryItem) => {
+    // Placeholder: download same image; later replace with real upscale API
+    const link = document.createElement("a");
+    link.href = item.dataUrl;
+    link.download = `${item.name ?? item.id}-4k.png`;
+    link.click();
+  };
+
+  const isSmallResolution = (item: HistoryItem) => {
+    const w = item.width ?? 0;
+    const h = item.height ?? 0;
+    return w > 0 && h > 0 && (w < SMALL_RESOLUTION_THRESHOLD || h < SMALL_RESOLUTION_THRESHOLD);
+  };
+
+  const formatDate = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
   return (
     <main className="p-8 bg-[#0a0a0a] min-h-full">
-      <h1 className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.3em] border-b border-[#333] pb-2 mb-6">
+      <h1 className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.3em] border-b border-[#333] pb-2 mb-4">
         History
       </h1>
-      <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-6">
-        Images saved via &quot;Download and add to history&quot;. Pick from here when using &quot;Upload or pick from history&quot; in any app.
+      <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-4">
+        Images saved via &quot;Download and add to history&quot;. View large, download, or request 4K upscale (when resolution is small).
       </p>
-      {items.length === 0 ? (
-        <p className="text-zinc-600 text-[10px]">No items yet.</p>
+
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <input
+          type="text"
+          placeholder="Search by app, name, user, project..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-w-[200px] max-w-md bg-[#111] border border-[#333] px-4 py-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-zinc-600 text-[10px]">
+          {items.length === 0 ? "No items yet." : "No items match the search."}
+        </p>
       ) : (
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-4">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="border border-[#333] overflow-hidden bg-[#111]"
-            >
-              <img
-                src={item.dataUrl}
-                alt=""
-                className="w-full aspect-square object-cover"
-              />
-              <div className="p-2 border-t border-[#333]">
-                <p className="text-[8px] text-zinc-500 uppercase truncate">
-                  {item.appId}
-                </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+          {filtered.map((item) => {
+            const Icon = getAppIcon(item.appId);
+            const small = isSmallResolution(item);
+            return (
+              <div
+                key={item.id}
+                className="border border-[#333] overflow-hidden bg-[#111] group"
+              >
+                <button
+                  type="button"
+                  onClick={() => setLightboxItem(item)}
+                  className="w-full aspect-square relative block overflow-hidden focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                >
+                  <img
+                    src={item.dataUrl}
+                    alt=""
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                    <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </button>
+                <div className="p-2 border-t border-[#333] space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 border border-[#333] text-zinc-500">
+                      <Icon className="w-3 h-3" />
+                    </span>
+                    <span className="text-[8px] text-zinc-500 uppercase truncate flex-1">
+                      {getAppLabel(item.appId)}
+                    </span>
+                  </div>
+                  <p className="text-[8px] text-zinc-600">{formatDate(item.createdAt)}</p>
+                  {(item.userName || item.projectName) && (
+                    <p className="text-[8px] text-zinc-700 truncate">
+                      {[item.userName, item.projectName].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </div>
+                <div className="flex border-t border-[#333]">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxItem(item)}
+                    className="flex-1 py-2 flex items-center justify-center gap-1 text-[8px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-300 transition-colors"
+                    title="View large"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(item)}
+                    className="flex-1 py-2 flex items-center justify-center gap-1 text-[8px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-300 transition-colors"
+                    title="Download"
+                  >
+                    <Download className="w-3 h-3" />
+                    Download
+                  </button>
+                  {small && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpscale4K(item)}
+                      className="flex-1 py-2 flex items-center justify-center gap-1 text-[8px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-amber-400 transition-colors"
+                      title="Download as 4K (upscale)"
+                    >
+                      <ZoomIn className="w-3 h-3" />
+                      4K
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      )}
+
+      {lightboxItem && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setLightboxItem(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="View image"
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxItem(null)}
+            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white border border-[#333] hover:border-zinc-500 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div
+            className="relative max-w-[95vw] max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxItem.dataUrl}
+              alt=""
+              className="max-w-full max-h-[90vh] object-contain border border-[#333]"
+            />
+          </div>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 px-4 py-2 bg-[#111]/90 border border-[#333]">
+            <span className="text-[9px] text-zinc-500 uppercase">
+              {getAppLabel(lightboxItem.appId)} · {formatDate(lightboxItem.createdAt)}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleDownload(lightboxItem)}
+              className="py-2 px-4 bg-zinc-100 text-black text-[9px] font-bold uppercase hover:bg-white transition-colors"
+            >
+              Download
+            </button>
+            {isSmallResolution(lightboxItem) && (
+              <button
+                type="button"
+                onClick={() => handleUpscale4K(lightboxItem)}
+                className="py-2 px-4 border border-[#333] text-zinc-400 text-[9px] font-bold uppercase hover:border-amber-500 hover:text-amber-400 transition-colors"
+              >
+                Upscale to 4K
+              </button>
+            )}
+          </div>
         </div>
       )}
     </main>
