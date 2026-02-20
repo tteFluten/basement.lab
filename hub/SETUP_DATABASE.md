@@ -14,6 +14,23 @@
 4. En Supabase, abrí **SQL Editor** y ejecutá el contenido de `hub/supabase/schema.sql` (crea tablas `users`, `projects`, `project_members`, `generations`).
 5. Para crear el usuario admin, ejecutá también `hub/supabase/seed.sql` (define a `lautaro@basement.studio` como admin).
 
+## 1b. Auth (NextAuth) y contraseña del admin
+
+1. En `hub/.env.local` agregá:
+   ```env
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=<string-aleatorio-seguro>
+   SETUP_PASSWORD_SECRET=<otro-secreto-para-setear-contraseña>
+   ```
+   Para generar un secreto: en PowerShell podés usar `[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])`.
+2. Para definir la contraseña del admin `lautaro@basement.studio` (una vez por entorno), llamá al endpoint con el secreto. En PowerShell:
+   ```powershell
+   $body = @{ email = "lautaro@basement.studio"; password = "TU_CONTRASEÑA" } | ConvertTo-Json
+   Invoke-RestMethod -Uri "http://localhost:3000/api/setup-password" -Method POST -Body $body -ContentType "application/json" -Headers @{ "Authorization" = "Bearer TU_SETUP_PASSWORD_SECRET" }
+   ```
+   (Reemplazá `TU_CONTRASEÑA` y `TU_SETUP_PASSWORD_SECRET` por los valores reales. El servidor del Hub debe estar corriendo.)
+3. Después de eso podés entrar con ese email y contraseña en `/login`.
+
 ## 2. Vercel Blob (imágenes)
 
 1. En [vercel.com](https://vercel.com) → tu proyecto → **Storage** → **Create Database** o **Blob**.
@@ -39,5 +56,8 @@ En el deployment, agregá en **Environment Variables**:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `BLOB_READ_WRITE_TOKEN`
+- `NEXTAUTH_URL` (ej. `https://tu-dominio.vercel.app`)
+- `NEXTAUTH_SECRET`
+- `SETUP_PASSWORD_SECRET` (solo si querés usar el endpoint para setear contraseñas)
 
 Luego redeploy.

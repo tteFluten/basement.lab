@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { signOut } from "next-auth/react";
 import {
   Film,
   ScanEye,
@@ -18,6 +19,7 @@ import {
   LogOut,
   User as UserIcon,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 const APP_LINKS = [
   { slug: "cineprompt", label: "CinePrompt", Icon: Film },
@@ -100,6 +102,7 @@ function ProjectAppsMenu() {
 }
 
 function UserMenu() {
+  const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -113,7 +116,10 @@ function UserMenu() {
     }
   }, [open]);
 
-  const displayName = "User";
+  const displayName =
+    status === "authenticated" && session?.user
+      ? session.user.name || session.user.email || "User"
+      : "User";
 
   return (
     <div className="relative" ref={ref}>
@@ -151,7 +157,10 @@ function UserMenu() {
               type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-fg-muted hover:bg-bg hover:text-fg"
               role="menuitem"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                signOut({ callbackUrl: "/login" });
+              }}
             >
               <LogOut size={14} />
               Log out

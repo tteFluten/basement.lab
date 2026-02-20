@@ -1,12 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
 import { uploadDataUrl, hasBlob, resolveBlobUrl } from "@/lib/blob";
+import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-/** POST: save a generation (upload image to Blob, insert row in Supabase) */
+/** POST: save a generation (upload image to Blob, insert row in Supabase). Requires session; user_id from session. */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!hasSupabase()) {
+      const body = await request.json();
+      const { dataUrl, appId } = body as { dataUrl?: string; appId?: string };
+      if (!dataUrl || !appId) {
+        return NextResponse.json(
+          { error: "dataUrl and appId required" },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json(
+        { ok: true, saved: false, message: "Supabase not configured" }
+      );
+    }
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       dataUrl,
@@ -14,7 +35,6 @@ export async function POST(request: NextRequest) {
       name,
       width,
       height,
-      userId,
       projectId,
     } = body as {
       dataUrl: string;
@@ -22,7 +42,6 @@ export async function POST(request: NextRequest) {
       name?: string;
       width?: number;
       height?: number;
-      userId?: string;
       projectId?: string;
     };
 
@@ -39,12 +58,6 @@ export async function POST(request: NextRequest) {
       blobUrl = await uploadDataUrl(dataUrl, pathname);
     }
 
-    if (!hasSupabase()) {
-      return NextResponse.json(
-        { ok: true, saved: false, message: "Supabase not configured" }
-      );
-    }
-
     const storedUrl = blobUrl ?? dataUrl;
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -55,7 +68,7 @@ export async function POST(request: NextRequest) {
         width: width ?? null,
         height: height ?? null,
         name: name ?? null,
-        user_id: userId ?? null,
+        user_id: session.user.id,
         project_id: projectId ?? null,
       })
       .select("id, created_at")
@@ -82,7 +95,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** GET: list generations (optional query: userId, projectId, limit) */
+/** GET: list generations (optional query: projectId, limit). Non-admins see only their own. */
 export async function GET(request: NextRequest) {
   if (!hasSupabase()) {
     return NextResponse.json(
@@ -92,10 +105,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") ?? undefined;
     const projectId = searchParams.get("projectId") ?? undefined;
     const limit = Math.min(Number(searchParams.get("limit")) || 50, 100);
+    const isAdmin = (session.user as { role?: string }).role === "admin";
 
     const supabase = getSupabase();
     let q = supabase
@@ -104,7 +122,9 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (userId) q = q.eq("user_id", userId);
+    if (!isAdmin) {
+      q = q.eq("user_id", session.user.id);
+    }
     if (projectId) q = q.eq("project_id", projectId);
 
     const { data, error } = await q;
