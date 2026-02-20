@@ -112,20 +112,33 @@ export function AppFrameClient() {
   }
 
   const url = getAppUrl(slug);
+  const appUnavailable = url === "#";
 
   return (
     <>
       <main className="flex-1 flex flex-col min-h-0">
-        <iframe
-          ref={iframeRef}
-          title={slug}
-          src={url}
-          className="w-full flex-1 min-h-0 border-0"
-          sandbox="allow-scripts allow-same-origin allow-forms"
-        />
-        <p className="text-fg-muted text-xs px-4 py-2 border-t border-border bg-bg-muted shrink-0">
-          App at {url}. To rebuild: <code className="text-fg">npm run build:apps</code>
-        </p>
+        {appUnavailable ? (
+          <div className="flex-1 min-h-0 p-8">
+            <p className="text-fg">This app is not published yet.</p>
+            <p className="text-fg-muted text-sm mt-2">
+              Configure <code className="text-fg">NEXT_PUBLIC_APP_{slug.toUpperCase()}_URL</code>{" "}
+              or publish an embed at <code className="text-fg">/embed/{slug}/index.html</code>.
+            </p>
+          </div>
+        ) : (
+          <>
+            <iframe
+              ref={iframeRef}
+              title={slug}
+              src={url}
+              className="w-full flex-1 min-h-0 border-0"
+              sandbox="allow-scripts allow-same-origin allow-forms"
+            />
+            <p className="text-fg-muted text-xs px-4 py-2 border-t border-border bg-bg-muted shrink-0">
+              App at {url}. To rebuild: <code className="text-fg">npm run build:apps</code>
+            </p>
+          </>
+        )}
       </main>
 
       <ReferencePickerModal
