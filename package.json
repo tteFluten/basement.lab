@@ -1,18 +1,8 @@
 {
   "name": "basement-lab",
   "private": true,
+  "version": "0.1.0",
   "scripts": {
-    "build:apps": "npm install --prefix cineprompt && npm install --prefix pov && npm install --prefix chronos && npm install --prefix swag && npm install --prefix avatar && npm run build --prefix cineprompt && npm run build --prefix pov && npm run build --prefix chronos && npm run build --prefix swag && npm run build --prefix avatar",
-    "dev": "npm run dev --prefix hub",
-    "dev:hub": "npm run dev --prefix hub",
-    "dev:cineprompt": "cd cineprompt && npm run dev",
-    "dev:pov": "cd pov && npm run dev",
-    "dev:chronos": "cd chronos && npm run dev",
-    "dev:swag": "cd swag && npm run dev",
-    "dev:avatar": "cd avatar && npm run dev",
-    "dev:all": "concurrently -n hub,cp,pov,chrono,swag,avatar \"npm run dev:hub\" \"npm run dev:cineprompt\" \"npm run dev:pov\" \"npm run dev:chronos\" \"npm run dev:swag\" \"npm run dev:avatar\""
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+    "build:apps": "npm run build --prefix cineprompt && npm run build --prefix pov && npm run build --prefix chronos && npm run build --prefix swag && npm run build --prefix avatar && npm run build --prefix render && npm run build --prefix frame-variator"
   }
 }

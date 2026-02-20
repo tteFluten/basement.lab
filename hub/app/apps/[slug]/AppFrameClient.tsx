@@ -12,7 +12,7 @@ import {
   BASEMENT_DOWNLOAD_DONE,
 } from "@/lib/bridgeTypes";
 
-const VALID_SLUGS = ["cineprompt", "pov", "chronos", "swag", "avatar"] as const;
+const VALID_SLUGS = ["cineprompt", "pov", "chronos", "swag", "avatar", "render", "frame-variator"] as const;
 
 export function AppFrameClient() {
   const params = useParams();

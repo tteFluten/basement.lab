@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Film, ScanEye, Clock, Shirt, UserCircle } from "lucide-react";
+import { Film, ScanEye, Clock, Shirt, UserCircle, ImagePlus, Layers } from "lucide-react";
 
 const APPS = [
   { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film },
@@ -7,6 +7,8 @@ const APPS = [
   { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock },
   { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt },
   { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization", Icon: UserCircle },
+  { slug: "render", label: "Render", desc: "4K render from viewport previews and prompts", Icon: ImagePlus },
+  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers },
 ];
 
 export default function HomePage() {

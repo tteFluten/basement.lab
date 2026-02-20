@@ -1,0 +1,5 @@
+{
+  "name": "Frame Variator",
+  "description": "Minimalist monospaced tool for generating 9 cinematic camera variations and narrative expansions from a single image while maintaining actor and style consistency.",
+  "requestFramePermissions": []
+}

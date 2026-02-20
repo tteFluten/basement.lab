@@ -9,6 +9,8 @@ import {
   Clock,
   Shirt,
   UserCircle,
+  ImagePlus,
+  Layers,
   History,
   FolderOpen,
   User,
@@ -23,6 +25,8 @@ const APP_LINKS = [
   { slug: "chronos", label: "Chronos", Icon: Clock },
   { slug: "swag", label: "Swag", Icon: Shirt },
   { slug: "avatar", label: "Avatar", Icon: UserCircle },
+  { slug: "render", label: "Render", Icon: ImagePlus },
+  { slug: "frame-variator", label: "Frame Variator", Icon: Layers },
 ] as const;
 
 const iconSize = 18;

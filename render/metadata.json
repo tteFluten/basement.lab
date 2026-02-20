@@ -1,0 +1,7 @@
+{
+  "name": "RENDER",
+  "description": "A high-fidelity minimalist image rendering engine. Transform viewport previews into 4K masterpieces using text prompts and reference images.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
