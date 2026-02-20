@@ -3,6 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "build:apps": "npm run build --prefix cineprompt && npm run build --prefix pov && npm run build --prefix chronos && npm run build --prefix swag && npm run build --prefix avatar && npm run build --prefix render && npm run build --prefix frame-variator"
+    "build:apps": "npm run build --prefix cineprompt && npm run build --prefix pov && npm run build --prefix chronos && npm run build --prefix swag && npm run build --prefix avatar && npm run build --prefix render && npm run build --prefix frame-variator && npm run build --prefix \"projects/Native/connect\""
   }
 }

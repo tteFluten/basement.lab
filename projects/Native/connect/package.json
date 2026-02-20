@@ -9,9 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "basement-lab": "file:../../..",
+    "lucide-react": "^0.574.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "lucide-react": "^0.574.0"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -37,6 +37,14 @@ if not exist "hub\public\embed\cineprompt\index.html" (
     pause
     exit /b 1
   )
+) else if not exist "hub\public\embed\connect\index.html" (
+  echo [Hub] Building apps...
+  call "%NPM%" run build:apps
+  if errorlevel 1 (
+    echo [!] build:apps failed.
+    pause
+    exit /b 1
+  )
 )
 
 :: Hub deps

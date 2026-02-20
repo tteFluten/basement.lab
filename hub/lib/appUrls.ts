@@ -11,6 +11,7 @@ const BUILT_EMBED_SLUGS = new Set([
   "avatar",
   "render",
   "frame-variator",
+  "connect",
 ]);
 
 export function getAppUrl(slug: string): string {
