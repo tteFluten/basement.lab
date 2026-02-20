@@ -26,14 +26,18 @@ const App: React.FC = () => {
   const [items, setItems] = useState<ResultItem[]>([]);
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
   
-  // Initialize based on whether process.env.API_KEY exists as a fallback
-  const [hasKey, setHasKey] = useState(!!process.env.API_KEY);
+  // In Hub embed we never need a client key (Hub uses server-side key). Otherwise check API_KEY / aistudio.
+  const [hasKey, setHasKey] = useState(() => isHubEnv() || !!process.env.API_KEY);
   const [error, setError] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const styleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (isHubEnv()) {
+      setHasKey(true);
+      return;
+    }
     checkApiKey();
   }, []);
 
@@ -243,12 +247,14 @@ const App: React.FC = () => {
               </span>
             )}
           </div>
-          <button 
-            onClick={handleOpenKeySelector}
-            className="text-[10px] text-zinc-600 hover:text-zinc-200 uppercase tracking-widest transition-colors"
-          >
-            [Change_Key]
-          </button>
+          {!isHubEnv() && (
+            <button
+              onClick={handleOpenKeySelector}
+              className="text-[10px] text-zinc-600 hover:text-zinc-200 uppercase tracking-widest transition-colors"
+            >
+              [Change_Key]
+            </button>
+          )}
         </div>
       </header>
 

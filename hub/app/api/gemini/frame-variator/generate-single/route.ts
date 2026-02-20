@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     }
     const row = Math.floor(selectedIndex / 3) + 1;
     const col = (selectedIndex % 3) + 1;
+    const model = (body.model as string) ?? "gemini-2.5-flash-image";
     const masterPrompt = `HIGH-FIDELITY NEURAL UPSCALE (16:9 CINEMATIC MASTER).
     
     TASK: Perform a literal high-resolution reconstruction of Frame #${selectedIndex + 1} from the provided Reference Grid.
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     const ai = getGemini();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
+      model,
       contents: {
         parts: [
           { inlineData: { data: orig, mimeType: "image/jpeg" } },

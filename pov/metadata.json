@@ -1,7 +1,0 @@
-{
-  "name": "POV",
-  "description": "Professional 4K conceptualization suite powered by Gemini 3 Pro Image. High-density grids, variation selection, and ultra-HD refinement.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

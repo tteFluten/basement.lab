@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GeminiService, CAMERA_POVS } from './services/geminiService';
 import { Variation, SceneAnalysis, GridState } from './types';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
@@ -59,7 +59,6 @@ const TaskStatus: React.FC<{ active: boolean; stage: string }> = ({ active, stag
 };
 
 const App: React.FC = () => {
-  const [hasKey, setHasKey] = useState<boolean>(false);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<SceneAnalysis | null>(null);
   
@@ -75,19 +74,6 @@ const App: React.FC = () => {
 
   const currentGrid = mode === 'camera' ? cameraGrid : narrativeGrid;
   const setCurrentGrid = mode === 'camera' ? setCameraGrid : setNarrativeGrid;
-
-  useEffect(() => {
-    const checkKey = async () => {
-      const exists = await (window as any).aistudio?.hasSelectedApiKey();
-      setHasKey(!!exists);
-    };
-    checkKey();
-  }, []);
-
-  const handleSelectKey = async () => {
-    await (window as any).aistudio?.openSelectKey();
-    setHasKey(true);
-  };
 
   const applyOriginalImage = (dataUrl: string) => {
     setOriginalImage(dataUrl);
@@ -254,11 +240,6 @@ const App: React.FC = () => {
               NARRATIVE_MODE
             </button>
           </div>
-          {!hasKey && (
-            <button onClick={handleSelectKey} className="text-[9px] border border-[#333] px-3 py-1 bg-red-950/20 text-red-400 hover:bg-red-900/40 font-bold uppercase">
-              OFFLINE_KEY
-            </button>
-          )}
         </div>
       </header>
 

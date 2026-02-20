@@ -136,10 +136,11 @@ export class GeminiService {
   static async generateGrid(originalBase64: string, analysis: SceneAnalysis, variations: Variation[]): Promise<string> {
     const base = getHubApiBase();
     if (base) {
+      const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_frame-variator") ?? "gemini-2.5-flash-image") : "gemini-2.5-flash-image";
       const res = await fetch(`${base}/api/gemini/frame-variator/generate-grid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ originalBase64, analysis, variations }),
+        body: JSON.stringify({ originalBase64, analysis, variations, model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "API error");
@@ -188,10 +189,11 @@ export class GeminiService {
   ): Promise<string> {
     const base = getHubApiBase();
     if (base) {
+      const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_frame-variator") ?? "gemini-2.5-flash-image") : "gemini-2.5-flash-image";
       const res = await fetch(`${base}/api/gemini/frame-variator/generate-single`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ originalBase64, gridBase64, selectedIndex, prompt, size }),
+        body: JSON.stringify({ originalBase64, gridBase64, selectedIndex, prompt, size, model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "API error");

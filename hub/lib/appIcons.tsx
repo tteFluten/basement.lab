@@ -2,7 +2,6 @@
 
 import {
   Film,
-  ScanEye,
   Clock,
   Shirt,
   UserCircle,
@@ -14,7 +13,6 @@ import {
 
 const APP_ICONS: Record<string, LucideIcon> = {
   cineprompt: Film,
-  pov: ScanEye,
   chronos: Clock,
   swag: Shirt,
   avatar: UserCircle,
@@ -29,7 +27,6 @@ export function getAppIcon(appId: string): LucideIcon {
 
 const APP_LABELS: Record<string, string> = {
     cineprompt: "CinePrompt",
-    pov: "POV",
     chronos: "Chronos",
     swag: "Swag",
     avatar: "Avatar",

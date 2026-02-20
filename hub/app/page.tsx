@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { Film, ScanEye, Clock, Shirt, UserCircle, ImagePlus, Layers } from "lucide-react";
+import { Film, Clock, Shirt, UserCircle, ImagePlus, Layers } from "lucide-react";
 
 const APPS = [
   { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film },
-  { slug: "pov", label: "POV", desc: "Change point of view of an image", Icon: ScanEye },
   { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock },
   { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt },
   { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization", Icon: UserCircle },

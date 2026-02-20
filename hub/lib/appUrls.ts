@@ -5,7 +5,6 @@
 const unifiedPath = (slug: string) => `/embed/${slug}/index.html`;
 const BUILT_EMBED_SLUGS = new Set([
   "cineprompt",
-  "pov",
   "chronos",
   "swag",
   "avatar",

@@ -48,9 +48,10 @@ export async function POST(request: NextRequest) {
     const imageConfig: Record<string, string> = { aspectRatio };
     if (isPro) imageConfig.imageSize = "4K";
 
+    const model = (body.model as string) ?? "gemini-2.5-flash-image";
     const ai = getGemini();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
+      model,
       contents: {
         parts: [
           { text: "SUJETO_BASE (CARA A PRESERVAR):" },

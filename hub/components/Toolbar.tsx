@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import {
   Film,
-  ScanEye,
   Clock,
   Shirt,
   UserCircle,
@@ -25,7 +24,6 @@ import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
 
 const APP_LINKS = [
   { slug: "cineprompt", label: "CinePrompt", Icon: Film },
-  { slug: "pov", label: "POV", Icon: ScanEye },
   { slug: "chronos", label: "Chronos", Icon: Clock },
   { slug: "swag", label: "Swag", Icon: Shirt },
   { slug: "avatar", label: "Avatar", Icon: UserCircle },

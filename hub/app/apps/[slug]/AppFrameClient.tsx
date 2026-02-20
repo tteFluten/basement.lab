@@ -14,7 +14,6 @@ import {
 
 const VALID_SLUGS = [
   "cineprompt",
-  "pov",
   "chronos",
   "swag",
   "avatar",

@@ -60,9 +60,10 @@ export async function POST(request: NextRequest) {
       parts.push({ inlineData: { data: styleData, mimeType: "image/jpeg" } });
     }
 
+    const model = (body.model as string) ?? "gemini-2.5-flash-image";
     const ai = getGemini();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
+      model,
       contents: { parts },
       config: {
         imageConfig: {

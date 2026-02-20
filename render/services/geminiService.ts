@@ -7,6 +7,11 @@ function getHubApiBase(): string | null {
   return null;
 }
 
+function getHubModel(): string {
+  if (typeof window === "undefined") return "gemini-2.5-flash-image";
+  return window.localStorage.getItem("hub_model_render") ?? "gemini-2.5-flash-image";
+}
+
 export async function generateRender(
   previewBase64: string,
   prompt: string,
@@ -17,7 +22,7 @@ export async function generateRender(
     const res = await fetch(`${base}/api/gemini/render/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ previewBase64, prompt, referenceBase64 }),
+      body: JSON.stringify({ previewBase64, prompt, referenceBase64, model: getHubModel() }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "API_KEY_ERROR");
