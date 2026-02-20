@@ -14,23 +14,35 @@ const APP_LINKS = [
 
 function ThemeToggle() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = (typeof window !== "undefined" && window.localStorage.getItem("basement-lab-theme")) as "dark" | "light" | null;
-    const prefersDark = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const stored = window.localStorage.getItem("basement-lab-theme") as "dark" | "light" | null;
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const initial = stored || (prefersDark ? "dark" : "light");
     setTheme(initial);
     document.documentElement.setAttribute("data-theme", initial);
-  }, []);
+  }, [mounted]);
 
   const toggle = useCallback(() => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("basement-lab-theme", next);
-      document.documentElement.setAttribute("data-theme", next);
-    }
+    window.localStorage.setItem("basement-lab-theme", next);
+    document.documentElement.setAttribute("data-theme", next);
   }, [theme]);
+
+  if (!mounted) {
+    return (
+      <span className="px-2 py-1 text-fg-muted border border-border text-sm">
+        Day
+      </span>
+    );
+  }
 
   return (
     <button

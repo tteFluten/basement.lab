@@ -4,9 +4,6 @@
 
 /* Basement Lab design system: Geist Mono, light gray on black, no rounded corners */
 :root {
-  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
-
-  /* Dark (default) */
   --color-bg: #000000;
   --color-bg-muted: #18181b;
   --color-fg: #e4e4e7;
@@ -26,10 +23,6 @@
 
 * {
   border-radius: 0;
-}
-
-html {
-  font-family: var(--font-mono);
 }
 
 body {
