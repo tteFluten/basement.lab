@@ -99,7 +99,6 @@ export function AppFrameClient() {
   }
 
   const url = getAppUrl(slug);
-  const { downloadDataUrl, downloadAppId } = pendingRef.current;
 
   return (
     <>
