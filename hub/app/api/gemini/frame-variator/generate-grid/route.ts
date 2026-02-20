@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         imageConfig: { aspectRatio: "1:1", imageSize: "1K" },
       },
     });
-    const r = response as Record<string, unknown>;
+    const r = response as unknown as Record<string, unknown>;
     const candidates = r.candidates as Array<Record<string, unknown>> | undefined;
     const content = candidates?.[0]?.content as { parts?: Array<{ inlineData?: { data: string } }> } | undefined;
     const part = content?.parts?.find((p) => p.inlineData);
