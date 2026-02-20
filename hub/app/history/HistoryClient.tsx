@@ -34,6 +34,151 @@ function apiItemToHistoryItem(row: {
 type Project = { id: string; name: string };
 type User = { id: string; email: string; full_name: string | null };
 
+type HistoryCardProps = {
+  item: HistoryItem;
+  onRequestResolve: (id: string, blobUrl: string) => void;
+  displayUrl: string;
+  isSmall: boolean;
+  isImage: boolean;
+  deletingId: string | null;
+  onDelete: (id: string) => void;
+  onView: () => void;
+  onDownload: () => void;
+  onUpscale4K: () => void;
+  formatDate: (ts: number) => string;
+  extensionFromMime: (mime?: string) => string;
+};
+
+function HistoryCard({
+  item,
+  onRequestResolve,
+  displayUrl,
+  isSmall,
+  isImage,
+  deletingId,
+  onDelete,
+  onView,
+  onDownload,
+  onUpscale4K,
+  formatDate,
+  extensionFromMime,
+}: HistoryCardProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const requested = useRef(false);
+  useEffect(() => {
+    if (!item.blobUrl || displayUrl || requested.current) return;
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        if (requested.current) return;
+        requested.current = true;
+        onRequestResolve(item.id, item.blobUrl!);
+      },
+      { rootMargin: "100px", threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [item.id, item.blobUrl, displayUrl, onRequestResolve]);
+
+  const Icon = getAppIcon(item.appId);
+  return (
+    <div ref={ref} className="border border-[#333] overflow-hidden bg-[#111] group">
+      <button
+        type="button"
+        onClick={() => isImage && onView()}
+        className="w-full h-20 sm:h-24 flex-shrink-0 relative block overflow-hidden focus:outline-none focus:ring-2 focus:ring-zinc-500"
+      >
+        {isImage ? (
+          displayUrl ? (
+            <>
+              <img
+                src={displayUrl}
+                alt=""
+                loading="lazy"
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
+              <span className="text-[9px] text-zinc-600 uppercase">Loading…</span>
+            </div>
+          )
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-zinc-500 bg-[#0f0f0f]">
+            <span className="text-[8px] uppercase tracking-widest">File</span>
+            <span className="text-[10px]">{extensionFromMime(item.mimeType).toUpperCase()}</span>
+          </div>
+        )}
+      </button>
+      <div className="p-1.5 border-t border-[#333] space-y-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="flex items-center justify-center w-4 h-4 border border-[#333] text-zinc-500 flex-shrink-0">
+            <Icon className="w-2.5 h-2.5" />
+          </span>
+          <span className="text-[8px] text-zinc-500 uppercase truncate flex-1 min-w-0">
+            {getAppLabel(item.appId)}
+          </span>
+        </div>
+        <p className="text-[7px] text-zinc-600">{formatDate(item.createdAt)}</p>
+        {(item.tags?.length ?? 0) > 0 && (
+          <p className="text-[6px] text-zinc-600 truncate" title={item.tags!.join(", ")}>
+            {item.tags!.slice(0, 3).join(", ")}
+            {item.tags!.length > 3 ? "…" : ""}
+          </p>
+        )}
+      </div>
+      <div className="flex border-t border-[#333] flex-wrap">
+        <button
+          type="button"
+          onClick={() => isImage && onView()}
+          className="flex-1 py-1.5 flex items-center justify-center gap-0.5 text-[7px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-300 transition-colors"
+          title={isImage ? "View large" : "Preview not available"}
+          disabled={!isImage}
+        >
+          <Maximize2 className="w-2.5 h-2.5" />
+          View
+        </button>
+        <button
+          type="button"
+          onClick={onDownload}
+          className="flex-1 py-1.5 flex items-center justify-center gap-0.5 text-[7px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-300 transition-colors"
+          title="Download"
+        >
+          <Download className="w-2.5 h-2.5" />
+          Download
+        </button>
+        {isSmall && isImage && (
+          <button
+            type="button"
+            onClick={onUpscale4K}
+            className="flex-1 py-1.5 flex items-center justify-center gap-0.5 text-[7px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-amber-400 transition-colors"
+            title="Download as 4K (upscale)"
+          >
+            <ZoomIn className="w-2.5 h-2.5" />
+            4K
+          </button>
+        )}
+        {!item.id.startsWith("h-") && (
+          <button
+            type="button"
+            onClick={() => onDelete(item.id)}
+            disabled={deletingId === item.id}
+            className="py-1.5 px-1.5 flex items-center justify-center text-[7px] text-zinc-500 hover:bg-red-900/30 hover:text-red-400 transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-2.5 h-2.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function HistoryClient() {
   const [apiItems, setApiItems] = useState<HistoryItem[]>([]);
   const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
@@ -228,149 +373,6 @@ export function HistoryClient() {
     const d = new Date(ts);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
-
-  function HistoryCard({
-    item,
-    onRequestResolve,
-    displayUrl,
-    isSmall,
-    isImage,
-    deletingId,
-    onDelete,
-    onView,
-    onDownload,
-    onUpscale4K,
-    formatDate,
-    extensionFromMime,
-  }: {
-    item: HistoryItem;
-    onRequestResolve: (id: string, blobUrl: string) => void;
-    displayUrl: string;
-    isSmall: boolean;
-    isImage: boolean;
-    deletingId: string | null;
-    onDelete: (id: string) => void;
-    onView: () => void;
-    onDownload: () => void;
-    onUpscale4K: () => void;
-    formatDate: (ts: number) => string;
-    extensionFromMime: (mime?: string) => string;
-  }) {
-    const ref = useRef<HTMLDivElement>(null);
-    const requested = useRef(false);
-    useEffect(() => {
-      if (!item.blobUrl || displayUrl || requested.current) return;
-      const el = ref.current;
-      if (!el) return;
-      const obs = new IntersectionObserver(
-        (entries) => {
-          if (!entries[0]?.isIntersecting) return;
-          if (requested.current) return;
-          requested.current = true;
-          onRequestResolve(item.id, item.blobUrl!);
-        },
-        { rootMargin: "100px", threshold: 0 }
-      );
-      obs.observe(el);
-      return () => obs.disconnect();
-    }, [item.id, item.blobUrl, displayUrl, onRequestResolve]);
-
-    const Icon = getAppIcon(item.appId);
-    return (
-      <div ref={ref} className="border border-[#333] overflow-hidden bg-[#111] group">
-        <button
-          type="button"
-          onClick={() => isImage && onView()}
-          className="w-full h-20 sm:h-24 flex-shrink-0 relative block overflow-hidden focus:outline-none focus:ring-2 focus:ring-zinc-500"
-        >
-          {isImage ? (
-            displayUrl ? (
-              <>
-                <img
-                  src={displayUrl}
-                  alt=""
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                  <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </>
-            ) : (
-              <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
-                <span className="text-[9px] text-zinc-600 uppercase">Loading…</span>
-              </div>
-            )
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-zinc-500 bg-[#0f0f0f]">
-              <span className="text-[8px] uppercase tracking-widest">File</span>
-              <span className="text-[10px]">{extensionFromMime(item.mimeType).toUpperCase()}</span>
-            </div>
-          )}
-        </button>
-        <div className="p-1.5 border-t border-[#333] space-y-0.5">
-          <div className="flex items-center gap-1.5">
-            <span className="flex items-center justify-center w-4 h-4 border border-[#333] text-zinc-500 flex-shrink-0">
-              <Icon className="w-2.5 h-2.5" />
-            </span>
-            <span className="text-[8px] text-zinc-500 uppercase truncate flex-1 min-w-0">
-              {getAppLabel(item.appId)}
-            </span>
-          </div>
-          <p className="text-[7px] text-zinc-600">{formatDate(item.createdAt)}</p>
-          {(item.tags?.length ?? 0) > 0 && (
-            <p className="text-[6px] text-zinc-600 truncate" title={item.tags!.join(", ")}>
-              {item.tags!.slice(0, 3).join(", ")}
-              {item.tags!.length > 3 ? "…" : ""}
-            </p>
-          )}
-        </div>
-        <div className="flex border-t border-[#333] flex-wrap">
-          <button
-            type="button"
-            onClick={() => isImage && onView()}
-            className="flex-1 py-1.5 flex items-center justify-center gap-0.5 text-[7px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-300 transition-colors"
-            title={isImage ? "View large" : "Preview not available"}
-            disabled={!isImage}
-          >
-            <Maximize2 className="w-2.5 h-2.5" />
-            View
-          </button>
-          <button
-            type="button"
-            onClick={onDownload}
-            className="flex-1 py-1.5 flex items-center justify-center gap-0.5 text-[7px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-300 transition-colors"
-            title="Download"
-          >
-            <Download className="w-2.5 h-2.5" />
-            Download
-          </button>
-          {isSmall && isImage && (
-            <button
-              type="button"
-              onClick={onUpscale4K}
-              className="flex-1 py-1.5 flex items-center justify-center gap-0.5 text-[7px] text-zinc-500 hover:bg-[#1a1a1a] hover:text-amber-400 transition-colors"
-              title="Download as 4K (upscale)"
-            >
-              <ZoomIn className="w-2.5 h-2.5" />
-              4K
-            </button>
-          )}
-          {!item.id.startsWith("h-") && (
-            <button
-              type="button"
-              onClick={() => onDelete(item.id)}
-              disabled={deletingId === item.id}
-              className="py-1.5 px-1.5 flex items-center justify-center text-[7px] text-zinc-500 hover:bg-red-900/30 hover:text-red-400 transition-colors"
-              title="Delete"
-            >
-              <Trash2 className="w-2.5 h-2.5" />
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <main className="p-8 bg-[#0a0a0a] min-h-full">
