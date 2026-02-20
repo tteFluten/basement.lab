@@ -11,6 +11,7 @@ const defaults: Record<string, string> = {
 };
 
 export function getAppUrl(slug: string): string {
+  if (!slug || typeof slug !== "string") return "#";
   const envKey = `NEXT_PUBLIC_APP_${slug.toUpperCase()}_URL`;
   const env = typeof process !== "undefined" ? (process as NodeJS.Process & { env: Record<string, string> }).env[envKey] : undefined;
   return env || defaults[slug] || "#";
