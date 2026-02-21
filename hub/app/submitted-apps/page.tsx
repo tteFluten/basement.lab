@@ -207,9 +207,10 @@ export default function SubmittedAppsPage() {
                   {app.description && (
                     <p className="text-xs text-fg-muted mt-0.5 line-clamp-2">{app.description}</p>
                   )}
-                  <p className="text-[10px] text-fg-muted mt-1">
-                    {fmtDate(app.createdAt)}
-                    {app.submittedBy && <> · {app.submittedBy}</>}
+                  <p className="text-[10px] text-fg-muted mt-1 flex items-center gap-1.5">
+                    {app.submittedBy && <span className="text-fg text-[11px] font-medium">{app.submittedBy}</span>}
+                    {app.submittedBy && <span className="text-fg-muted">·</span>}
+                    <span>{fmtDate(app.createdAt)}</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

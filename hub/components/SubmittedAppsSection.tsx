@@ -51,7 +51,7 @@ type Props = {
 export function SubmittedAppsSection({ onAddClick, refreshTrigger = 0 }: Props) {
   const [items, setItems] = useState<SubmittedAppItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState("");
 
@@ -194,9 +194,10 @@ export function SubmittedAppsSection({ onAddClick, refreshTrigger = 0 }: Props) 
                     {app.description && (
                       <p className="text-xs text-fg-muted mt-0.5 line-clamp-1">{app.description}</p>
                     )}
-                    <p className="text-[10px] text-fg-muted mt-1">
-                      {fmtDate(app.createdAt)}
-                      {app.submittedBy && ` · ${app.submittedBy}`}
+                    <p className="text-[10px] text-fg-muted mt-1 flex items-center gap-1.5">
+                      {app.submittedBy && <span className="text-fg text-[11px] font-medium">{app.submittedBy}</span>}
+                      {app.submittedBy && <span className="text-fg-muted">·</span>}
+                      <span>{fmtDate(app.createdAt)}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
