@@ -15,7 +15,7 @@ const APPS = [
   { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-2 row-span-1", cover: "/app-covers/frame-variator.jpg" },
 ];
 
-function AppCoverImage({ cover, Icon, alt }: { cover: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; alt: string }) {
+function AppCoverImage({ cover, Icon, alt }: { cover: string; Icon: React.ComponentType<{ size?: string | number; strokeWidth?: string | number; className?: string }>; alt: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
     return (
