@@ -432,7 +432,9 @@ export default function AdminProjectsPage() {
                 {members.length > 0 && (
                   <div className="flex items-center gap-1 mt-2">
                     {members.slice(0, 5).map((u) => (
-                      <Avatar key={u.id} src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" title={u.full_name || u.email} />
+                      <span key={u.id} title={u.full_name || u.email}>
+                        <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" />
+                      </span>
                     ))}
                     {members.length > 5 && <span className="text-[10px] text-fg-muted">+{members.length - 5}</span>}
                   </div>
