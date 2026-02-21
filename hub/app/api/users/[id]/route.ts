@@ -19,6 +19,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (typeof body.full_name === "string") updates.full_name = body.full_name.trim() || null;
   if (typeof body.nickname === "string") updates.nickname = body.nickname.trim() || null;
   if (typeof body.role === "string" && ["admin", "member"].includes(body.role)) updates.role = body.role;
+  if (typeof body.avatar_url === "string") updates.avatar_url = body.avatar_url.trim() || null;
+  if (body.avatar_url === null) updates.avatar_url = null;
+  if (typeof body.status === "string" && ["active", "suspended"].includes(body.status)) updates.status = body.status;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
@@ -30,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     .from("users")
     .update(updates)
     .eq("id", params.id)
-    .select("id, email, full_name, nickname, avatar_url, role")
+    .select("id, email, full_name, nickname, avatar_url, role, status")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

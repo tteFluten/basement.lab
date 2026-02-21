@@ -14,6 +14,10 @@ create table if not exists public.users (
   updated_at timestamptz default now()
 );
 
+-- If users already existed without status, add the column
+alter table public.users
+  add column if not exists status text not null default 'active';
+
 -- Projects
 create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),

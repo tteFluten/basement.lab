@@ -1,5 +1,6 @@
 "use client";
 
+import * as LucideIcons from "lucide-react";
 import {
   Film,
   Clock,
@@ -45,9 +46,14 @@ export const ICON_TEMPLATE: { name: string; label: string; Icon: LucideIcon }[] 
 ];
 
 const iconByName = new Map(ICON_TEMPLATE.map((t) => [t.name, t.Icon]));
+const lucideMap = LucideIcons as unknown as Record<string, LucideIcon>;
 
 export function getTemplateIcon(name: string | null | undefined): LucideIcon | null {
   if (!name || typeof name !== "string") return null;
-  const n = name.trim().toLowerCase();
-  return iconByName.get(n) ?? null;
+  const n = name.trim();
+  const byKebab = iconByName.get(n.toLowerCase());
+  if (byKebab) return byKebab;
+  const byPascal = lucideMap[n];
+  if (byPascal && typeof byPascal === "function") return byPascal;
+  return null;
 }

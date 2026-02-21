@@ -26,11 +26,12 @@ export const authOptions: NextAuthOptions = {
         const supabase = getSupabase();
         const { data: row, error } = await supabase
           .from("users")
-          .select("id, email, full_name, role, password_hash")
+          .select("id, email, full_name, role, password_hash, status")
           .eq("email", credentials.email.trim().toLowerCase())
           .single();
 
         if (error || !row || !row.password_hash) return null;
+        if (row.status === "suspended") return null;
 
         const ok = await bcrypt.compare(credentials.password, row.password_hash);
         if (!ok) return null;

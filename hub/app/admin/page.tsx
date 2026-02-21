@@ -25,6 +25,15 @@ export default function AdminDashboardPage() {
             <span className="text-sm text-fg-muted ml-2">— View and edit user data, roles</span>
           </Link>
         </li>
+        <li>
+          <Link
+            href="/admin/submitted-apps"
+            className="text-fg-muted hover:text-fg border border-border hover:border-fg-muted p-4 block"
+          >
+            <span className="font-medium">Submitted Apps</span>
+            <span className="text-sm text-fg-muted ml-2">— Edit apps, assign icons, manage tags</span>
+          </Link>
+        </li>
       </ul>
     </div>
   );

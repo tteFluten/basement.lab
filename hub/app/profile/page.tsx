@@ -14,6 +14,9 @@ type Profile = {
   role: string;
 };
 
+type BugItem = { id: string; appId: string; appTitle: string; title: string; status: string; createdAt: number };
+type RatingItem = { id: string; appId: string; appTitle: string; score: number; createdAt: number };
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +26,8 @@ export default function ProfilePage() {
   const [nickname, setNickname] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activityBugs, setActivityBugs] = useState<BugItem[]>([]);
+  const [activityRatings, setActivityRatings] = useState<RatingItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,6 +43,16 @@ export default function ProfilePage() {
       .catch(() => setProfile(null))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/me/activity")
+      .then((r) => r.json())
+      .then((d) => {
+        setActivityBugs(Array.isArray(d?.bugs) ? d.bugs : []);
+        setActivityRatings(Array.isArray(d?.ratings) ? d.ratings : []);
+      })
+      .catch(() => {});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,29 +119,12 @@ export default function ProfilePage() {
     );
   }
 
-  type BugItem = { id: string; appId: string; appTitle: string; title: string; status: string; createdAt: number };
-  type RatingItem = { id: string; appId: string; appTitle: string; score: number; createdAt: number };
-
-  const [activityBugs, setActivityBugs] = useState<BugItem[]>([]);
-  const [activityRatings, setActivityRatings] = useState<RatingItem[]>([]);
-
-  useEffect(() => {
-    fetch("/api/me/activity")
-      .then((r) => r.json())
-      .then((d) => {
-        setActivityBugs(Array.isArray(d?.bugs) ? d.bugs : []);
-        setActivityRatings(Array.isArray(d?.ratings) ? d.ratings : []);
-      })
-      .catch(() => {});
-  }, []);
-
   return (
     <main className="p-8 max-w-xl">
       <h1 className="text-xl font-medium border-b border-border pb-2 mb-6">Profile</h1>
       <p className="text-xs text-fg-muted mb-6">Update your display info. Email cannot be changed.</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Avatar */}
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -151,7 +149,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Email (read-only) */}
         <div>
           <label className="block text-xs text-fg-muted uppercase tracking-wider mb-1.5">Email</label>
           <input
@@ -163,7 +160,6 @@ export default function ProfilePage() {
           <p className="text-[10px] text-fg-muted mt-1">Email cannot be changed</p>
         </div>
 
-        {/* Full name */}
         <div>
           <label className="block text-xs text-fg-muted uppercase tracking-wider mb-1.5">Full name</label>
           <input
@@ -175,7 +171,6 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Nickname */}
         <div>
           <label className="block text-xs text-fg-muted uppercase tracking-wider mb-1.5">Nickname</label>
           <input
@@ -199,7 +194,6 @@ export default function ProfilePage() {
         </div>
       </form>
 
-      {/* Activity: bugs reported */}
       <section className="mt-10 border-t border-border pt-6">
         <h2 className="text-sm font-medium text-fg mb-3 flex items-center gap-2">
           <Bug className="w-4 h-4" /> Bug Reports ({activityBugs.length})
@@ -219,7 +213,6 @@ export default function ProfilePage() {
         )}
       </section>
 
-      {/* Activity: ratings given */}
       <section className="mt-6 border-t border-border pt-6">
         <h2 className="text-sm font-medium text-fg mb-3 flex items-center gap-2">
           <Star className="w-4 h-4" /> Ratings Given ({activityRatings.length})

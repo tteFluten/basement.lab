@@ -33,6 +33,9 @@ export default async function AdminLayout({
         <Link href="/admin/users" className="text-fg-muted hover:text-fg">
           Users
         </Link>
+        <Link href="/admin/submitted-apps" className="text-fg-muted hover:text-fg">
+          Submitted Apps
+        </Link>
         <Link href="/" className="text-fg-muted hover:text-fg ml-auto">
           Back to Hub
         </Link>

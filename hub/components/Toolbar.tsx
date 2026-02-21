@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
+import { getTemplateIcon } from "@/lib/iconTemplate";
+import { Image as ImageIcon } from "lucide-react";
 
 const APP_LINKS = [
   { slug: "cineprompt", label: "CinePrompt", Icon: Film },
@@ -195,6 +197,8 @@ type SubmittedAppBrief = {
   id: string;
   title: string;
   deployLink: string;
+  thumbnailUrl: string | null;
+  icon: string | null;
   createdAt: number;
 };
 
@@ -213,6 +217,8 @@ function SubmittedAppsMenu() {
             id: String(r.id ?? ""),
             title: String(r.title ?? ""),
             deployLink: String(r.deployLink ?? ""),
+            thumbnailUrl: r.thumbnailUrl != null ? String(r.thumbnailUrl) : null,
+            icon: r.icon != null ? String(r.icon) : null,
             createdAt: typeof r.createdAt === "number" ? r.createdAt : 0,
           }))
         );
@@ -253,19 +259,31 @@ function SubmittedAppsMenu() {
           {items.length === 0 ? (
             <li className="px-3 py-2 text-xs text-fg-muted">No submitted apps yet.</li>
           ) : (
-            items.map((app) => (
-              <li key={app.id} role="none">
-                <Link
-                  href={`/submitted-apps/${app.id}`}
-                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-fg hover:bg-bg"
-                  role="menuitem"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="truncate">{app.title}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-fg-muted shrink-0" />
-                </Link>
-              </li>
-            ))
+            items.map((app) => {
+              const TplIcon = getTemplateIcon(app.icon);
+              return (
+                <li key={app.id} role="none">
+                  <Link
+                    href={`/submitted-apps/${app.id}`}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-fg hover:bg-bg"
+                    role="menuitem"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="w-7 h-7 shrink-0 border border-border bg-bg-muted flex items-center justify-center overflow-hidden">
+                      {app.thumbnailUrl ? (
+                        <img src={app.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                      ) : TplIcon ? (
+                        <TplIcon className="w-3.5 h-3.5 text-fg-muted" />
+                      ) : (
+                        <ImageIcon className="w-3.5 h-3.5 text-fg-muted opacity-40" />
+                      )}
+                    </span>
+                    <span className="truncate flex-1">{app.title}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-fg-muted shrink-0" />
+                  </Link>
+                </li>
+              );
+            })
           )}
           <li role="none" className="border-t border-border mt-1 pt-1">
             <Link
