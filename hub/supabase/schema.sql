@@ -69,6 +69,7 @@ create table if not exists public.submitted_apps (
   deploy_link text not null,
   edit_link text,
   thumbnail_url text,
+  icon text,
   version text default '1.0',
   tags text[] default '{}',
   created_at timestamptz default now()

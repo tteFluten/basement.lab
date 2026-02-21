@@ -2,12 +2,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { MockupType, AspectRatio, StylePreset } from "../types";
 
-function getHubApiBase(): string | null {
-  if (typeof window === "undefined") return null;
-  if (window.location.pathname.startsWith("/embed/")) return window.location.origin;
-  return null;
-}
-
 export interface GenerateImageParams {
   logoBase64: string;
   styleBase64?: string;
@@ -20,30 +14,6 @@ export interface GenerateImageParams {
 }
 
 export const generateMockup = async (params: GenerateImageParams): Promise<string> => {
-  const base = getHubApiBase();
-  if (base) {
-    const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_swag") ?? "gemini-2.5-flash-image") : "gemini-2.5-flash-image";
-    const res = await fetch(`${base}/api/gemini/swag/generate-mockup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        logoBase64: params.logoBase64,
-        styleBase64: params.styleBase64,
-        mockupType: params.mockupType,
-        aspectRatio: params.aspectRatio,
-        stylePreset: params.stylePreset,
-        resolution: params.resolution,
-        additionalDetails: params.additionalDetails,
-        strictReference: params.strictReference,
-        model,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "API_KEY_RESET");
-    if (!data.dataUrl) throw new Error("IMAGE_DATA_NOT_FOUND");
-    return data.dataUrl;
-  }
-
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
     throw new Error("API Key is missing. Please ensure you have selected a valid key.");
@@ -107,6 +77,7 @@ export const generateMockup = async (params: GenerateImageParams): Promise<strin
 
   const parts: any[] = [{ text: prompt }];
   
+  // LOGO_INPUT
   parts.push({
     inlineData: {
       data: params.logoBase64.split(',')[1],
@@ -114,6 +85,7 @@ export const generateMockup = async (params: GenerateImageParams): Promise<strin
     }
   });
 
+  // Reference_Input / Style Reference
   if (params.styleBase64) {
     parts.push({
       inlineData: {
@@ -125,7 +97,7 @@ export const generateMockup = async (params: GenerateImageParams): Promise<strin
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-3-pro-image-preview',
       contents: { parts },
       config: {
         imageConfig: {

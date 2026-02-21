@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { X, ExternalLink, Pencil, Upload } from "lucide-react";
+import { ICON_TEMPLATE } from "@/lib/iconTemplate";
 
 export type SubmittedAppForm = {
   title: string;
@@ -31,6 +32,7 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
   const [form, setForm] = useState<SubmittedAppForm>(defaultForm);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +96,7 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
             deployLink: form.deployLink.trim(),
             editLink: form.editLink.trim() || null,
             thumbnailDataUrl,
+            icon: selectedIcon || null,
             version: form.version.trim() || "1.0",
             tags: form.tags,
           }),
@@ -112,16 +115,17 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
         setSubmitting(false);
       }
     },
-    [form, thumbnailFile, thumbnailPreview, removeThumbnail, onSuccess, onClose]
+    [form, thumbnailFile, thumbnailPreview, selectedIcon, removeThumbnail, onSuccess, onClose]
   );
 
   const handleClose = useCallback(() => {
     if (!submitting) {
       setForm(defaultForm);
-      setTagInput("");
-      removeThumbnail();
-      setError(null);
-      onClose();
+        setTagInput("");
+        removeThumbnail();
+        setSelectedIcon(null);
+        setError(null);
+        onClose();
     }
   }, [submitting, removeThumbnail, onClose]);
 
@@ -217,6 +221,29 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
               onChange={handleFileChange}
               className="hidden"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-fg-muted mb-1">Icon (optional, used when no thumbnail)</label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {ICON_TEMPLATE.map(({ name, label, Icon }) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setSelectedIcon(selectedIcon === name ? null : name)}
+                  title={label}
+                  className={`p-2 border transition-colors ${
+                    selectedIcon === name
+                      ? "border-fg text-fg bg-bg-muted"
+                      : "border-border text-fg-muted hover:text-fg hover:border-fg-muted"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                </button>
+              ))}
+            </div>
+            {selectedIcon && (
+              <p className="text-[10px] text-fg-muted mt-1">Selected icon will show in the list when no thumbnail is set.</p>
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-fg-muted mb-1">Version</label>

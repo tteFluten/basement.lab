@@ -4,6 +4,7 @@ import { getGemini, hasGemini } from "@/lib/gemini";
 export const runtime = "nodejs";
 
 const STYLE_MODIFIERS: Record<string, string> = {
+  "Reference Composition": "Match the visual language of the reference image exactly.",
   "Clean & Minimalist": "Extremely clean, negative space, sharp focus, essential elements only.",
   "Urban Industrial": "Gritty textures, concrete backgrounds, city lights, raw industrial feel.",
   "Apple Tech Editorial": "Crisp, high-tech aesthetic, subtle gradients, soft ambient light, premium gadget photography.",
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
     const aspectRatio = ((body.aspectRatio as string) ?? "1:1") as "1:1" | "9:16" | "16:9";
     const stylePreset = (body.stylePreset as string) ?? "";
     const resolution = ((body.resolution as string) ?? "4K") as "1K" | "2K" | "4K";
+    const additionalDetails = (body.additionalDetails as string) ?? "";
+    const strictReference = body.strictReference === true;
 
     const logoData = logoBase64.includes(",") ? logoBase64.split(",")[1] : logoBase64;
     if (!logoData) {
@@ -35,22 +38,43 @@ export async function POST(request: NextRequest) {
 
     const currentStyleModifier = STYLE_MODIFIERS[stylePreset] ?? "Clean, professional product photography.";
 
-    let prompt = `Act as a world-class CGI artist specializing in physical product simulation. 
+    let prompt = "";
+
+    if (strictReference && styleBase64) {
+      prompt = `Act as a world-class product re-branding and digital compositing specialist. 
+    
+    REFERENCE TEMPLATE: The provided Reference Image (Reference_Input).
+    BRANDING SOURCE: The provided LOGO_INPUT image.
+
+    CORE TASK: 
+    Regenerate the EXACT scene from the Reference Image but perform a total "Product Design Swap".
+    
+    INSTRUCTIONS:
+    1. ENVIRONMENT PERSISTENCE: Keep the environment, lighting, surface (table, wall, etc.), and background 100% identical to the Reference Image.
+    2. PRODUCT REPLACEMENT: Identify the physical object in the Reference (e.g., a sticker, mug, t-shirt). Completely replace the existing graphic/art on that object with the LOGO_INPUT. 
+    3. COLOR HARMONY (CRITICAL): Do not just paste the logo. Adapt the entire color palette of the product object to match the LOGO_INPUT. If the logo is red and black, the background of the sticker or the color of the object should change from its original color to a red or black tone that harmonizes with the new branding.
+    4. MATERIAL TEXTURE: The new branding must respect the material properties of the object (folds in cloth, grain in paper, gloss on vinyl). It must look physically printed on, not digitally overlaid.
+    
+    ${additionalDetails ? `\n\nADDITIONAL_CONTEXT: ${additionalDetails}` : ''}`;
+    } else {
+      prompt = `Act as a world-class CGI artist specializing in physical product simulation. 
   Create a hyper-realistic, high-fidelity render of a ${mockupType}.
   
   ARTISTIC DIRECTION:
   - THEME: ${stylePreset}. ${currentStyleModifier}
+  ${additionalDetails ? `- CUSTOM DIRECTIVES: ${additionalDetails}` : ''}
   
   PHYSICAL INTEGRATION (CRITICAL):
   1. MATERIAL DISPLACEMENT: The logo MUST NOT look flat. It must follow the exact 3D morphology of the surface. On fabric (${mockupType}), the logo must warp, stretch, and bend into every wrinkle and fold as if screen-printed or embroidered.
   2. SURFACE TEXTURE: The micro-texture of the material (cotton fibers, ceramic glaze, paper grain, or metal) must be visible through the ink of the logo. Use realistic displacement mapping.
-  3. LIGHTING INTERACTION: Shadows and highlights must wrap around the logo's placement. If the logo is on a hoodie, show the subtle sheen of the ink against the matte fabric. If on a mug, show the specular highlights reflecting across the logo surface.
-  4. NO FLOATING: The logo must appear chemically or physically bonded to the object. No "sticker" effect unless specifically a sticker.
+  3. LIGHTING INTERACTION: Shadows and highlights must wrap around the logo's placement.
+  4. NO FLOATING: The logo must appear chemically or physically bonded to the object.
   
-  Ensure the final image looks like a professional product shot from a high-end brand campaign.`;
+  Ensure the final image looks like a professional product shot.`;
 
-    if (styleBase64) {
-      prompt += ` \n\nSTYLE INSPIRATION: Use the provided reference image for lighting, color temperature, and environmental mood.`;
+      if (styleBase64) {
+        prompt += ` \n\nSTYLE INSPIRATION: Use the provided Style Reference for lighting, colors, and mood.`;
+      }
     }
 
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [{ text: prompt }];

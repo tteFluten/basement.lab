@@ -7,6 +7,7 @@ import {
   ArrowRight, ChevronLeft, Plus,
 } from "lucide-react";
 import { AddSubmittedAppModal } from "@/components/AddSubmittedAppModal";
+import { getTemplateIcon } from "@/lib/iconTemplate";
 
 type SubmittedApp = {
   id: string;
@@ -16,6 +17,7 @@ type SubmittedApp = {
   deployLink: string;
   editLink: string | null;
   thumbnailUrl: string | null;
+  icon: string | null;
   version: string;
   tags: string[];
   createdAt: number;
@@ -38,6 +40,7 @@ function parseItems(json: { items?: unknown[] }): SubmittedApp[] {
     deployLink: String(row.deployLink ?? ""),
     editLink: row.editLink != null ? String(row.editLink) : null,
     thumbnailUrl: row.thumbnailUrl != null ? String(row.thumbnailUrl) : null,
+    icon: row.icon != null ? String(row.icon) : null,
     version: String(row.version ?? "1.0"),
     tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
     createdAt: typeof row.createdAt === "number" ? row.createdAt : new Date(String(row.createdAt)).getTime(),
@@ -183,13 +186,7 @@ export default function SubmittedAppsPage() {
           <ul className="border border-border divide-y divide-border">
             {filtered.map((app) => (
               <li key={app.id} className="flex items-center gap-4 p-4 hover:bg-bg-muted/30 transition-colors">
-                <div className="w-14 h-14 shrink-0 bg-bg-muted border border-border flex items-center justify-center overflow-hidden">
-                  {app.thumbnailUrl ? (
-                    <img src={app.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon className="w-6 h-6 text-fg-muted" />
-                  )}
-                </div>
+                <AppThumbnail thumbnailUrl={app.thumbnailUrl} icon={app.icon} className="w-14 h-14 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link href={`/submitted-apps/${app.id}`} className="text-sm font-medium text-fg hover:underline">{app.title}</Link>

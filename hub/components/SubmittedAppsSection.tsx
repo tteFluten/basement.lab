@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Search, ExternalLink, Pencil, X, Image as ImageIcon } from "lucide-react";
+import { getTemplateIcon } from "@/lib/iconTemplate";
 
 export type SubmittedAppItem = {
   id: string;
@@ -12,6 +13,7 @@ export type SubmittedAppItem = {
   deployLink: string;
   editLink: string | null;
   thumbnailUrl: string | null;
+  icon: string | null;
   version: string;
   tags: string[];
   createdAt: number;
@@ -26,6 +28,36 @@ function fmtDate(ts: number) {
   });
 }
 
+function AppThumbnail({
+  thumbnailUrl,
+  icon,
+  className = "",
+}: {
+  thumbnailUrl: string | null;
+  icon: string | null;
+  className?: string;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const TemplateIcon = getTemplateIcon(icon);
+  const showImg = thumbnailUrl && !imgFailed;
+  return (
+    <div className={`bg-bg-muted border border-border flex items-center justify-center overflow-hidden ${className}`}>
+      {showImg ? (
+        <img
+          src={thumbnailUrl!}
+          alt=""
+          className="w-full h-full object-cover"
+          onError={() => setImgFailed(true)}
+        />
+      ) : TemplateIcon ? (
+        <TemplateIcon className="w-5 h-5 text-fg-muted" />
+      ) : (
+        <ImageIcon className="w-5 h-5 text-fg-muted" />
+      )}
+    </div>
+  );
+}
+
 function parseItems(json: { items?: unknown[] }): SubmittedAppItem[] {
   const raw = (json?.items ?? []) as Record<string, unknown>[];
   return raw.map((row) => ({
@@ -36,6 +68,7 @@ function parseItems(json: { items?: unknown[] }): SubmittedAppItem[] {
     deployLink: String(row.deployLink ?? ""),
     editLink: row.editLink != null ? String(row.editLink) : null,
     thumbnailUrl: row.thumbnailUrl != null ? String(row.thumbnailUrl) : null,
+    icon: row.icon != null ? String(row.icon) : null,
     version: String(row.version ?? "1.0"),
     tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
     createdAt: typeof row.createdAt === "number" ? row.createdAt : new Date(String(row.createdAt)).getTime(),
@@ -167,13 +200,7 @@ export function SubmittedAppsSection({ onAddClick, refreshTrigger = 0 }: Props) 
             <ul className="border border-border divide-y divide-border">
               {filtered.map((app) => (
                 <li key={app.id} className="flex items-center gap-4 p-3 hover:bg-bg-muted/30 transition-colors">
-                  <div className="w-12 h-12 shrink-0 bg-bg-muted border border-border flex items-center justify-center overflow-hidden">
-                    {app.thumbnailUrl ? (
-                      <img src={app.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <ImageIcon className="w-5 h-5 text-fg-muted" />
-                    )}
-                  </div>
+                  <AppThumbnail thumbnailUrl={app.thumbnailUrl} icon={app.icon} className="w-12 h-12 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Link href={`/submitted-apps/${app.id}`} className="text-sm font-medium text-fg hover:underline">{app.title}</Link>

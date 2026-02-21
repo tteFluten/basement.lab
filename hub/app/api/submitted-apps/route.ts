@@ -14,6 +14,7 @@ type SubmittedAppRow = {
   deploy_link: string;
   edit_link: string | null;
   thumbnail_url: string | null;
+  icon: string | null;
   version: string | null;
   tags: string[] | null;
   created_at: string;
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabase();
     let query = supabase
       .from("submitted_apps")
-      .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, version, tags, created_at")
+      .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at")
       .order("title", { ascending: true })
       .limit(limit);
 
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
       deployLink: row.deploy_link,
       editLink: row.edit_link ?? null,
       thumbnailUrl: row.thumbnail_url ?? null,
+      icon: row.icon ?? null,
       version: row.version ?? "1.0",
       tags: Array.isArray(row.tags) ? row.tags : [],
       createdAt: new Date(row.created_at).getTime(),
@@ -112,6 +114,7 @@ export async function POST(request: NextRequest) {
     const deployLink = typeof body.deployLink === "string" ? body.deployLink.trim() : "";
     const editLink = typeof body.editLink === "string" ? body.editLink.trim() || null : null;
     const version = typeof body.version === "string" ? body.version.trim() || "1.0" : "1.0";
+    const icon = typeof body.icon === "string" ? body.icon.trim() || null : null;
     let tags: string[] = [];
     if (Array.isArray(body.tags)) {
       tags = body.tags.filter((t: unknown) => typeof t === "string" && t.trim()).map((t: string) => t.trim());
@@ -141,6 +144,7 @@ export async function POST(request: NextRequest) {
         deploy_link: deployLink,
         edit_link: editLink,
         thumbnail_url: thumbnailUrl,
+        icon: icon,
         version: version || "1.0",
         tags: tags.length ? tags : [],
       })

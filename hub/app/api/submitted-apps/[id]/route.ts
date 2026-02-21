@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("submitted_apps")
-    .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, version, tags, created_at")
+    .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at")
     .eq("id", params.id)
     .single();
 
@@ -30,6 +30,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     deployLink: data.deploy_link,
     editLink: data.edit_link ?? null,
     thumbnailUrl: data.thumbnail_url ?? null,
+    icon: data.icon ?? null,
     version: data.version ?? "1.0",
     tags: Array.isArray(data.tags) ? data.tags : [],
     createdAt: new Date(data.created_at).getTime(),
