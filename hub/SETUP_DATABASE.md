@@ -21,7 +21,7 @@
    NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
    SUPABASE_SERVICE_ROLE_KEY=eyJ...
    ```
-4. En Supabase, abrí **SQL Editor** y ejecutá el contenido de `hub/supabase/schema.sql` (crea tablas `users`, `projects`, `project_members`, `generations` con columna `tags` en generations).
+4. En Supabase, abrí **SQL Editor** y ejecutá el contenido de `hub/supabase/schema.sql` (crea tablas `users`, `projects`, `project_members`, `generations` con columna `tags`, y `submitted_apps` para aplicaciones subidas por usuarios).
 5. Si ya tenías el schema aplicado antes, ejecutá también `hub/supabase/migrations/001_add_tags_to_generations.sql` para agregar la columna `tags` a `generations`.
 6. Para crear el usuario admin, ejecutá también `hub/supabase/seed.sql` (define a `lautaro@basement.studio` como admin).
 

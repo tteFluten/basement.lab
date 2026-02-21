@@ -263,7 +263,7 @@ function LargeCard({
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="history-card border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
+    <div className="border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-full h-56 sm:h-64 relative block overflow-hidden focus:outline-none">
         {image && url ? (
@@ -343,7 +343,7 @@ function SmallCard({
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="history-card border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
+    <div className="border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-full h-36 sm:h-44 relative block overflow-hidden focus:outline-none">
         {image && url ? (
@@ -410,7 +410,7 @@ function ListRow({
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="history-card flex items-center gap-4 px-4 py-3 border border-border bg-bg-muted hover:border-fg-muted transition-colors group">
+    <div className="flex items-center gap-4 px-4 py-3 border border-border bg-bg-muted hover:border-fg-muted transition-colors group">
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-20 h-20 shrink-0 overflow-hidden relative focus:outline-none">
         {image && url ? (
@@ -545,10 +545,12 @@ function RenderItems({
   if (view === "list") {
     return (
       <div className="space-y-2">
-        {items.map((item) => (
-          <ListRow key={item.id} item={item} deleting={deletingId === item.id}
-            onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
-            projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
+        {items.map((item, index) => (
+          <div key={item.id} className="history-card" style={{ animationDelay: `${index * 35}ms` }}>
+            <ListRow item={item} deleting={deletingId === item.id}
+              onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
+              projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
+          </div>
         ))}
       </div>
     );
@@ -558,14 +560,18 @@ function RenderItems({
     : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3";
   return (
     <div className={cls}>
-      {items.map((item) => view === "large" ? (
-        <LargeCard key={item.id} item={item} deleting={deletingId === item.id}
-          onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
-          projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
-      ) : (
-        <SmallCard key={item.id} item={item} deleting={deletingId === item.id}
-          onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
-          projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
+      {items.map((item, index) => (
+        <div key={item.id} className="history-card" style={{ animationDelay: `${index * 35}ms` }}>
+          {view === "large" ? (
+            <LargeCard item={item} deleting={deletingId === item.id}
+              onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
+              projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
+          ) : (
+            <SmallCard item={item} deleting={deletingId === item.id}
+              onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
+              projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
+          )}
+        </div>
       ))}
     </div>
   );
@@ -660,7 +666,14 @@ export function HistoryClient() {
 
   return (
     <>
-      <style>{`@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }`}</style>
+      <style>{`
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+        @keyframes history-fade-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .history-card { animation: history-fade-in 0.28s ease-out both; }
+      `}</style>
       <main className="p-8 lg:p-10 bg-bg min-h-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-5 mb-6">
