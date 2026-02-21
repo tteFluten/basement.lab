@@ -176,9 +176,9 @@ export async function POST(request: NextRequest) {
       error = fb.error;
     }
 
-    if (error) {
+    if (error || !data) {
       console.error("Supabase submitted_apps insert:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
     }
 
     return NextResponse.json({
