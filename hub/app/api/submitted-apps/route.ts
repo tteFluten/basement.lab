@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { uploadDataUrl, hasBlob } from "@/lib/blob";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -18,27 +19,47 @@ type SubmittedAppRow = {
   created_at: string;
 };
 
-/** GET: list submitted apps. Sorted by title. Includes submitter name. No auth required for read. */
-export async function GET() {
+/** GET: list submitted apps. Sorted by title. Includes submitter name. */
+export async function GET(request: NextRequest) {
   if (!hasSupabase()) {
     return NextResponse.json({ items: [] });
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const tag = searchParams.get("tag") ?? undefined;
+    const q = searchParams.get("q") ?? undefined;
+    const limit = Math.min(Number(searchParams.get("limit")) || 200, 500);
+
     const supabase = getSupabase();
-    const { data: rows, error } = await supabase
+    let query = supabase
       .from("submitted_apps")
       .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, version, tags, created_at")
-      .order("title", { ascending: true });
+      .order("title", { ascending: true })
+      .limit(limit);
+
+    if (tag) query = query.contains("tags", [tag]);
+
+    const { data: rows, error } = await query;
 
     if (error) {
       console.error("Supabase submitted_apps select:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const items = (rows ?? []) as SubmittedAppRow[];
+    let items = (rows ?? []) as SubmittedAppRow[];
+
+    if (q) {
+      const lower = q.toLowerCase();
+      items = items.filter(
+        (r) =>
+          r.title.toLowerCase().includes(lower) ||
+          (r.description ?? "").toLowerCase().includes(lower)
+      );
+    }
+
     const userIds = Array.from(new Set(items.map((r) => r.user_id).filter(Boolean) as string[]));
-    let userMap: Map<string, string> = new Map();
+    const userMap: Map<string, string> = new Map();
     if (userIds.length > 0) {
       const { data: userRows } = await supabase
         .from("users")
@@ -73,7 +94,7 @@ export async function GET() {
   }
 }
 
-/** POST: add a submitted app. Requires session. */
+/** POST: add a submitted app. Requires session. Thumbnail uploaded to Blob. */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -90,11 +111,17 @@ export async function POST(request: NextRequest) {
     const description = typeof body.description === "string" ? body.description.trim() : null;
     const deployLink = typeof body.deployLink === "string" ? body.deployLink.trim() : "";
     const editLink = typeof body.editLink === "string" ? body.editLink.trim() || null : null;
-    const thumbnailUrl = typeof body.thumbnailUrl === "string" ? body.thumbnailUrl.trim() || null : null;
     const version = typeof body.version === "string" ? body.version.trim() || "1.0" : "1.0";
     let tags: string[] = [];
     if (Array.isArray(body.tags)) {
       tags = body.tags.filter((t: unknown) => typeof t === "string" && t.trim()).map((t: string) => t.trim());
+    }
+
+    let thumbnailUrl: string | null = null;
+    const thumbnailDataUrl = typeof body.thumbnailDataUrl === "string" ? body.thumbnailDataUrl : null;
+    if (thumbnailDataUrl && hasBlob()) {
+      const pathname = `submitted-apps/${Date.now()}.png`;
+      thumbnailUrl = await uploadDataUrl(thumbnailDataUrl, pathname);
     }
 
     if (!title || !deployLink) {

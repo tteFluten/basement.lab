@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { X, ExternalLink, Pencil, Image } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { X, ExternalLink, Pencil, Upload } from "lucide-react";
 
 export type SubmittedAppForm = {
   title: string;
   description: string;
   deployLink: string;
   editLink: string;
-  thumbnailUrl: string;
   version: string;
   tags: string[];
 };
@@ -18,7 +17,6 @@ const defaultForm: SubmittedAppForm = {
   description: "",
   deployLink: "",
   editLink: "",
-  thumbnailUrl: "",
   version: "1.0",
   tags: [],
 };
@@ -31,13 +29,34 @@ type Props = {
 
 export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
   const [form, setForm] = useState<SubmittedAppForm>(defaultForm);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const update = useCallback((updates: Partial<SubmittedAppForm>) => {
     setForm((f) => ({ ...f, ...updates }));
     setError(null);
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setThumbnailFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setThumbnailPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setThumbnailPreview(null);
+    }
+  }, []);
+
+  const removeThumbnail = useCallback(() => {
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+    if (fileRef.current) fileRef.current.value = "";
   }, []);
 
   const addTag = useCallback(() => {
@@ -62,6 +81,10 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
       }
       setSubmitting(true);
       try {
+        let thumbnailDataUrl: string | null = null;
+        if (thumbnailFile && thumbnailPreview) {
+          thumbnailDataUrl = thumbnailPreview;
+        }
         const res = await fetch("/api/submitted-apps", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -70,7 +93,7 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
             description: form.description.trim() || null,
             deployLink: form.deployLink.trim(),
             editLink: form.editLink.trim() || null,
-            thumbnailUrl: form.thumbnailUrl.trim() || null,
+            thumbnailDataUrl,
             version: form.version.trim() || "1.0",
             tags: form.tags,
           }),
@@ -82,23 +105,25 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
         }
         setForm(defaultForm);
         setTagInput("");
+        removeThumbnail();
         onSuccess();
         onClose();
       } finally {
         setSubmitting(false);
       }
     },
-    [form, onSuccess, onClose]
+    [form, thumbnailFile, thumbnailPreview, removeThumbnail, onSuccess, onClose]
   );
 
   const handleClose = useCallback(() => {
     if (!submitting) {
       setForm(defaultForm);
       setTagInput("");
+      removeThumbnail();
       setError(null);
       onClose();
     }
-  }, [submitting, onClose]);
+  }, [submitting, removeThumbnail, onClose]);
 
   if (!open) return null;
 
@@ -152,7 +177,7 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-fg-muted mb-1">Edit link</label>
+            <label className="block text-xs font-medium text-fg-muted mb-1">Edit link (optional)</label>
             <div className="flex gap-2">
               <Pencil className="w-4 h-4 text-fg-muted shrink-0 mt-2.5" />
               <input
@@ -165,17 +190,33 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-fg-muted mb-1">Thumbnail URL (optional)</label>
-            <div className="flex gap-2">
-              <Image className="w-4 h-4 text-fg-muted shrink-0 mt-2.5" />
-              <input
-                type="url"
-                value={form.thumbnailUrl}
-                onChange={(e) => update({ thumbnailUrl: e.target.value })}
-                placeholder="https://..."
-                className="flex-1 bg-bg-muted border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-fg-muted"
-              />
-            </div>
+            <label className="block text-xs font-medium text-fg-muted mb-1">Thumbnail (optional)</label>
+            {thumbnailPreview ? (
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 border border-border overflow-hidden bg-bg-muted shrink-0">
+                  <img src={thumbnailPreview} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+                <button type="button" onClick={removeThumbnail} className="text-xs text-fg-muted hover:text-fg border border-border px-2 py-1">
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex items-center gap-2 px-3 py-2 border border-dashed border-border text-sm text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Upload image
+              </button>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-fg-muted mb-1">Version</label>

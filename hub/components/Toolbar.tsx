@@ -18,6 +18,9 @@ import {
   LogOut,
   User as UserIcon,
   Shield,
+  Package,
+  ExternalLink,
+  ArrowRight,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
@@ -188,6 +191,100 @@ function ProjectAppsMenu() {
   );
 }
 
+type SubmittedAppBrief = {
+  id: string;
+  title: string;
+  deployLink: string;
+  createdAt: number;
+};
+
+function SubmittedAppsMenu() {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<SubmittedAppBrief[]>([]);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch("/api/submitted-apps?limit=8")
+      .then((r) => r.json())
+      .then((d) => {
+        const list = Array.isArray(d?.items) ? d.items : [];
+        setItems(
+          list.map((r: Record<string, unknown>) => ({
+            id: String(r.id ?? ""),
+            title: String(r.title ?? ""),
+            deployLink: String(r.deployLink ?? ""),
+            createdAt: typeof r.createdAt === "number" ? r.createdAt : 0,
+          }))
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Submitted applications"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1 p-1.5 shrink-0 ${
+          open ? "text-fg border-b border-fg" : "text-fg-muted hover:text-fg"
+        }`}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        <Package size={iconSize} strokeWidth={1.5} />
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <ul
+          className="absolute left-0 top-full mt-1 min-w-[260px] border border-border bg-bg-muted py-1 z-50 max-h-[320px] overflow-auto"
+          role="menu"
+        >
+          {items.length === 0 ? (
+            <li className="px-3 py-2 text-xs text-fg-muted">No submitted apps yet.</li>
+          ) : (
+            items.map((app) => (
+              <li key={app.id} role="none">
+                <a
+                  href={app.deployLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-fg hover:bg-bg"
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="truncate">{app.title}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-fg-muted shrink-0" />
+                </a>
+              </li>
+            ))
+          )}
+          <li role="none" className="border-t border-border mt-1 pt-1">
+            <Link
+              href="/submitted-apps"
+              className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-fg-muted hover:text-fg hover:bg-bg"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              View all <ArrowRight className="w-3 h-3" />
+            </Link>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function UserMenu() {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
@@ -291,6 +388,7 @@ export function Toolbar() {
           );
         })}
         <ProjectAppsMenu />
+        <SubmittedAppsMenu />
 
         <span className="flex-1 min-w-4" />
 

@@ -22,10 +22,6 @@ export function HomeAppsSection() {
 
   return (
     <>
-      <SubmittedAppsSection
-        onAddClick={() => setModalOpen(true)}
-        refreshTrigger={refreshTrigger}
-      />
       <section className="mb-10">
         <h2 className="text-xs font-bold text-fg-muted uppercase tracking-[0.2em] mb-4">Apps</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 auto-rows-[140px] sm:auto-rows-[160px] md:auto-rows-[180px] gap-3">
@@ -64,6 +60,10 @@ export function HomeAppsSection() {
           </button>
         </div>
       </section>
+      <SubmittedAppsSection
+        onAddClick={() => setModalOpen(true)}
+        refreshTrigger={refreshTrigger}
+      />
       <AddSubmittedAppModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
