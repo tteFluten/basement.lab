@@ -15,6 +15,25 @@ const APPS = [
   { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-2 row-span-1", cover: "/app-covers/frame-variator.jpg" },
 ];
 
+function AppCoverImage({ cover, Icon, alt }: { cover: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-bg-muted">
+        <Icon size={48} strokeWidth={1} className="text-fg-muted opacity-50" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={cover}
+      alt={alt}
+      className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export function HomeAppsSection() {
   const [modalOpen, setModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -31,11 +50,7 @@ export function HomeAppsSection() {
               href={`/apps/${slug}`}
               className={`${span} group relative overflow-hidden border border-border hover:border-fg-muted transition-all duration-300 flex flex-col justify-end p-5 bg-black`}
             >
-              <img
-                src={cover}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500"
-              />
+              <AppCoverImage cover={cover} Icon={Icon} alt={label} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-1">

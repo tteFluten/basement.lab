@@ -22,7 +22,7 @@
    SUPABASE_SERVICE_ROLE_KEY=eyJ...
    ```
 4. En Supabase, abrí **SQL Editor** y ejecutá el contenido de `hub/supabase/schema.sql` (crea tablas `users`, `projects`, `project_members`, `generations` con columna `tags`, y `submitted_apps` para aplicaciones subidas por usuarios).
-5. Si ya tenías el schema aplicado antes, ejecutá también `hub/supabase/migrations/001_add_tags_to_generations.sql` para agregar la columna `tags` a `generations`.
+5. Si ya tenías el schema aplicado antes, ejecutá también `hub/supabase/migrations/001_add_tags_to_generations.sql` para agregar la columna `tags` a `generations`, y `hub/supabase/migrations/002_add_icon_to_submitted_apps.sql` para la columna `icon` en `submitted_apps`.
 6. Para crear el usuario admin, ejecutá también `hub/supabase/seed.sql` (define a `lautaro@basement.studio` como admin).
 
 ## 1b. Auth (NextAuth) y contraseña del admin
@@ -72,3 +72,10 @@ En el deployment **no hay archivo .env.local**: las variables se cargan en el pa
 - `SETUP_PASSWORD_SECRET` (solo si querés usar el endpoint para setear contraseñas en producción)
 
 Guardá y hacé redeploy. El Hub en Vercel va a leer estas variables igual que en local.
+
+---
+
+## 4. Thumbnails de apps (opcional)
+
+- **Apps del lab (grid en Home)**: Podés agregar imágenes en `hub/public/app-covers/` con el nombre del slug de cada app: `cineprompt.jpg`, `render.jpg`, `chronos.jpg`, `swag.jpg`, `avatar.jpg`, `frame-variator.jpg`. Si no existen o fallan, se muestra el ícono por defecto.
+- **Aplicaciones subidas (Submitted)**: Al agregar una app podés subir una imagen (thumbnail) y/o elegir un ícono de la plantilla. El thumbnail se guarda en Blob; si no hay Blob o falla la imagen, se usa el ícono elegido.
