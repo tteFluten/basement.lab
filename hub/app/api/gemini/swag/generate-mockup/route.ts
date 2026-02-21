@@ -57,20 +57,26 @@ export async function POST(request: NextRequest) {
     
     ${additionalDetails ? `\n\nADDITIONAL_CONTEXT: ${additionalDetails}` : ''}`;
     } else {
-      prompt = `Act as a world-class CGI artist specializing in physical product simulation. 
+      prompt = `Act as a world-class CGI artist specializing in physical product simulation.
   Create a hyper-realistic, high-fidelity render of a ${mockupType}.
-  
+
+  PRIMARY DIRECTIVE (NON-NEGOTIABLE):
+  The FIRST IMAGE provided is the USER'S DESIGN. This is the artwork/graphic that MUST appear prominently on the ${mockupType}. 
+  You must use THIS EXACT IMAGE as the main visual printed/applied on the product. Do NOT invent, replace, or ignore it. 
+  Do NOT add any other logos, brands, or graphics — ONLY the provided design.
+
   ARTISTIC DIRECTION:
   - THEME: ${stylePreset}. ${currentStyleModifier}
   ${additionalDetails ? `- CUSTOM DIRECTIVES: ${additionalDetails}` : ''}
-  
+
   PHYSICAL INTEGRATION (CRITICAL):
-  1. MATERIAL DISPLACEMENT: The logo MUST NOT look flat. It must follow the exact 3D morphology of the surface. On fabric (${mockupType}), the logo must warp, stretch, and bend into every wrinkle and fold as if screen-printed or embroidered.
-  2. SURFACE TEXTURE: The micro-texture of the material (cotton fibers, ceramic glaze, paper grain, or metal) must be visible through the ink of the logo. Use realistic displacement mapping.
-  3. LIGHTING INTERACTION: Shadows and highlights must wrap around the logo's placement.
-  4. NO FLOATING: The logo must appear chemically or physically bonded to the object.
-  
-  Ensure the final image looks like a professional product shot.`;
+  1. MATERIAL DISPLACEMENT: The design MUST NOT look flat or digitally pasted. It must follow the exact 3D morphology of the surface. On fabric, it must warp, stretch, and bend into every wrinkle and fold as if screen-printed or embroidered. On paper (poster), it must show subtle paper texture and edge curl.
+  2. SURFACE TEXTURE: The micro-texture of the material (cotton fibers, ceramic glaze, paper grain, vinyl, or metal) must be visible through the ink of the design. Use realistic displacement mapping.
+  3. LIGHTING INTERACTION: Shadows and highlights must wrap around the design's placement naturally.
+  4. NO FLOATING: The design must appear chemically or physically bonded to the object — printed, embossed, or screen-printed.
+  5. DESIGN PROMINENCE: The user's design should be the HERO of the image — large, centered, and clearly visible on the product.
+
+  Ensure the final image looks like a professional product shot featuring the provided design.`;
 
       if (styleBase64) {
         prompt += ` \n\nSTYLE INSPIRATION: Use the provided Style Reference for lighting, colors, and mood.`;

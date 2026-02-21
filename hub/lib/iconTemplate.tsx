@@ -53,7 +53,9 @@ export function getTemplateIcon(name: string | null | undefined): LucideIcon | n
   const n = name.trim();
   const byKebab = iconByName.get(n.toLowerCase());
   if (byKebab) return byKebab;
-  const byPascal = lucideMap[n];
-  if (byPascal && typeof byPascal === "function") return byPascal;
+  const candidate = lucideMap[n];
+  if (candidate && (typeof candidate === "function" || (typeof candidate === "object" && "render" in candidate))) {
+    return candidate;
+  }
   return null;
 }

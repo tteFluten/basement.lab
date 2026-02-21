@@ -11,12 +11,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const originalBase64 = (body.originalBase64 as string) ?? "";
     const analysis = body.analysis as { actor?: string } | undefined;
-    const variations = (body.variations as Array<{ prompt: string }>) ?? [];
+    const variations = (body.variations as Array<{ prompt: string; type?: string }>) ?? [];
     const base64 = originalBase64.includes(",") ? originalBase64.split(",")[1] : originalBase64;
     if (!base64 || variations.length < 9) {
       return NextResponse.json({ error: "originalBase64 and 9 variations required" }, { status: 400 });
     }
+
+    const isPov = variations[0]?.type === "camera";
+
+    const modeDirective = isPov
+      ? `SCENE LOCK (NON-NEGOTIABLE):
+    This is a CAMERA-ONLY exercise. The scene, environment, characters, objects, actions, poses, wardrobe, and props must remain EXACTLY IDENTICAL across all 9 cells.
+    Think of this as the SAME FROZEN MOMENT captured simultaneously by 9 different cameras placed at different positions and angles.
+    - Do NOT change what is happening in the scene.
+    - Do NOT add or remove any objects, characters, or environmental elements.
+    - Do NOT change character pose, expression, or wardrobe.
+    - ONLY the camera position, angle, framing, and focal length should change between cells.`
+      : `NARRATIVE DIRECTION:
+    Each cell represents a different narrative beat or story moment. The scene content, action, and composition can change between cells to tell a visual story.
+    Maintain character likeness and cinematic DNA across all frames, but allow creative variation in staging, action, and environment as described in each cell prompt.`;
+
     const gridPrompt = `TASK: Technical 3x3 Contact Sheet Render.
+
+    ${modeDirective}
+
     TECHNICAL MANDATE: 
     - Absolute consistency of Cinematic DNA (Color Grade, LUT, Lens, Grain, Lighting Kelvin) across all 9 cells.
     - Character Likeness (${analysis?.actor ?? "subject"}) must be 1:1 consistent across all frames.
