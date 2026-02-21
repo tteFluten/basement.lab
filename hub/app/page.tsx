@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { DashboardHistory } from "./DashboardHistory";
 import { HomeAppsSection } from "./HomeAppsSection";
 
@@ -12,14 +10,8 @@ export default function HomePage() {
 
       <HomeAppsSection />
 
-      {/* Recent history */}
       <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-bold text-fg-muted uppercase tracking-[0.2em]">Recent Generations</h2>
-          <Link href="/history" className="text-xs text-fg-muted hover:text-fg transition-colors flex items-center gap-1">
-            View all <ArrowRight className="w-3 h-3" />
-          </Link>
-        </div>
+        <h2 className="text-xs font-bold text-fg-muted uppercase tracking-[0.2em] mb-4">Gallery</h2>
         <DashboardHistory />
       </section>
     </main>
