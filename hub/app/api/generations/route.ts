@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
       tags?: string[];
     };
     const rows: GenRow[] = (data ?? []) as GenRow[];
-    const userIds = [...new Set((rows.map((r) => r.user_id).filter(Boolean) as string[]))];
+    const userIds = Array.from(new Set((rows.map((r) => r.user_id).filter(Boolean) as string[])));
     let userMap: Map<string, { fullName: string | null; avatarUrl: string | null }> = new Map();
     if (userIds.length > 0) {
       const { data: userRows } = await supabase

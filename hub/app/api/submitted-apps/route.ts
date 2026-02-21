@@ -37,7 +37,7 @@ export async function GET() {
     }
 
     const items = (rows ?? []) as SubmittedAppRow[];
-    const userIds = [...new Set(items.map((r) => r.user_id).filter(Boolean) as string[])];
+    const userIds = Array.from(new Set(items.map((r) => r.user_id).filter(Boolean) as string[]));
     let userMap: Map<string, string> = new Map();
     if (userIds.length > 0) {
       const { data: userRows } = await supabase
