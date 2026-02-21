@@ -75,6 +75,10 @@ create table if not exists public.submitted_apps (
   created_at timestamptz default now()
 );
 
+-- If submitted_apps already existed without icon, add the column
+alter table public.submitted_apps
+  add column if not exists icon text;
+
 create index if not exists idx_submitted_apps_user_id on public.submitted_apps(user_id);
 create index if not exists idx_submitted_apps_created_at on public.submitted_apps(created_at desc);
 create index if not exists idx_submitted_apps_title on public.submitted_apps(lower(title));

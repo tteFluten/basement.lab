@@ -33,15 +33,27 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Number(searchParams.get("limit")) || 200, 500);
 
     const supabase = getSupabase();
+    const cols = "id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at";
     let query = supabase
       .from("submitted_apps")
-      .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at")
+      .select(cols)
       .order("title", { ascending: true })
       .limit(limit);
 
     if (tag) query = query.contains("tags", [tag]);
 
-    const { data: rows, error } = await query;
+    let { data: rows, error } = await query;
+
+    if (error && /icon/i.test(error.message)) {
+      const fallback = supabase
+        .from("submitted_apps")
+        .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, version, tags, created_at")
+        .order("title", { ascending: true })
+        .limit(limit);
+      const fb = await fallback;
+      rows = fb.data;
+      error = fb.error;
+    }
 
     if (error) {
       console.error("Supabase submitted_apps select:", error);
@@ -135,21 +147,34 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabase();
-    const { data, error } = await supabase
+    const row: Record<string, unknown> = {
+      user_id: session.user.id,
+      title,
+      description: description || null,
+      deploy_link: deployLink,
+      edit_link: editLink,
+      thumbnail_url: thumbnailUrl,
+      icon: icon,
+      version: version || "1.0",
+      tags: tags.length ? tags : [],
+    };
+
+    let { data, error } = await supabase
       .from("submitted_apps")
-      .insert({
-        user_id: session.user.id,
-        title,
-        description: description || null,
-        deploy_link: deployLink,
-        edit_link: editLink,
-        thumbnail_url: thumbnailUrl,
-        icon: icon,
-        version: version || "1.0",
-        tags: tags.length ? tags : [],
-      })
+      .insert(row)
       .select("id, title, created_at")
       .single();
+
+    if (error && /icon/i.test(error.message)) {
+      delete row.icon;
+      const fb = await supabase
+        .from("submitted_apps")
+        .insert(row)
+        .select("id, title, created_at")
+        .single();
+      data = fb.data;
+      error = fb.error;
+    }
 
     if (error) {
       console.error("Supabase submitted_apps insert:", error);
