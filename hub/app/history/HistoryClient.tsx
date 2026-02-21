@@ -728,7 +728,7 @@ export function HistoryClient() {
 
         {/* Content */}
         {apiLoading && apiItems.length === 0 ? (
-          <Spinner size={28} label="Loading history..." />
+          <Spinner size={28} steps={["Loading history", "Fetching generations", "Cleaning duplicates", "Sorting by date", "Preparing gallery"]} />
         ) : apiError && apiItems.length === 0 ? (
           <p className="text-amber-400/90 text-sm">{apiError}</p>
         ) : filtered.length === 0 ? (

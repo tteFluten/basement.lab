@@ -100,7 +100,7 @@ export function DashboardHistory() {
   }, [apiItems, memoryItems]);
 
   if (loading && items.length === 0) {
-    return <Spinner size={28} label="Loading gallery..." />;
+    return <Spinner size={28} steps={["Loading gallery", "Fetching latest work", "Building collage", "Almost there"]} />;
   }
 
   if (items.length === 0) {

@@ -262,7 +262,7 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
 
               {/* Grid */}
               {apiLoading && allItems.length === 0 ? (
-                <Spinner label="Loading history..." />
+                <Spinner steps={["Loading references", "Fetching images", "Checking history", "Preparing thumbnails", "Almost ready"]} />
               ) : filtered.length === 0 ? (
                 <div className="p-8 text-center">
                   <p className="text-xs text-fg-muted">{allItems.length === 0 ? "No history items yet." : "No items match."}</p>
