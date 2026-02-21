@@ -1,16 +1,9 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { getAppUrl } from "@/lib/appUrls";
-import { ReferencePickerModal } from "@/components/ReferencePickerModal";
-import { DownloadActionModal } from "@/components/DownloadActionModal";
-import {
-  BASEMENT_OPEN_REFERENCE_PICKER,
-  BASEMENT_REFERENCE_SELECTED,
-  BASEMENT_OPEN_DOWNLOAD_ACTION,
-  BASEMENT_DOWNLOAD_DONE,
-} from "@/lib/bridgeTypes";
+import { useAppTabs } from "@/lib/appTabsContext";
 
 const VALID_SLUGS = [
   "cineprompt",
@@ -22,87 +15,33 @@ const VALID_SLUGS = [
   "connect",
 ] as const;
 
+const APP_LABELS: Record<string, string> = {
+  cineprompt: "CinePrompt",
+  chronos: "Chronos",
+  swag: "Swag",
+  avatar: "Avatar",
+  render: "Render",
+  "frame-variator": "Frame Variator",
+  connect: "Connect",
+};
+
 export function AppFrameClient() {
   const params = useParams();
   const slug = params?.slug as string | undefined;
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { openTab } = useAppTabs();
 
-  const [refPickerOpen, setRefPickerOpen] = useState(false);
-  const [downloadOpen, setDownloadOpen] = useState(false);
-  const [downloadPayload, setDownloadPayload] = useState<{
-    assetDataUrl: string;
-    appId: string;
-    mimeType?: string;
-    fileName?: string;
-  } | null>(null);
-  const pendingRef = useRef<{
-    source: MessageEventSource | null;
-    requestId: string;
-  }>({ source: null, requestId: "" });
-
-  const sendToApp = useCallback(
-    (source: MessageEventSource | null, payload: object) => {
-      if (source && "postMessage" in source) {
-        (source as Window).postMessage(payload, "*");
-      }
-    },
-    []
-  );
+  const isValid =
+    !!slug && VALID_SLUGS.includes(slug as (typeof VALID_SLUGS)[number]);
+  const url = isValid ? getAppUrl(slug) : "#";
+  const label = (slug && APP_LABELS[slug]) || slug || "App";
 
   useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      const data = event.data;
-      if (!data || typeof data !== "object" || !data.type) return;
+    if (isValid && url !== "#") {
+      openTab(slug, label, url);
+    }
+  }, [isValid, slug, label, url, openTab]);
 
-      switch (data.type) {
-        case BASEMENT_OPEN_REFERENCE_PICKER: {
-          pendingRef.current = { source: event.source, requestId: data.requestId ?? "" };
-          setRefPickerOpen(true);
-          break;
-        }
-        case BASEMENT_OPEN_DOWNLOAD_ACTION: {
-          pendingRef.current = { source: event.source, requestId: data.requestId ?? "" };
-          setDownloadPayload({
-            assetDataUrl: data.assetDataUrl ?? data.imageDataUrl ?? "",
-            appId: data.appId ?? slug ?? "app",
-            mimeType: data.mimeType,
-            fileName: data.fileName,
-          });
-          setDownloadOpen(true);
-          break;
-        }
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [slug]);
-
-  const handleRefSelect = useCallback(
-    (dataUrl: string) => {
-      const { source, requestId } = pendingRef.current;
-      sendToApp(source, {
-        type: BASEMENT_REFERENCE_SELECTED,
-        requestId,
-        dataUrl,
-      });
-      pendingRef.current = { source: null, requestId: "" };
-      setRefPickerOpen(false);
-    },
-    [sendToApp]
-  );
-
-  const handleDownloadDone = useCallback(() => {
-    const { source, requestId } = pendingRef.current;
-    sendToApp(source, { type: BASEMENT_DOWNLOAD_DONE, requestId });
-    pendingRef.current = { source: null, requestId: "" };
-    setDownloadPayload(null);
-    setDownloadOpen(false);
-  }, [sendToApp]);
-
-  if (!slug || !VALID_SLUGS.includes(slug as (typeof VALID_SLUGS)[number])) {
+  if (!isValid) {
     return (
       <main className="flex-1 flex flex-col min-h-0 p-8">
         <p className="text-fg-muted">Unknown app.</p>
@@ -110,58 +49,21 @@ export function AppFrameClient() {
     );
   }
 
-  const url = getAppUrl(slug);
-  const appUnavailable = url === "#";
+  if (url === "#") {
+    return (
+      <div className="flex-1 min-h-0 p-8">
+        <p className="text-fg">This app is not published yet.</p>
+        <p className="text-fg-muted text-sm mt-2">
+          Configure{" "}
+          <code className="text-fg">
+            NEXT_PUBLIC_APP_{slug.toUpperCase()}_URL
+          </code>{" "}
+          or publish an embed at{" "}
+          <code className="text-fg">/embed/{slug}/index.html</code>.
+        </p>
+      </div>
+    );
+  }
 
-  return (
-    <>
-      <main className="flex-1 flex flex-col min-h-0">
-        {appUnavailable ? (
-          <div className="flex-1 min-h-0 p-8">
-            <p className="text-fg">This app is not published yet.</p>
-            <p className="text-fg-muted text-sm mt-2">
-              Configure <code className="text-fg">NEXT_PUBLIC_APP_{slug.toUpperCase()}_URL</code>{" "}
-              or publish an embed at <code className="text-fg">/embed/{slug}/index.html</code>.
-            </p>
-          </div>
-        ) : (
-          <>
-            <iframe
-              ref={iframeRef}
-              title={slug}
-              src={url}
-              className="w-full flex-1 min-h-0 border-0"
-              sandbox="allow-scripts allow-same-origin allow-forms"
-            />
-            <p className="text-fg-muted text-xs px-4 py-2 border-t border-border bg-bg-muted shrink-0">
-              App at {url}. To rebuild: <code className="text-fg">npm run build:apps</code>
-            </p>
-          </>
-        )}
-      </main>
-
-      <ReferencePickerModal
-        open={refPickerOpen}
-        onClose={() => {
-          setRefPickerOpen(false);
-          pendingRef.current = { source: null, requestId: "" };
-        }}
-        onSelect={handleRefSelect}
-      />
-
-      <DownloadActionModal
-        open={downloadOpen}
-        onClose={() => {
-          setDownloadOpen(false);
-          setDownloadPayload(null);
-          pendingRef.current = { source: null, requestId: "" };
-        }}
-        assetDataUrl={downloadPayload?.assetDataUrl ?? null}
-        appId={downloadPayload?.appId ?? ""}
-        mimeType={downloadPayload?.mimeType}
-        fileName={downloadPayload?.fileName}
-        onDone={handleDownloadDone}
-      />
-    </>
-  );
+  return null;
 }

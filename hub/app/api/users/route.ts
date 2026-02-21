@@ -31,7 +31,7 @@ export async function GET() {
       .from("users")
       .select("id, email, full_name, nickname, avatar_url, role")
       .order("email");
-    data = fb.data;
+    data = fb.data as typeof data;
     error = fb.error;
   }
 

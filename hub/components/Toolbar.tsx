@@ -21,11 +21,13 @@ import {
   Package,
   ExternalLink,
   ArrowRight,
+  X,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
 import { getTemplateIcon } from "@/lib/iconTemplate";
 import { Image as ImageIcon } from "lucide-react";
+import { useAppTabs } from "@/lib/appTabsContext";
 
 const APP_LINKS = [
   { slug: "cineprompt", label: "CinePrompt", Icon: Film },
@@ -372,10 +374,53 @@ function UserMenu() {
   );
 }
 
+function TabStrip() {
+  const { openTabs, activeSlug, closeTab } = useAppTabs();
+  if (openTabs.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-px px-4 py-0.5 bg-bg border-t border-border overflow-x-auto">
+      {openTabs.map((tab) => {
+        const isActive = activeSlug === tab.slug;
+        return (
+          <div
+            key={tab.slug}
+            className={`flex items-center gap-1.5 pl-3 pr-1 py-1 text-xs shrink-0 transition-colors ${
+              isActive
+                ? "bg-bg-muted text-fg"
+                : "text-fg-muted hover:text-fg hover:bg-bg-muted/50"
+            }`}
+          >
+            <Link
+              href={`/apps/${tab.slug}`}
+              className="truncate max-w-[120px]"
+            >
+              {tab.label}
+            </Link>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeTab(tab.slug);
+              }}
+              className="p-0.5 rounded-sm opacity-40 hover:opacity-100 hover:bg-border/50 transition-opacity"
+              title={`Close ${tab.label}`}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Toolbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
+  const { openTabs } = useAppTabs();
 
   return (
     <header className="border-b border-border bg-bg-muted shrink-0">
@@ -392,14 +437,22 @@ export function Toolbar() {
         {APP_LINKS.map(({ slug, label, Icon }) => {
           const href = `/apps/${slug}`;
           const active = pathname === href;
+          const isOpenTab = openTabs.some((t) => t.slug === slug);
           return (
             <Link
               key={slug}
               href={href}
               title={label}
-              className={`p-1.5 shrink-0 ${active ? "text-fg border-b border-fg" : "text-fg-muted hover:text-fg"}`}
+              className={`p-1.5 shrink-0 relative ${
+                active
+                  ? "text-fg border-b border-fg"
+                  : "text-fg-muted hover:text-fg"
+              }`}
             >
               <Icon size={iconSize} strokeWidth={1.5} />
+              {isOpenTab && !active && (
+                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-fg-muted rounded-full" />
+              )}
             </Link>
           );
         })}
@@ -427,6 +480,7 @@ export function Toolbar() {
         )}
         <UserMenu />
       </nav>
+      <TabStrip />
     </header>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Search, X, Check, Users, Trash2, Plus, Pencil, Link2 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { LinkPreview } from "@/components/LinkPreview";
 
 type ProjectLinks = {
   linear?: string;
@@ -417,40 +418,58 @@ export default function AdminProjectsPage() {
       <ul className="space-y-2">
         {projects.map((p) => {
           const members = (p.memberIds ?? []).map((id) => userById.get(id)).filter(Boolean) as User[];
+          const linkEntries: { label: string; url: string }[] = [];
+          if (p.links?.web) linkEntries.push({ label: "Web", url: p.links.web });
+          if (p.links?.figma) linkEntries.push({ label: "Figma", url: p.links.figma });
+          if (p.links?.linear) linkEntries.push({ label: "Linear", url: p.links.linear });
+          if (p.links?.others) {
+            for (const o of p.links.others) {
+              if (o.url) linkEntries.push({ label: o.label || "Link", url: o.url });
+            }
+          }
           return (
-            <li key={p.id} className="border border-border p-4 flex items-center gap-4 flex-wrap hover:border-fg-muted transition-colors">
-              {p.thumbnail_url ? (
-                <div className="w-12 h-12 shrink-0 border border-border overflow-hidden bg-bg-muted">
-                  <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="w-12 h-12 shrink-0 border border-border bg-bg-muted flex items-center justify-center text-fg-muted text-xs">No img</div>
-              )}
-              <div className="flex-1 min-w-0">
-                <span className="font-medium text-fg">{p.name}</span>
-                {p.client && <span className="text-fg-muted text-sm ml-2">— {p.client}</span>}
-                {members.length > 0 && (
-                  <div className="flex items-center gap-1 mt-2">
-                    {members.slice(0, 5).map((u) => (
-                      <span key={u.id} title={u.full_name || u.email}>
-                        <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" />
-                      </span>
-                    ))}
-                    {members.length > 5 && <span className="text-[10px] text-fg-muted">+{members.length - 5}</span>}
+            <li key={p.id} className="border border-border hover:border-fg-muted transition-colors">
+              <div className="p-4 flex items-center gap-4 flex-wrap">
+                {p.thumbnail_url ? (
+                  <div className="w-12 h-12 shrink-0 border border-border overflow-hidden bg-bg-muted">
+                    <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />
                   </div>
+                ) : (
+                  <div className="w-12 h-12 shrink-0 border border-border bg-bg-muted flex items-center justify-center text-fg-muted text-xs">No img</div>
                 )}
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-fg">{p.name}</span>
+                  {p.client && <span className="text-fg-muted text-sm ml-2">— {p.client}</span>}
+                  {members.length > 0 && (
+                    <div className="flex items-center gap-1 mt-2">
+                      {members.slice(0, 5).map((u) => (
+                        <span key={u.id} title={u.full_name || u.email}>
+                          <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" />
+                        </span>
+                      ))}
+                      {members.length > 5 && <span className="text-[10px] text-fg-muted">+{members.length - 5}</span>}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button type="button" onClick={() => editProject(p)} className="text-xs px-3 py-1.5 border border-border hover:bg-bg-muted transition-colors flex items-center gap-1.5">
+                    <Pencil className="w-3 h-3" /> Edit
+                  </button>
+                  <button type="button" onClick={() => openMembers(p.id, p.name)} className="text-xs px-3 py-1.5 border border-border hover:bg-bg-muted transition-colors flex items-center gap-1.5">
+                    <Users className="w-3 h-3" /> Assign users
+                  </button>
+                  <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-xs px-3 py-1.5 border border-red-900/50 text-red-400 hover:bg-red-900/20 transition-colors flex items-center gap-1.5">
+                    <Trash2 className="w-3 h-3" /> Delete
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button type="button" onClick={() => editProject(p)} className="text-xs px-3 py-1.5 border border-border hover:bg-bg-muted transition-colors flex items-center gap-1.5">
-                  <Pencil className="w-3 h-3" /> Edit
-                </button>
-                <button type="button" onClick={() => openMembers(p.id, p.name)} className="text-xs px-3 py-1.5 border border-border hover:bg-bg-muted transition-colors flex items-center gap-1.5">
-                  <Users className="w-3 h-3" /> Assign users
-                </button>
-                <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-xs px-3 py-1.5 border border-red-900/50 text-red-400 hover:bg-red-900/20 transition-colors flex items-center gap-1.5">
-                  <Trash2 className="w-3 h-3" /> Delete
-                </button>
-              </div>
+              {linkEntries.length > 0 && (
+                <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {linkEntries.map((link, i) => (
+                    <LinkPreview key={`${link.url}-${i}`} url={link.url} label={link.label} />
+                  ))}
+                </div>
+              )}
             </li>
           );
         })}

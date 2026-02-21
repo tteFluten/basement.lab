@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { X, ExternalLink, Pencil, Upload } from "lucide-react";
-import { ICON_TEMPLATE } from "@/lib/iconTemplate";
+import { X, ExternalLink, Upload } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { IconPicker } from "@/components/IconPicker";
 
 export type SubmittedAppForm = {
   title: string;
@@ -33,6 +34,7 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,19 +182,7 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
               />
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-fg-muted mb-1">Edit link (optional)</label>
-            <div className="flex gap-2">
-              <Pencil className="w-4 h-4 text-fg-muted shrink-0 mt-2.5" />
-              <input
-                type="url"
-                value={form.editLink}
-                onChange={(e) => update({ editLink: e.target.value })}
-                placeholder="https://..."
-                className="flex-1 bg-bg-muted border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-fg-muted"
-              />
-            </div>
-          </div>
+          {/* Edit link hidden from public form; editable via admin panel */}
           <div>
             <label className="block text-xs font-medium text-fg-muted mb-1">Thumbnail (optional)</label>
             {thumbnailPreview ? (
@@ -224,23 +214,24 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
           </div>
           <div>
             <label className="block text-xs font-medium text-fg-muted mb-1">Icon (optional, used when no thumbnail)</label>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {ICON_TEMPLATE.map(({ name, label, Icon }) => (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => setSelectedIcon(selectedIcon === name ? null : name)}
-                  title={label}
-                  className={`p-2 border transition-colors ${
-                    selectedIcon === name
-                      ? "border-fg text-fg bg-bg-muted"
-                      : "border-border text-fg-muted hover:text-fg hover:border-fg-muted"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowIconPicker(true)}
+              className="flex items-center gap-2 px-3 py-2 border border-border text-sm text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
+            >
+              {selectedIcon ? (
+                <>
+                  {(() => {
+                    const iconMap = LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>;
+                    const Icon = iconMap[selectedIcon];
+                    return Icon ? <Icon className="w-4 h-4 text-fg" /> : null;
+                  })()}
+                  <span className="text-fg">{selectedIcon}</span>
+                </>
+              ) : (
+                <span>Select icon...</span>
+              )}
+            </button>
             {selectedIcon && (
               <p className="text-[10px] text-fg-muted mt-1">Selected icon will show in the list when no thumbnail is set.</p>
             )}
@@ -294,6 +285,14 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
           </div>
         </form>
       </div>
+
+      {showIconPicker && (
+        <IconPicker
+          value={selectedIcon}
+          onChange={(name) => setSelectedIcon(name)}
+          onClose={() => setShowIconPicker(false)}
+        />
+      )}
     </div>
   );
 }

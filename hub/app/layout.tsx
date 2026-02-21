@@ -3,6 +3,8 @@ import { GeistMono } from "geist/font/mono";
 import { Toolbar } from "@/components/Toolbar";
 import { Footer } from "@/components/Footer";
 import { SessionProvider } from "@/components/SessionProvider";
+import { AppTabsProvider } from "@/lib/appTabsContext";
+import { ContentWithTabs } from "@/components/ContentWithTabs";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,9 +24,11 @@ export default function RootLayout({
     <html lang="en" className={GeistMono.className} suppressHydrationWarning>
       <body className="font-mono antialiased min-h-screen flex flex-col">
         <SessionProvider>
-          <Toolbar />
-          <div className="flex-1 min-h-0 flex flex-col">{children}</div>
-          <Footer />
+          <AppTabsProvider>
+            <Toolbar />
+            <ContentWithTabs>{children}</ContentWithTabs>
+            <Footer />
+          </AppTabsProvider>
         </SessionProvider>
       </body>
     </html>
