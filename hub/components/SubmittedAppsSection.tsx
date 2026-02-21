@@ -26,8 +26,8 @@ function fmtDate(ts: number) {
 }
 
 function parseItems(json: { items?: unknown[] }): SubmittedAppItem[] {
-  const raw = json?.items ?? [];
-  return raw.map((row: Record<string, unknown>) => ({
+  const raw = (json?.items ?? []) as Record<string, unknown>[];
+  return raw.map((row) => ({
     id: String(row.id ?? ""),
     userId: row.userId != null ? String(row.userId) : null,
     title: String(row.title ?? ""),
