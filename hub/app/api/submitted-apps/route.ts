@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         .order("title", { ascending: true })
         .limit(limit);
       const fb = await fallback;
-      rows = fb.data;
+      rows = (fb.data as typeof rows);
       error = fb.error;
     }
 
