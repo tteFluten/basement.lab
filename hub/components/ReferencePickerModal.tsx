@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { getHistory, type HistoryItem } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
-import { Upload, Clock, Search, X, Check } from "lucide-react";
+import { Upload, Clock, Search, X, Check, User, Users } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -37,7 +38,7 @@ function LazyThumb({ src: s, appId }: { src: string; appId: string }) {
 function toHistoryItem(row: {
   id: string; appId: string; dataUrl?: string | null; blobUrl?: string;
   width?: number | null; height?: number | null; name?: string | null;
-  createdAt: number; tags?: string[];
+  createdAt: number; tags?: string[]; userId?: string;
 }): HistoryItem {
   return {
     id: row.id, dataUrl: row.dataUrl || "", appId: row.appId,
@@ -46,6 +47,7 @@ function toHistoryItem(row: {
     createdAt: row.createdAt,
     tags: Array.isArray(row.tags) ? row.tags : undefined,
     blobUrl: row.blobUrl,
+    userId: row.userId,
   };
 }
 
@@ -57,10 +59,13 @@ function fmtDate(ts: number) {
 
 export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   const [tab, setTab] = useState<Tab>("upload");
   const [dragOver, setDragOver] = useState(false);
   const [search, setSearch] = useState("");
   const [filterApp, setFilterApp] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState<"mine" | "all">("mine");
   const [apiItems, setApiItems] = useState<HistoryItem[]>([]);
   const [apiLoading, setApiLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -71,11 +76,12 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
     if (!open) return;
     setSearch("");
     setFilterApp("");
+    setOwnerFilter("mine");
     setSelectedId(null);
     setTab("upload");
 
     setApiLoading(true);
-    fetch("/api/generations?limit=50")
+    fetch("/api/generations?limit=100")
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d?.items)) setApiItems(d.items.map(toHistoryItem));
@@ -96,6 +102,9 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
 
   const filtered = useMemo(() => {
     let list = allItems;
+    if (ownerFilter === "mine" && currentUserId) {
+      list = list.filter((i) => i.userId === currentUserId || i.id.startsWith("h-"));
+    }
     if (filterApp) list = list.filter((i) => i.appId === filterApp);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -106,7 +115,7 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
       );
     }
     return list;
-  }, [allItems, filterApp, search]);
+  }, [allItems, ownerFilter, currentUserId, filterApp, search]);
 
   const handleFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -214,24 +223,40 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
             </div>
           ) : (
             <div>
-              {/* Search + filter */}
-              <div className="px-4 pt-3 pb-2 flex gap-2 sticky top-0 bg-bg z-10 border-b border-border">
-                <div className="flex-1 flex items-center gap-2 border border-border bg-bg-muted px-3 py-1.5">
-                  <Search className="w-3.5 h-3.5 text-fg-muted shrink-0" />
-                  <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search..."
-                    className="flex-1 bg-transparent text-xs text-fg placeholder:text-fg-muted focus:outline-none" />
-                  {search && (
-                    <button type="button" onClick={() => setSearch("")} className="text-fg-muted hover:text-fg">
-                      <X className="w-3 h-3" />
+              {/* Owner toggle + Search + filter */}
+              <div className="px-4 pt-3 pb-2 flex flex-col gap-2 sticky top-0 bg-bg z-10 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="flex border border-border">
+                    <button type="button" onClick={() => setOwnerFilter("mine")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] uppercase tracking-wider transition-colors ${
+                        ownerFilter === "mine" ? "bg-fg text-bg" : "text-fg-muted hover:text-fg"
+                      }`}>
+                      <User className="w-3 h-3" /> Mine
                     </button>
-                  )}
+                    <button type="button" onClick={() => setOwnerFilter("all")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] uppercase tracking-wider transition-colors ${
+                        ownerFilter === "all" ? "bg-fg text-bg" : "text-fg-muted hover:text-fg"
+                      }`}>
+                      <Users className="w-3 h-3" /> All
+                    </button>
+                  </div>
+                  <div className="flex-1 flex items-center gap-2 border border-border bg-bg-muted px-3 py-1.5">
+                    <Search className="w-3.5 h-3.5 text-fg-muted shrink-0" />
+                    <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search..."
+                      className="flex-1 bg-transparent text-xs text-fg placeholder:text-fg-muted focus:outline-none" />
+                    {search && (
+                      <button type="button" onClick={() => setSearch("")} className="text-fg-muted hover:text-fg">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  <select value={filterApp} onChange={(e) => setFilterApp(e.target.value)}
+                    className="bg-bg-muted border border-border px-2 py-1.5 text-xs text-fg">
+                    <option value="">All apps</option>
+                    {getAppIds().map((id) => <option key={id} value={id}>{getAppLabel(id)}</option>)}
+                  </select>
                 </div>
-                <select value={filterApp} onChange={(e) => setFilterApp(e.target.value)}
-                  className="bg-bg-muted border border-border px-2 py-1.5 text-xs text-fg">
-                  <option value="">All apps</option>
-                  {getAppIds().map((id) => <option key={id} value={id}>{getAppLabel(id)}</option>)}
-                </select>
               </div>
 
               {/* Grid */}

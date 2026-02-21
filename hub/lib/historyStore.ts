@@ -22,6 +22,8 @@ export interface HistoryItem {
   blobUrl?: string;
   /** Project ID from API */
   projectId?: string;
+  /** User ID of the generation owner */
+  userId?: string;
 }
 
 const MAX_ITEMS = 30;
