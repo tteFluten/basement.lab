@@ -7,12 +7,12 @@ import { SubmittedAppsSection } from "@/components/SubmittedAppsSection";
 import { AddSubmittedAppModal } from "@/components/AddSubmittedAppModal";
 
 const APPS = [
-  { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film, color: "#1a1215", span: "col-span-2 row-span-2" },
-  { slug: "render", label: "Render", desc: "4K render from viewport previews and prompts", Icon: ImagePlus, color: "#1a1611", span: "col-span-1 row-span-2" },
-  { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock, color: "#111520", span: "col-span-1 row-span-1" },
-  { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt, color: "#111a14", span: "col-span-1 row-span-1" },
-  { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization", Icon: UserCircle, color: "#15111a", span: "col-span-1 row-span-1" },
-  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, color: "#111a1a", span: "col-span-2 row-span-1" },
+  { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film, span: "col-span-2 row-span-2", cover: "/app-covers/cineprompt.jpg" },
+  { slug: "render", label: "Render", desc: "4K render from viewport previews and prompts", Icon: ImagePlus, span: "col-span-1 row-span-2", cover: "/app-covers/render.jpg" },
+  { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock, span: "col-span-1 row-span-1", cover: "/app-covers/chronos.jpg" },
+  { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt, span: "col-span-1 row-span-1", cover: "/app-covers/swag.jpg" },
+  { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization", Icon: UserCircle, span: "col-span-1 row-span-1", cover: "/app-covers/avatar.jpg" },
+  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-2 row-span-1", cover: "/app-covers/frame-variator.jpg" },
 ];
 
 export function HomeAppsSection() {
@@ -25,27 +25,29 @@ export function HomeAppsSection() {
       <section className="mb-10">
         <h2 className="text-xs font-bold text-fg-muted uppercase tracking-[0.2em] mb-4">Apps</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 auto-rows-[140px] sm:auto-rows-[160px] md:auto-rows-[180px] gap-3">
-          {APPS.map(({ slug, label, desc, Icon, color, span }) => (
+          {APPS.map(({ slug, label, desc, Icon, span, cover }) => (
             <Link
               key={slug}
               href={`/apps/${slug}`}
-              className={`${span} group relative overflow-hidden border border-border hover:border-fg-muted transition-all duration-300 flex flex-col justify-end p-5`}
-              style={{ backgroundColor: color }}
+              className={`${span} group relative overflow-hidden border border-border hover:border-fg-muted transition-all duration-300 flex flex-col justify-end p-5 bg-black`}
             >
-              <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Icon size={48} strokeWidth={1} />
-              </div>
+              <img
+                src={cover}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-border/60 text-fg-muted group-hover:text-fg group-hover:border-fg-muted transition-colors">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-white/20 text-white/70 group-hover:text-white group-hover:border-white/40 transition-colors backdrop-blur-sm bg-black/20">
                     <Icon size={14} strokeWidth={1.5} />
                   </span>
-                  <span className="text-sm font-medium text-fg group-hover:text-white transition-colors">{label}</span>
+                  <span className="text-sm font-medium text-white drop-shadow-sm">{label}</span>
                 </div>
-                <p className="text-xs text-fg-muted group-hover:text-zinc-400 transition-colors leading-relaxed">{desc}</p>
+                <p className="text-xs text-white/60 group-hover:text-white/80 transition-colors leading-relaxed drop-shadow-sm">{desc}</p>
               </div>
-              <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ArrowRight className="w-4 h-4 text-fg-muted" />
+              <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <ArrowRight className="w-4 h-4 text-white/60" />
               </div>
             </Link>
           ))}
