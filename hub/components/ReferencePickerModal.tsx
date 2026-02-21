@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { getHistory, type HistoryItem } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
 import { Upload, Clock, Search, X, Check, User, Users } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 
 type Props = {
   open: boolean;
@@ -261,11 +262,7 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
 
               {/* Grid */}
               {apiLoading && allItems.length === 0 ? (
-                <div className="p-4 grid grid-cols-4 gap-2">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="aspect-square bg-zinc-800/60 animate-pulse" />
-                  ))}
-                </div>
+                <Spinner label="Loading history..." />
               ) : filtered.length === 0 ? (
                 <div className="p-8 text-center">
                   <p className="text-xs text-fg-muted">{allItems.length === 0 ? "No history items yet." : "No items match."}</p>

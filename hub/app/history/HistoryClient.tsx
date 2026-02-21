@@ -7,6 +7,7 @@ import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow,
 } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 import { Avatar } from "@/components/Avatar";
 
 /* ─── helpers ─── */
@@ -727,7 +728,7 @@ export function HistoryClient() {
 
         {/* Content */}
         {apiLoading && apiItems.length === 0 ? (
-          <SkeletonGrid count={view === "list" ? 5 : view === "large" ? 8 : 12} view={view} />
+          <Spinner size={28} label="Loading history..." />
         ) : apiError && apiItems.length === 0 ? (
           <p className="text-amber-400/90 text-sm">{apiError}</p>
         ) : filtered.length === 0 ? (

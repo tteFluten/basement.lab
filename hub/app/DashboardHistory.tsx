@@ -5,6 +5,7 @@ import { getHistory, type HistoryItem } from "@/lib/historyStore";
 import { getAppLabel } from "@/lib/appIcons";
 import Link from "next/link";
 import { ArrowRight, Download } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 
 function toHistoryItem(row: {
   id: string; appId: string; dataUrl?: string | null; blobUrl?: string;
@@ -99,13 +100,7 @@ export function DashboardHistory() {
   }, [apiItems, memoryItems]);
 
   if (loading && items.length === 0) {
-    return (
-      <div className="columns-2 sm:columns-3 md:columns-4 gap-1.5">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="mb-1.5 animate-pulse bg-zinc-800/40" style={{ height: `${140 + (i % 3) * 60}px` }} />
-        ))}
-      </div>
-    );
+    return <Spinner size={28} label="Loading gallery..." />;
   }
 
   if (items.length === 0) {
