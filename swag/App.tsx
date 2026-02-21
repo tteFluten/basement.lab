@@ -26,15 +26,16 @@ const App: React.FC = () => {
   const [items, setItems] = useState<ResultItem[]>([]);
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
   
-  // In Hub embed we never need a client key (Hub uses server-side key). Otherwise check API_KEY / aistudio.
-  const [hasKey, setHasKey] = useState(() => isHubEnv() || !!process.env.API_KEY);
+  // In Hub embed we never need a client key (Hub uses server-side key). Same when served at /embed/ (same-origin).
+  const isEmbedMode = typeof window !== "undefined" && window.location.pathname.startsWith("/embed/");
+  const [hasKey, setHasKey] = useState(() => isHubEnv() || isEmbedMode || !!process.env.API_KEY);
   const [error, setError] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const styleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isHubEnv()) {
+    if (isHubEnv() || (typeof window !== "undefined" && window.location.pathname.startsWith("/embed/"))) {
       setHasKey(true);
       return;
     }
