@@ -1,6 +1,6 @@
 "use client";
 
-import { addToHistory } from "@/lib/historyStore";
+import { addToHistory, removeFromHistory } from "@/lib/historyStore";
 import { getCurrentProjectId } from "@/lib/currentProject";
 
 type Props = {
@@ -85,7 +85,7 @@ export function DownloadActionModal({
     img.onload = () => {
       const width = img.naturalWidth;
       const height = img.naturalHeight;
-      addToHistory({
+      const memItem = addToHistory({
         dataUrl: assetDataUrl,
         appId,
         name,
@@ -95,7 +95,6 @@ export function DownloadActionModal({
         height,
       });
       triggerDownload();
-      // Persist to Supabase + Blob when configured
       const projectId = getCurrentProjectId();
       fetch("/api/generations", {
         method: "POST",
@@ -108,7 +107,9 @@ export function DownloadActionModal({
           height,
           ...(projectId ? { projectId } : {}),
         }),
-      }).catch(() => {});
+      })
+        .then((r) => { if (r.ok) removeFromHistory(memItem.id); })
+        .catch(() => {});
     };
     img.onerror = () => {
       addToHistory({

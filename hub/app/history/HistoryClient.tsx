@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { getHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
+import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
@@ -658,8 +658,15 @@ export function HistoryClient() {
 
   const handleDelete = useCallback(async (id: string) => {
     if (deletingId) return; setDeletingId(id);
-    try { const res = await fetch(`/api/generations/${id}`, { method: "DELETE" }); if (res.ok) fetchApi(); }
-    finally { setDeletingId(null); }
+    try {
+      if (id.startsWith("h-")) {
+        removeFromHistory(id);
+        setMemoryItems(getHistory());
+      } else {
+        const res = await fetch(`/api/generations/${id}`, { method: "DELETE" });
+        if (res.ok) fetchApi();
+      }
+    } finally { setDeletingId(null); }
   }, [deletingId, fetchApi]);
 
   const lbSrc = lightboxItem ? imgUrl(lightboxItem) : "";

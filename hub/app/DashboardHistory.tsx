@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getHistory, type HistoryItem } from "@/lib/historyStore";
 import { getAppLabel } from "@/lib/appIcons";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
 
 function toHistoryItem(row: {
   id: string; appId: string; dataUrl?: string | null; blobUrl?: string;
@@ -21,9 +21,19 @@ function toHistoryItem(row: {
   };
 }
 
+function downloadUrl(url: string, name: string) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${name}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 function GalleryImage({ item }: { item: HistoryItem }) {
   const url = item.dataUrl || item.blobUrl || "";
   const [loaded, setLoaded] = useState(false);
+  const label = item.name || getAppLabel(item.appId);
 
   if (!url) return null;
 
@@ -34,16 +44,24 @@ function GalleryImage({ item }: { item: HistoryItem }) {
     >
       <img
         src={url}
-        alt={item.name || getAppLabel(item.appId)}
+        alt={label}
         loading="lazy"
         decoding="async"
         onLoad={() => setLoaded(true)}
         className={`w-full h-auto block transition-all duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
       />
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-end justify-start p-3 opacity-0 group-hover:opacity-100">
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-end justify-between p-3 opacity-0 group-hover:opacity-100">
         <span className="text-[10px] text-white/80 font-medium tracking-wider uppercase">
-          {item.name || getAppLabel(item.appId)}
+          {label}
         </span>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); downloadUrl(url, label); }}
+          className="flex items-center justify-center w-7 h-7 bg-white/90 hover:bg-white text-black transition-colors shrink-0"
+          title="Download"
+        >
+          <Download className="w-3.5 h-3.5" />
+        </button>
       </div>
     </Link>
   );
