@@ -255,17 +255,15 @@ function SubmittedAppsMenu() {
           ) : (
             items.map((app) => (
               <li key={app.id} role="none">
-                <a
-                  href={app.deployLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  href={`/submitted-apps/${app.id}`}
                   className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-fg hover:bg-bg"
                   role="menuitem"
                   onClick={() => setOpen(false)}
                 >
                   <span className="truncate">{app.title}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-fg-muted shrink-0" />
-                </a>
+                  <ArrowRight className="w-3.5 h-3.5 text-fg-muted shrink-0" />
+                </Link>
               </li>
             ))
           )}

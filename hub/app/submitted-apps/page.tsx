@@ -192,7 +192,7 @@ export default function SubmittedAppsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-fg">{app.title}</span>
+                    <Link href={`/submitted-apps/${app.id}`} className="text-sm font-medium text-fg hover:underline">{app.title}</Link>
                     <span className="text-xs text-fg-muted">v{app.version}</span>
                     {app.tags.length > 0 && (
                       <span className="flex flex-wrap gap-1">

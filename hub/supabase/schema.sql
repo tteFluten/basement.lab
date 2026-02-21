@@ -79,4 +79,31 @@ create index if not exists idx_submitted_apps_created_at on public.submitted_app
 create index if not exists idx_submitted_apps_title on public.submitted_apps(lower(title));
 create index if not exists idx_submitted_apps_tags on public.submitted_apps using gin(tags);
 
+-- Bug reports on submitted apps
+create table if not exists public.bug_reports (
+  id uuid primary key default gen_random_uuid(),
+  app_id uuid references public.submitted_apps(id) on delete cascade,
+  user_id uuid references public.users(id) on delete set null,
+  title text not null,
+  description text,
+  status text not null default 'open' check (status in ('open', 'resolved', 'closed')),
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_bug_reports_app_id on public.bug_reports(app_id);
+create index if not exists idx_bug_reports_user_id on public.bug_reports(user_id);
+
+-- Ratings / points on submitted apps (one per user per app)
+create table if not exists public.app_ratings (
+  id uuid primary key default gen_random_uuid(),
+  app_id uuid references public.submitted_apps(id) on delete cascade,
+  user_id uuid references public.users(id) on delete cascade,
+  score int not null check (score >= 1 and score <= 5),
+  created_at timestamptz default now(),
+  unique (app_id, user_id)
+);
+
+create index if not exists idx_app_ratings_app_id on public.app_ratings(app_id);
+create index if not exists idx_app_ratings_user_id on public.app_ratings(user_id);
+
 -- Optional: seed admin. Run hub/supabase/seed.sql after this schema to set lautaro@basement.studio as admin.

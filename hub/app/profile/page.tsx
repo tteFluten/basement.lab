@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
-import { Camera } from "lucide-react";
+import { Camera, Bug, Star } from "lucide-react";
 
 type Profile = {
   id: string;
@@ -103,6 +104,22 @@ export default function ProfilePage() {
     );
   }
 
+  type BugItem = { id: string; appId: string; appTitle: string; title: string; status: string; createdAt: number };
+  type RatingItem = { id: string; appId: string; appTitle: string; score: number; createdAt: number };
+
+  const [activityBugs, setActivityBugs] = useState<BugItem[]>([]);
+  const [activityRatings, setActivityRatings] = useState<RatingItem[]>([]);
+
+  useEffect(() => {
+    fetch("/api/me/activity")
+      .then((r) => r.json())
+      .then((d) => {
+        setActivityBugs(Array.isArray(d?.bugs) ? d.bugs : []);
+        setActivityRatings(Array.isArray(d?.ratings) ? d.ratings : []);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <main className="p-8 max-w-xl">
       <h1 className="text-xl font-medium border-b border-border pb-2 mb-6">Profile</h1>
@@ -181,6 +198,49 @@ export default function ProfilePage() {
           {saved && <span className="text-xs text-green-500">Profile updated.</span>}
         </div>
       </form>
+
+      {/* Activity: bugs reported */}
+      <section className="mt-10 border-t border-border pt-6">
+        <h2 className="text-sm font-medium text-fg mb-3 flex items-center gap-2">
+          <Bug className="w-4 h-4" /> Bug Reports ({activityBugs.length})
+        </h2>
+        {activityBugs.length === 0 ? (
+          <p className="text-xs text-fg-muted">No bug reports yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {activityBugs.map((b) => (
+              <li key={b.id} className="flex items-center gap-3 text-xs">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${b.status === "open" ? "bg-amber-400" : b.status === "resolved" ? "bg-green-400" : "bg-zinc-500"}`} />
+                <Link href={`/submitted-apps/${b.appId}`} className="text-fg hover:underline truncate">{b.title}</Link>
+                <span className="text-fg-muted shrink-0">on {b.appTitle}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Activity: ratings given */}
+      <section className="mt-6 border-t border-border pt-6">
+        <h2 className="text-sm font-medium text-fg mb-3 flex items-center gap-2">
+          <Star className="w-4 h-4" /> Ratings Given ({activityRatings.length})
+        </h2>
+        {activityRatings.length === 0 ? (
+          <p className="text-xs text-fg-muted">No ratings given yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {activityRatings.map((r) => (
+              <li key={r.id} className="flex items-center gap-3 text-xs">
+                <span className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star key={n} className={`w-3 h-3 ${n <= r.score ? "text-amber-400 fill-amber-400" : "text-zinc-600"}`} />
+                  ))}
+                </span>
+                <Link href={`/submitted-apps/${r.appId}`} className="text-fg hover:underline truncate">{r.appTitle}</Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
