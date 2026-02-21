@@ -30,6 +30,36 @@ function fmtDate(ts: number) {
   });
 }
 
+function AppThumbnail({
+  thumbnailUrl,
+  icon,
+  className = "",
+}: {
+  thumbnailUrl: string | null;
+  icon: string | null;
+  className?: string;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const TemplateIcon = getTemplateIcon(icon);
+  const showImg = thumbnailUrl && !imgFailed;
+  return (
+    <div className={`bg-bg-muted border border-border flex items-center justify-center overflow-hidden ${className}`}>
+      {showImg ? (
+        <img
+          src={thumbnailUrl!}
+          alt=""
+          className="w-full h-full object-cover"
+          onError={() => setImgFailed(true)}
+        />
+      ) : TemplateIcon ? (
+        <TemplateIcon className="w-6 h-6 text-fg-muted" />
+      ) : (
+        <ImageIcon className="w-6 h-6 text-fg-muted" />
+      )}
+    </div>
+  );
+}
+
 function parseItems(json: { items?: unknown[] }): SubmittedApp[] {
   const raw = (json?.items ?? []) as Record<string, unknown>[];
   return raw.map((row) => ({
