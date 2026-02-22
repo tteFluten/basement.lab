@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Search, X, Pencil, Check, Trash2, Plus, Camera, Ban, CheckCircle, UserPlus } from "lucide-react";
+import { Search, X, Pencil, Check, Trash2, Plus, Camera, Ban, CheckCircle, UserPlus, KeyRound } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 
 type User = {
@@ -27,6 +27,11 @@ export default function AdminUsersPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const [passwordUserId, setPasswordUserId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [createEmail, setCreateEmail] = useState("");
@@ -116,6 +121,29 @@ export default function AdminUsersPage() {
     if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
     await fetch(`/api/users/${id}`, { method: "DELETE" });
     fetchUsers();
+  };
+
+  const handleChangePassword = async (id: string) => {
+    if (savingPassword || newPassword.length < 4) return;
+    setSavingPassword(true);
+    setPasswordMsg(null);
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      if (res.ok) {
+        setPasswordMsg({ ok: true, text: "Password updated" });
+        setNewPassword("");
+        setTimeout(() => { setPasswordUserId(null); setPasswordMsg(null); }, 1500);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setPasswordMsg({ ok: false, text: d.error || "Failed" });
+      }
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -317,39 +345,80 @@ export default function AdminUsersPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-4">
-                    <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="md" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-fg">{u.full_name || u.email}</span>
-                        {u.nickname && <span className="text-xs text-fg-muted">({u.nickname})</span>}
-                        <span className={`text-[10px] px-1.5 py-0.5 border ${u.role === "admin" ? "border-amber-600 text-amber-400" : "border-border text-fg-muted"}`}>
-                          {u.role}
-                        </span>
-                        {isSuspended && (
-                          <span className="text-[10px] px-1.5 py-0.5 border border-red-800 text-red-400">
-                            suspended
+                  <>
+                    <div className="flex items-center gap-4">
+                      <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="md" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-fg">{u.full_name || u.email}</span>
+                          {u.nickname && <span className="text-xs text-fg-muted">({u.nickname})</span>}
+                          <span className={`text-[10px] px-1.5 py-0.5 border ${u.role === "admin" ? "border-amber-600 text-amber-400" : "border-border text-fg-muted"}`}>
+                            {u.role}
+                          </span>
+                          {isSuspended && (
+                            <span className="text-[10px] px-1.5 py-0.5 border border-red-800 text-red-400">
+                              suspended
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-fg-muted">{u.email}</p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button type="button" onClick={() => startEdit(u)} title="Edit"
+                          className="p-2 text-fg-muted hover:text-fg border border-transparent hover:border-border transition-colors">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button type="button"
+                          onClick={() => { setPasswordUserId(passwordUserId === u.id ? null : u.id); setNewPassword(""); setPasswordMsg(null); }}
+                          title="Change password"
+                          className={`p-2 border border-transparent transition-colors ${passwordUserId === u.id ? "text-fg border-border" : "text-fg-muted hover:text-fg hover:border-border"}`}>
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                        <button type="button" onClick={() => toggleSuspend(u)}
+                          title={isSuspended ? "Reactivate" : "Suspend"}
+                          className={`p-2 border border-transparent transition-colors ${isSuspended ? "text-green-600 hover:text-green-400 hover:border-green-900/50" : "text-fg-muted hover:text-amber-400 hover:border-amber-900/50"}`}>
+                          {isSuspended ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                        </button>
+                        <button type="button" onClick={() => deleteUser(u.id, u.email)} title="Delete"
+                          className="p-2 text-fg-muted hover:text-red-400 border border-transparent hover:border-red-900/50 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {passwordUserId === u.id && (
+                      <div className="mt-3 pt-3 border-t border-border flex items-center gap-3 flex-wrap">
+                        <KeyRound className="w-4 h-4 text-fg-muted shrink-0" />
+                        <input
+                          type="text"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="New password (min 4 chars)"
+                          className="flex-1 max-w-[220px] bg-bg border border-border px-2 py-1.5 text-sm text-fg focus:outline-none focus:border-fg-muted"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleChangePassword(u.id)}
+                          disabled={savingPassword || newPassword.length < 4}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-fg text-bg hover:opacity-90 disabled:opacity-50"
+                        >
+                          <Check className="w-3 h-3" /> {savingPassword ? "Saving…" : "Set"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPasswordUserId(null); setPasswordMsg(null); }}
+                          className="px-3 py-1.5 text-xs border border-border hover:bg-bg-muted"
+                        >
+                          Cancel
+                        </button>
+                        {passwordMsg && (
+                          <span className={`text-xs ${passwordMsg.ok ? "text-green-400" : "text-red-400"}`}>
+                            {passwordMsg.text}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-fg-muted">{u.email}</p>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button type="button" onClick={() => startEdit(u)} title="Edit"
-                        className="p-2 text-fg-muted hover:text-fg border border-transparent hover:border-border transition-colors">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button type="button" onClick={() => toggleSuspend(u)}
-                        title={isSuspended ? "Reactivate" : "Suspend"}
-                        className={`p-2 border border-transparent transition-colors ${isSuspended ? "text-green-600 hover:text-green-400 hover:border-green-900/50" : "text-fg-muted hover:text-amber-400 hover:border-amber-900/50"}`}>
-                        {isSuspended ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
-                      </button>
-                      <button type="button" onClick={() => deleteUser(u.id, u.email)} title="Delete"
-                        className="p-2 text-fg-muted hover:text-red-400 border border-transparent hover:border-red-900/50 transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                    )}
+                  </>
                 )}
               </li>
             );

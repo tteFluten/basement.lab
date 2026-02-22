@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import bcrypt from "bcryptjs";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
 import { authOptions } from "@/lib/auth";
 
@@ -22,6 +23,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (typeof body.avatar_url === "string") updates.avatar_url = body.avatar_url.trim() || null;
   if (body.avatar_url === null) updates.avatar_url = null;
   if (typeof body.status === "string" && ["active", "suspended"].includes(body.status)) updates.status = body.status;
+  if (typeof body.password === "string" && body.password.length >= 4) {
+    updates.password_hash = await bcrypt.hash(body.password, 10);
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
