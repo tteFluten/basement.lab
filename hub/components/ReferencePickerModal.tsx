@@ -102,7 +102,7 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
   const filtered = useMemo(() => {
     let list = allItems;
     if (ownerFilter === "mine" && currentUserId) {
-      list = list.filter((i) => i.userId === currentUserId || i.id.startsWith("h-"));
+      list = list.filter((i) => i.userId === currentUserId || !i.userId || i.id.startsWith("h-"));
     }
     if (filterApp) list = list.filter((i) => i.appId === filterApp);
     if (search.trim()) {

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
-import { getCachedGenerations, isCacheReady, invalidateGenerationsCache, fetchGenerations } from "@/lib/generationsCache";
+import { getCachedGenerations, isCacheReady, subscribeGenerations } from "@/lib/generationsCache";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow, Loader2,
@@ -624,20 +624,21 @@ export function HistoryClient() {
   }, [filterProjectId, filterUserId, filterTag, filterAppId]);
 
   const [refreshing, setRefreshing] = useState(false);
+  const everLoaded = useRef(isCacheReady());
 
   const fetchApi = useCallback(async () => {
     setApiError(null);
-    const isFirstLoad = apiItems.length === 0 && !isCacheReady();
-    if (isFirstLoad) setApiLoading(true);
+    if (!everLoaded.current) setApiLoading(true);
     else setRefreshing(true);
     try {
       const res = await fetch(`/api/generations?${qs}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok) { setApiError(json.error ?? `Error ${res.status}`); return; }
       setApiItems((json.items ?? []).map(toItem));
+      everLoaded.current = true;
     } catch (e) { setApiError(e instanceof Error ? e.message : "Network error"); }
     finally { setApiLoading(false); setRefreshing(false); }
-  }, [qs, apiItems.length]);
+  }, [qs]);
 
   useEffect(() => { fetchApi(); }, [fetchApi]);
   useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setProjects(Array.isArray(d?.items) ? d.items : [])).catch(() => {}); }, []);
@@ -648,13 +649,21 @@ export function HistoryClient() {
     return () => clearInterval(iv);
   }, []);
 
+  const [cacheExtra, setCacheExtra] = useState<HistoryItem[]>([]);
+  useEffect(() => {
+    const sync = () => setCacheExtra(getCachedGenerations().map(toItem));
+    const unsub = subscribeGenerations(sync);
+    return unsub;
+  }, []);
+
   const items = useMemo(() => {
     const combined = [...apiItems];
     const seen = new Set(apiItems.map((i) => i.id));
+    for (const c of cacheExtra) { if (!seen.has(c.id)) { seen.add(c.id); combined.push(c); } }
     for (const m of memoryItems) { if (!seen.has(m.id)) { seen.add(m.id); combined.push(m); } }
     combined.sort((a, b) => b.createdAt - a.createdAt);
     return combined;
-  }, [apiItems, memoryItems]);
+  }, [apiItems, cacheExtra, memoryItems]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -789,7 +798,7 @@ export function HistoryClient() {
             <div className="relative max-w-[95vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
               {lbSrc ? <img src={lbSrc} alt="" className="max-w-full max-h-[85vh] object-contain border border-border" /> : <div className="text-fg-muted text-base">No image</div>}
             </div>
-            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-4 px-5 py-3 bg-bg/95 border border-border">
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-4 px-5 py-3 bg-black/90 border border-border">
               <span className="text-xs text-fg-muted">{getAppLabel(lightboxItem.appId)} · {fmtDate(lightboxItem.createdAt)}</span>
               <button type="button" onClick={() => { setLightboxItem(null); setEditItem(lightboxItem); }}
                 className="py-2 px-4 border border-border text-fg-muted text-xs font-bold uppercase hover:text-fg transition-colors flex items-center gap-1.5">

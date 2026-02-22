@@ -37,7 +37,7 @@ function GalleryImage({ item }: { item: HistoryItem }) {
 
   return (
     <Link
-      href="/history"
+      href={`/history?highlight=${item.id}`}
       className="block relative overflow-hidden group"
     >
       <img
