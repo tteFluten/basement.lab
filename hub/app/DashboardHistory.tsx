@@ -3,22 +3,19 @@
 import { useEffect, useState, useMemo } from "react";
 import { getHistory, type HistoryItem } from "@/lib/historyStore";
 import { getAppLabel } from "@/lib/appIcons";
+import { useGenerations } from "@/lib/useGenerations";
 import Link from "next/link";
 import { ArrowRight, Download } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 
-function toHistoryItem(row: {
-  id: string; appId: string; dataUrl?: string | null; blobUrl?: string;
-  width?: number | null; height?: number | null; name?: string | null;
-  createdAt: number; tags?: string[];
-}): HistoryItem {
+function toHistoryItem(g: { id: string; appId: string; dataUrl?: string | null; blobUrl?: string; width?: number | null; height?: number | null; name?: string | null; createdAt: number; tags?: string[] }): HistoryItem {
   return {
-    id: row.id, dataUrl: row.dataUrl || "", appId: row.appId,
-    name: row.name ?? undefined, width: row.width ?? undefined,
-    height: row.height ?? undefined, mimeType: "image/png",
-    createdAt: row.createdAt,
-    tags: Array.isArray(row.tags) ? row.tags : undefined,
-    blobUrl: row.blobUrl,
+    id: g.id, dataUrl: g.dataUrl || "", appId: g.appId,
+    name: g.name ?? undefined, width: g.width ?? undefined,
+    height: g.height ?? undefined, mimeType: "image/png",
+    createdAt: g.createdAt,
+    tags: Array.isArray(g.tags) ? g.tags : undefined,
+    blobUrl: g.blobUrl,
   };
 }
 
@@ -69,25 +66,16 @@ function GalleryImage({ item }: { item: HistoryItem }) {
 }
 
 export function DashboardHistory() {
-  const [apiItems, setApiItems] = useState<HistoryItem[]>([]);
+  const { items: apiGens, loading } = useGenerations(12);
   const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/generations?limit=12")
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d?.items)) setApiItems(d.items.map(toHistoryItem));
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   useEffect(() => {
     setMemoryItems(getHistory());
     const iv = setInterval(() => setMemoryItems(getHistory()), 3000);
     return () => clearInterval(iv);
   }, []);
+
+  const apiItems = useMemo(() => apiGens.map(toHistoryItem), [apiGens]);
 
   const items = useMemo(() => {
     const combined = [...apiItems];

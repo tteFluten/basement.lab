@@ -2,6 +2,7 @@
 
 import { addToHistory, removeFromHistory } from "@/lib/historyStore";
 import { getCurrentProjectId } from "@/lib/currentProject";
+import { invalidateGenerationsCache } from "@/lib/generationsCache";
 
 type Props = {
   open: boolean;
@@ -108,7 +109,7 @@ export function DownloadActionModal({
           ...(projectId ? { projectId } : {}),
         }),
       })
-        .then((r) => { if (r.ok) removeFromHistory(memItem.id); })
+        .then((r) => { if (r.ok) { removeFromHistory(memItem.id); invalidateGenerationsCache(); } })
         .catch(() => {});
     };
     img.onerror = () => {

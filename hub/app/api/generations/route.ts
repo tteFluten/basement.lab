@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
     const tag = searchParams.get("tag") ?? undefined;
     const appId = searchParams.get("appId") ?? undefined;
     const limit = Math.min(Number(searchParams.get("limit")) || 100, 200);
+    const light = searchParams.get("light") === "1";
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
     const supabase = getSupabase();
@@ -181,22 +182,26 @@ export async function GET(request: NextRequest) {
       tags?: string[];
     };
     const rows: GenRow[] = (data ?? []) as GenRow[];
-    const userIds = Array.from(new Set((rows.map((r) => r.user_id).filter(Boolean) as string[])));
+
     let userMap: Map<string, { fullName: string | null; avatarUrl: string | null }> = new Map();
-    if (userIds.length > 0) {
-      const { data: userRows } = await supabase
-        .from("users")
-        .select("id, full_name, avatar_url")
-        .in("id", userIds);
-      for (const u of userRows ?? []) {
-        userMap.set(u.id, {
-          fullName: u.full_name ?? null,
-          avatarUrl: u.avatar_url ?? null,
-        });
+    if (!light) {
+      const userIds = Array.from(new Set((rows.map((r) => r.user_id).filter(Boolean) as string[])));
+      if (userIds.length > 0) {
+        const { data: userRows } = await supabase
+          .from("users")
+          .select("id, full_name, avatar_url")
+          .in("id", userIds);
+        for (const u of userRows ?? []) {
+          userMap.set(u.id, {
+            fullName: u.full_name ?? null,
+            avatarUrl: u.avatar_url ?? null,
+          });
+        }
       }
     }
+
     const items = rows.map((row) => {
-      const user = row.user_id ? userMap.get(row.user_id) : undefined;
+      const user = !light && row.user_id ? userMap.get(row.user_id) : undefined;
       return {
         id: row.id,
         appId: row.app_id,
@@ -209,11 +214,16 @@ export async function GET(request: NextRequest) {
         userId: row.user_id,
         projectId: row.project_id,
         tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
-        user: user ? { fullName: user.fullName, avatarUrl: user.avatarUrl } : undefined,
+        ...(user ? { user: { fullName: user.fullName, avatarUrl: user.avatarUrl } } : {}),
       };
     });
 
-    return NextResponse.json({ items });
+    const headers: HeadersInit = {};
+    if (light) {
+      headers["Cache-Control"] = "private, max-age=15, stale-while-revalidate=60";
+    }
+
+    return NextResponse.json({ items }, { headers });
   } catch (e) {
     console.error("GET /api/generations:", e);
     return NextResponse.json(

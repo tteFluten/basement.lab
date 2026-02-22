@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
+import { getCachedGenerations, isCacheReady, invalidateGenerationsCache, fetchGenerations } from "@/lib/generationsCache";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow,
@@ -590,12 +591,17 @@ function ToolBtn({ active, onClick, children, title }: { active: boolean; onClic
 /* ─── main ─── */
 
 export function HistoryClient() {
-  const [apiItems, setApiItems] = useState<HistoryItem[]>([]);
+  const [apiItems, setApiItems] = useState<HistoryItem[]>(() => {
+    if (isCacheReady()) {
+      return getCachedGenerations().map(toItem);
+    }
+    return [];
+  });
   const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [lightboxItem, setLightboxItem] = useState<HistoryItem | null>(null);
   const [editItem, setEditItem] = useState<HistoryItem | null>(null);
-  const [apiLoading, setApiLoading] = useState(true);
+  const [apiLoading, setApiLoading] = useState(!isCacheReady());
   const [apiError, setApiError] = useState<string | null>(null);
   const [projects, setProjects] = useState<Proj[]>([]);
   const [users, setUsers] = useState<Usr[]>([]);

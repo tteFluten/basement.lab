@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { getHistory, type HistoryItem } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
+import { useGenerations } from "@/lib/useGenerations";
 import { Upload, Clock, Search, X, Check, User, Users } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 
@@ -39,7 +40,7 @@ function LazyThumb({ src: s, appId }: { src: string; appId: string }) {
 function toHistoryItem(row: {
   id: string; appId: string; dataUrl?: string | null; blobUrl?: string;
   width?: number | null; height?: number | null; name?: string | null;
-  createdAt: number; tags?: string[]; userId?: string;
+  createdAt: number; tags?: string[]; userId?: string | null;
 }): HistoryItem {
   return {
     id: row.id, dataUrl: row.dataUrl || "", appId: row.appId,
@@ -48,7 +49,7 @@ function toHistoryItem(row: {
     createdAt: row.createdAt,
     tags: Array.isArray(row.tags) ? row.tags : undefined,
     blobUrl: row.blobUrl,
-    userId: row.userId,
+    userId: row.userId ?? undefined,
   };
 }
 
@@ -67,11 +68,11 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
   const [search, setSearch] = useState("");
   const [filterApp, setFilterApp] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<"mine" | "all">("mine");
-  const [apiItems, setApiItems] = useState<HistoryItem[]>([]);
-  const [apiLoading, setApiLoading] = useState(false);
+  const { items: cachedGens, loading: apiLoading } = useGenerations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const memoryItems = open ? getHistory() : [];
+  const apiItems = useMemo(() => cachedGens.map(toHistoryItem), [cachedGens]);
 
   useEffect(() => {
     if (!open) return;
@@ -80,15 +81,6 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
     setOwnerFilter("mine");
     setSelectedId(null);
     setTab("upload");
-
-    setApiLoading(true);
-    fetch("/api/generations?limit=100")
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d?.items)) setApiItems(d.items.map(toHistoryItem));
-      })
-      .catch(() => {})
-      .finally(() => setApiLoading(false));
   }, [open]);
 
   const allItems = useMemo(() => {
