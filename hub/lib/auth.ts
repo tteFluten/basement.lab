@@ -24,14 +24,24 @@ export const authOptions: NextAuthOptions = {
         if (!hasSupabase()) return null;
 
         const supabase = getSupabase();
-        const { data: row, error } = await supabase
+        let { data: row, error } = await supabase
           .from("users")
           .select("id, email, full_name, role, password_hash, status")
           .eq("email", credentials.email.trim().toLowerCase())
           .single();
 
+        if (error && /status/i.test(error.message)) {
+          const fb = await supabase
+            .from("users")
+            .select("id, email, full_name, role, password_hash")
+            .eq("email", credentials.email.trim().toLowerCase())
+            .single();
+          row = fb.data as typeof row;
+          error = fb.error;
+        }
+
         if (error || !row || !row.password_hash) return null;
-        if (row.status === "suspended") return null;
+        if ((row as Record<string, unknown>).status === "suspended") return null;
 
         const ok = await bcrypt.compare(credentials.password, row.password_hash);
         if (!ok) return null;

@@ -16,17 +16,27 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabase();
-    const { data: row, error } = await supabase
+    let { data: row, error } = await supabase
       .from("users")
       .select("id, password_hash, status")
       .eq("email", email)
       .single();
 
+    if (error && /status/i.test(error.message)) {
+      const fb = await supabase
+        .from("users")
+        .select("id, password_hash")
+        .eq("email", email)
+        .single();
+      row = fb.data as typeof row;
+      error = fb.error;
+    }
+
     if (error || !row) {
       return NextResponse.json({ exists: false, needsPassword: false });
     }
 
-    if (row.status === "suspended") {
+    if ((row as Record<string, unknown>).status === "suspended") {
       return NextResponse.json({ exists: true, needsPassword: false, suspended: true });
     }
 

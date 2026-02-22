@@ -22,17 +22,27 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabase();
-    const { data: row, error: fetchErr } = await supabase
+    let { data: row, error: fetchErr } = await supabase
       .from("users")
       .select("id, password_hash, status")
       .eq("email", email)
       .single();
 
+    if (fetchErr && /status/i.test(fetchErr.message)) {
+      const fb = await supabase
+        .from("users")
+        .select("id, password_hash")
+        .eq("email", email)
+        .single();
+      row = fb.data as typeof row;
+      fetchErr = fb.error;
+    }
+
     if (fetchErr || !row) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (row.status === "suspended") {
+    if ((row as Record<string, unknown>).status === "suspended") {
       return NextResponse.json({ error: "Account is suspended" }, { status: 403 });
     }
 
