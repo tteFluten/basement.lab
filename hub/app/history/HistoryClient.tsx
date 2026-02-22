@@ -6,7 +6,7 @@ import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
 import { getCachedGenerations, isCacheReady, invalidateGenerationsCache, fetchGenerations } from "@/lib/generationsCache";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
-  LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow,
+  LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow, Loader2,
 } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { Avatar } from "@/components/Avatar";
@@ -623,16 +623,21 @@ export function HistoryClient() {
     return p.toString();
   }, [filterProjectId, filterUserId, filterTag, filterAppId]);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const fetchApi = useCallback(async () => {
-    setApiError(null); setApiLoading(true);
+    setApiError(null);
+    const isFirstLoad = apiItems.length === 0 && !isCacheReady();
+    if (isFirstLoad) setApiLoading(true);
+    else setRefreshing(true);
     try {
       const res = await fetch(`/api/generations?${qs}`);
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) { setApiError(json.error ?? `Error ${res.status}`); setApiItems([]); return; }
+      if (!res.ok) { setApiError(json.error ?? `Error ${res.status}`); return; }
       setApiItems((json.items ?? []).map(toItem));
-    } catch (e) { setApiError(e instanceof Error ? e.message : "Network error"); setApiItems([]); }
-    finally { setApiLoading(false); }
-  }, [qs]);
+    } catch (e) { setApiError(e instanceof Error ? e.message : "Network error"); }
+    finally { setApiLoading(false); setRefreshing(false); }
+  }, [qs, apiItems.length]);
 
   useEffect(() => { fetchApi(); }, [fetchApi]);
   useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setProjects(Array.isArray(d?.items) ? d.items : [])).catch(() => {}); }, []);
@@ -693,7 +698,15 @@ export function HistoryClient() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-5 mb-6">
           <div>
             <h1 className="text-lg font-medium text-fg tracking-wide">History</h1>
-            <p className="text-xs text-fg-muted mt-1">{items.length} generation{items.length !== 1 ? "s" : ""}</p>
+            <p className="text-xs text-fg-muted mt-1 flex items-center gap-2">
+              {items.length} generation{items.length !== 1 ? "s" : ""}
+              {refreshing && (
+                <span className="inline-flex items-center gap-1 text-fg-muted">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span className="text-[10px]">Updating…</span>
+                </span>
+              )}
+            </p>
           </div>
           <div className="flex items-center gap-0.5 bg-bg-muted border border-border p-0.5">
             <ToolBtn active={view === "large"} onClick={() => setView("large")} title="Large cards"><LayoutGrid className="w-4 h-4" /></ToolBtn>
@@ -733,9 +746,9 @@ export function HistoryClient() {
         </div>
 
         {/* Content */}
-        {apiLoading && apiItems.length === 0 ? (
+        {apiLoading && items.length === 0 ? (
           <Spinner size={28} steps={["Loading history", "Fetching generations", "Cleaning duplicates", "Sorting by date", "Preparing gallery"]} />
-        ) : apiError && apiItems.length === 0 ? (
+        ) : apiError && items.length === 0 ? (
           <p className="text-amber-400/90 text-sm">{apiError}</p>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-fg-muted">

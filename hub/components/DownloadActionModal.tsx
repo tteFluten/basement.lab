@@ -2,7 +2,7 @@
 
 import { addToHistory, removeFromHistory } from "@/lib/historyStore";
 import { getCurrentProjectId } from "@/lib/currentProject";
-import { invalidateGenerationsCache } from "@/lib/generationsCache";
+import { addToCachedGenerations } from "@/lib/generationsCache";
 
 type Props = {
   open: boolean;
@@ -109,7 +109,24 @@ export function DownloadActionModal({
           ...(projectId ? { projectId } : {}),
         }),
       })
-        .then((r) => { if (r.ok) { removeFromHistory(memItem.id); invalidateGenerationsCache(); } })
+        .then(async (r) => {
+          if (!r.ok) return;
+          const json = await r.json().catch(() => ({}));
+          removeFromHistory(memItem.id);
+          addToCachedGenerations({
+            id: json.id ?? memItem.id,
+            appId,
+            dataUrl: assetDataUrl,
+            blobUrl: json.blob_url ?? undefined,
+            width,
+            height,
+            name,
+            createdAt: json.created_at ? new Date(json.created_at).getTime() : Date.now(),
+            tags: Array.isArray(json.tags) ? json.tags : [],
+            projectId: projectId ?? null,
+            userId: null,
+          });
+        })
         .catch(() => {});
     };
     img.onerror = () => {

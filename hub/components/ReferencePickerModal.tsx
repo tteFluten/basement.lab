@@ -70,9 +70,15 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
   const [ownerFilter, setOwnerFilter] = useState<"mine" | "all">("mine");
   const { items: cachedGens, loading: apiLoading } = useGenerations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const memoryItems = open ? getHistory() : [];
+  const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
   const apiItems = useMemo(() => cachedGens.map(toHistoryItem), [cachedGens]);
+
+  useEffect(() => {
+    if (!open) { setMemoryItems([]); return; }
+    setMemoryItems(getHistory());
+    const iv = setInterval(() => setMemoryItems(getHistory()), 1000);
+    return () => clearInterval(iv);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
