@@ -3,7 +3,7 @@
 /**
  * Global client-side cache for API generations.
  * Persists lightweight metadata to localStorage for instant cold starts.
- * Heavy payloads (dataUrl) are never persisted — only thumbUrl/blobUrl refs.
+ * Two-phase fetch: fast initial batch + full dataset in background.
  */
 
 export interface CachedGeneration {
@@ -29,6 +29,8 @@ type Listener = () => void;
 const LS_KEY = "bl_gen_cache";
 const LS_TS_KEY = "bl_gen_cache_ts";
 const STALE_MS = 60_000;
+const FAST_LIMIT = 24;
+const FULL_LIMIT = 200;
 
 let cachedItems: CachedGeneration[] = [];
 let lastFetchTime = 0;
@@ -81,7 +83,6 @@ function hydrateFromStorage(): boolean {
   } catch { return false; }
 }
 
-// Hydrate immediately on module load
 if (typeof window !== "undefined") {
   hydrateFromStorage();
 }
@@ -119,19 +120,35 @@ function parseRow(row: Record<string, unknown>): CachedGeneration {
   };
 }
 
-async function doFetch(limit = 200): Promise<void> {
+async function apiFetch(limit: number): Promise<CachedGeneration[] | null> {
   try {
     const res = await fetch(`/api/generations?limit=${limit}&light=1`);
-    if (!res.ok) return;
+    if (!res.ok) return null;
     const json = await res.json();
-    if (Array.isArray(json?.items)) {
-      cachedItems = json.items.map((r: Record<string, unknown>) => parseRow(r));
-      lastFetchTime = Date.now();
-      persistToStorage();
-      notify();
-    }
+    if (!Array.isArray(json?.items)) return null;
+    return json.items.map((r: Record<string, unknown>) => parseRow(r));
   } catch {
-    /* network error — keep stale cache */
+    return null;
+  }
+}
+
+async function doFetch(): Promise<void> {
+  const fastP = apiFetch(FAST_LIMIT);
+  const fullP = apiFetch(FULL_LIMIT);
+
+  const fast = await fastP;
+  if (fast) {
+    cachedItems = fast;
+    lastFetchTime = Date.now();
+    notify();
+  }
+
+  const full = await fullP;
+  if (full) {
+    cachedItems = full;
+    lastFetchTime = Date.now();
+    persistToStorage();
+    notify();
   }
 }
 

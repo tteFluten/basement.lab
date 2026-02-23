@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
-import { getCachedGenerations, isCacheReady, subscribeGenerations, removeFromCachedGenerations } from "@/lib/generationsCache";
+import { getCachedGenerations, isCacheReady, subscribeGenerations, removeFromCachedGenerations, fetchGenerations } from "@/lib/generationsCache";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow, Loader2,
@@ -597,12 +597,10 @@ function ToolBtn({ active, onClick, children, title }: { active: boolean; onClic
 /* ─── main ─── */
 
 export function HistoryClient() {
-  const [apiItems, setApiItems] = useState<HistoryItem[]>(() => {
-    if (isCacheReady()) {
-      return getCachedGenerations().map(toItem);
-    }
-    return [];
-  });
+  const [cachedItems, setCachedItems] = useState<HistoryItem[]>(() =>
+    isCacheReady() ? getCachedGenerations().map(toItem) : [],
+  );
+  const [filteredApiItems, setFilteredApiItems] = useState<HistoryItem[]>([]);
   const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [lightboxItem, setLightboxItem] = useState<HistoryItem | null>(null);
@@ -622,7 +620,8 @@ export function HistoryClient() {
 
   const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId);
 
-  const qs = useMemo(() => {
+  const filterQs = useMemo(() => {
+    if (!hasFilters) return "";
     const p = new URLSearchParams();
     p.set("limit", "200");
     p.set("light", "1");
@@ -631,32 +630,38 @@ export function HistoryClient() {
     if (filterTag.trim()) p.set("tag", filterTag.trim());
     if (filterAppId) p.set("appId", filterAppId);
     return p.toString();
-  }, [filterProjectId, filterUserId, filterTag, filterAppId]);
+  }, [hasFilters, filterProjectId, filterUserId, filterTag, filterAppId]);
 
   const [refreshing, setRefreshing] = useState(false);
-  const everLoaded = useRef(isCacheReady());
-
-  const fetchApi = useCallback(async () => {
-    setApiError(null);
-    if (!everLoaded.current) setApiLoading(true);
-    else setRefreshing(true);
-    try {
-      const res = await fetch(`/api/generations?${qs}`);
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) { setApiError(json.error ?? `Error ${res.status}`); return; }
-      setApiItems((json.items ?? []).map(toItem));
-      everLoaded.current = true;
-    } catch (e) { setApiError(e instanceof Error ? e.message : "Network error"); }
-    finally { setApiLoading(false); setRefreshing(false); }
-  }, [qs]);
 
   useEffect(() => {
-    if (everLoaded.current && !hasFilters) {
-      const t = setTimeout(fetchApi, 500);
-      return () => clearTimeout(t);
-    }
-    fetchApi();
-  }, [fetchApi, hasFilters]);
+    const sync = () => {
+      setCachedItems(getCachedGenerations().map(toItem));
+      setMemoryItems(getHistory());
+    };
+    sync();
+    const unsub = subscribeGenerations(sync);
+    fetchGenerations().then(() => { setApiLoading(false); });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!hasFilters) { setFilteredApiItems([]); return; }
+    let cancelled = false;
+    setRefreshing(true);
+    setApiError(null);
+    fetch(`/api/generations?${filterQs}`)
+      .then((r) => r.json().then((j) => ({ ok: r.ok, json: j })))
+      .then(({ ok, json }) => {
+        if (cancelled) return;
+        if (!ok) { setApiError(json.error ?? "Error"); return; }
+        setFilteredApiItems((json.items ?? []).map(toItem));
+      })
+      .catch((e) => { if (!cancelled) setApiError(e instanceof Error ? e.message : "Network error"); })
+      .finally(() => { if (!cancelled) setRefreshing(false); });
+    return () => { cancelled = true; };
+  }, [hasFilters, filterQs]);
+
   useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setProjects(Array.isArray(d?.items) ? d.items : [])).catch(() => {}); }, []);
   useEffect(() => { fetch("/api/users").then((r) => r.json()).then((d) => { if (Array.isArray(d?.items)) { setUsers(d.items); setIsAdmin(true); } }).catch(() => {}); }, []);
   useEffect(() => {
@@ -665,24 +670,14 @@ export function HistoryClient() {
     return () => clearInterval(iv);
   }, []);
 
-  const [cacheExtra, setCacheExtra] = useState<HistoryItem[]>([]);
-  useEffect(() => {
-    const sync = () => {
-      setCacheExtra(getCachedGenerations().map(toItem));
-      setMemoryItems(getHistory());
-    };
-    const unsub = subscribeGenerations(sync);
-    return unsub;
-  }, []);
-
   const items = useMemo(() => {
-    const combined = [...apiItems];
-    const seen = new Set(apiItems.map((i) => i.id));
-    for (const c of cacheExtra) { if (!seen.has(c.id)) { seen.add(c.id); combined.push(c); } }
+    const base = hasFilters ? filteredApiItems : cachedItems;
+    const combined = [...base];
+    const seen = new Set(base.map((i) => i.id));
     for (const m of memoryItems) { if (!seen.has(m.id)) { seen.add(m.id); combined.push(m); } }
     combined.sort((a, b) => b.createdAt - a.createdAt);
     return combined;
-  }, [apiItems, cacheExtra, memoryItems]);
+  }, [hasFilters, filteredApiItems, cachedItems, memoryItems]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -710,7 +705,7 @@ export function HistoryClient() {
         const res = await fetch(`/api/generations/${id}`, { method: "DELETE" });
         if (res.ok) {
           removeFromCachedGenerations(id);
-          setApiItems((prev) => prev.filter((i) => i.id !== id));
+          setFilteredApiItems((prev) => prev.filter((i) => i.id !== id));
         }
       }
     } finally {
@@ -779,7 +774,7 @@ export function HistoryClient() {
           <input type="text" placeholder="Tag" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}
             className="w-28 bg-bg-muted border border-border px-3 py-2.5 text-sm text-fg placeholder:text-fg-muted" />
           {apiError && (
-            <button type="button" onClick={fetchApi} className="px-4 py-2.5 border border-amber-600 text-amber-400 text-sm hover:bg-amber-600/20 transition-colors">Retry</button>
+            <button type="button" onClick={() => fetchGenerations(true)} className="px-4 py-2.5 border border-amber-600 text-amber-400 text-sm hover:bg-amber-600/20 transition-colors">Retry</button>
           )}
         </div>
 
@@ -813,7 +808,7 @@ export function HistoryClient() {
 
         {/* Edit panel */}
         {editItem && (
-          <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={fetchApi} />
+          <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={() => fetchGenerations(true)} />
         )}
 
         {/* Lightbox */}
