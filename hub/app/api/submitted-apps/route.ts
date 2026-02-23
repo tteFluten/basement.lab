@@ -18,6 +18,7 @@ type SubmittedAppRow = {
   version: string | null;
   tags: string[] | null;
   created_at: string;
+  external?: boolean;
 };
 
 /** GET: list submitted apps. Sorted by title. Includes submitter name. */
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Number(searchParams.get("limit")) || 200, 500);
 
     const supabase = getSupabase();
-    const cols = "id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at";
+    const cols = "id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at, external";
     let query = supabase
       .from("submitted_apps")
       .select(cols)
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     let { data: rows, error } = await query;
 
-    if (error && /icon/i.test(error.message)) {
+    if (error && /icon|external/i.test(error.message)) {
       const fallback = supabase
         .from("submitted_apps")
         .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, version, tags, created_at")
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
       tags: Array.isArray(row.tags) ? row.tags : [],
       createdAt: new Date(row.created_at).getTime(),
       submittedBy: row.user_id ? userMap.get(row.user_id) ?? null : null,
+      external: Boolean(row.external),
     }));
 
     return NextResponse.json({ items: out });
@@ -127,6 +129,7 @@ export async function POST(request: NextRequest) {
     const editLink = typeof body.editLink === "string" ? body.editLink.trim() || null : null;
     const version = typeof body.version === "string" ? body.version.trim() || "1.0" : "1.0";
     const icon = typeof body.icon === "string" ? body.icon.trim() || null : null;
+    const external = Boolean(body.external);
     let tags: string[] = [];
     if (Array.isArray(body.tags)) {
       tags = body.tags.filter((t: unknown) => typeof t === "string" && t.trim()).map((t: string) => t.trim());
@@ -157,6 +160,7 @@ export async function POST(request: NextRequest) {
       icon: icon,
       version: version || "1.0",
       tags: tags.length ? tags : [],
+      external,
     };
 
     let { data, error } = await supabase
@@ -165,8 +169,9 @@ export async function POST(request: NextRequest) {
       .select("id, title, created_at")
       .single();
 
-    if (error && /icon/i.test(error.message)) {
+    if (error && /icon|external/i.test(error.message)) {
       delete row.icon;
+      if ("external" in row) delete row.external;
       const fb = await supabase
         .from("submitted_apps")
         .insert(row)

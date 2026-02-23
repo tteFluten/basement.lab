@@ -18,6 +18,7 @@ export type SubmittedAppItem = {
   tags: string[];
   createdAt: number;
   submittedBy: string | null;
+  external?: boolean;
 };
 
 function fmtDate(ts: number) {
@@ -73,6 +74,7 @@ function parseItems(json: { items?: unknown[] }): SubmittedAppItem[] {
     tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
     createdAt: typeof row.createdAt === "number" ? row.createdAt : new Date(String(row.createdAt)).getTime(),
     submittedBy: row.submittedBy != null ? String(row.submittedBy) : null,
+    external: Boolean(row.external),
   }));
 }
 
@@ -203,7 +205,11 @@ export function SubmittedAppsSection({ onAddClick, refreshTrigger = 0 }: Props) 
                   <AppThumbnail thumbnailUrl={app.thumbnailUrl} icon={app.icon} className="w-12 h-12 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Link href={`/submitted-apps/${app.id}`} className="text-sm font-medium text-fg hover:underline">{app.title}</Link>
+                      {app.external ? (
+                        <a href={app.deployLink} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-fg hover:underline">{app.title}</a>
+                      ) : (
+                        <Link href={`/submitted-apps/${app.id}`} className="text-sm font-medium text-fg hover:underline">{app.title}</Link>
+                      )}
                       <span className="text-xs text-fg-muted">v{app.version}</span>
                       {app.tags.length > 0 && (
                         <span className="flex flex-wrap gap-1">

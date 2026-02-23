@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("submitted_apps")
-    .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at")
+    .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at, external")
     .eq("id", params.id)
     .single();
 
@@ -37,6 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     tags: Array.isArray(data.tags) ? data.tags : [],
     createdAt: new Date(data.created_at).getTime(),
     submittedBy,
+    external: Boolean((data as { external?: boolean }).external),
   });
 }
 
@@ -62,6 +63,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (Array.isArray(body.tags)) {
       updates.tags = body.tags.filter((t: unknown) => typeof t === "string" && t.trim()).map((t: string) => t.trim());
     }
+    if (typeof body.external === "boolean") updates.external = body.external;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });

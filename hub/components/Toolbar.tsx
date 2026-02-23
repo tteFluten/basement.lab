@@ -202,6 +202,7 @@ type SubmittedAppBrief = {
   thumbnailUrl: string | null;
   icon: string | null;
   createdAt: number;
+  external?: boolean;
 };
 
 function SubmittedAppsMenu() {
@@ -222,6 +223,7 @@ function SubmittedAppsMenu() {
             thumbnailUrl: r.thumbnailUrl != null ? String(r.thumbnailUrl) : null,
             icon: r.icon != null ? String(r.icon) : null,
             createdAt: typeof r.createdAt === "number" ? r.createdAt : 0,
+            external: Boolean(r.external),
           }))
         );
       })
@@ -263,26 +265,44 @@ function SubmittedAppsMenu() {
           ) : (
             items.map((app) => {
               const TplIcon = getTemplateIcon(app.icon);
+              const content = (
+                <>
+                  <span className="w-7 h-7 shrink-0 border border-border bg-bg-muted flex items-center justify-center overflow-hidden">
+                    {app.thumbnailUrl ? (
+                      <img src={app.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                    ) : TplIcon ? (
+                      <TplIcon className="w-3.5 h-3.5 text-fg-muted" />
+                    ) : (
+                      <ImageIcon className="w-3.5 h-3.5 text-fg-muted opacity-40" />
+                    )}
+                  </span>
+                  <span className="truncate flex-1">{app.title}</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-fg-muted shrink-0" />
+                </>
+              );
               return (
                 <li key={app.id} role="none">
-                  <Link
-                    href={`/submitted-apps/${app.id}`}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-fg hover:bg-bg"
-                    role="menuitem"
-                    onClick={() => setOpen(false)}
-                  >
-                    <span className="w-7 h-7 shrink-0 border border-border bg-bg-muted flex items-center justify-center overflow-hidden">
-                      {app.thumbnailUrl ? (
-                        <img src={app.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                      ) : TplIcon ? (
-                        <TplIcon className="w-3.5 h-3.5 text-fg-muted" />
-                      ) : (
-                        <ImageIcon className="w-3.5 h-3.5 text-fg-muted opacity-40" />
-                      )}
-                    </span>
-                    <span className="truncate flex-1">{app.title}</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-fg-muted shrink-0" />
-                  </Link>
+                  {app.external ? (
+                    <a
+                      href={app.deployLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-fg hover:bg-bg"
+                      role="menuitem"
+                      onClick={() => setOpen(false)}
+                    >
+                      {content}
+                    </a>
+                  ) : (
+                    <Link
+                      href={`/submitted-apps/${app.id}`}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-fg hover:bg-bg"
+                      role="menuitem"
+                      onClick={() => setOpen(false)}
+                    >
+                      {content}
+                    </Link>
+                  )}
                 </li>
               );
             })

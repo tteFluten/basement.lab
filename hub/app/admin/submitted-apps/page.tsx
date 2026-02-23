@@ -17,6 +17,7 @@ interface SubmittedApp {
   tags: string[];
   createdAt: number;
   submittedBy: string | null;
+  external: boolean;
 }
 
 const iconMap = LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>;
@@ -33,7 +34,7 @@ export default function AdminSubmittedAppsPage() {
   const [loading, setLoading] = useState(true);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", description: "", deployLink: "", editLink: "", version: "", tags: "", icon: null as string | null });
+  const [editForm, setEditForm] = useState({ title: "", description: "", deployLink: "", editLink: "", version: "", tags: "", icon: null as string | null, external: false });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function AdminSubmittedAppsPage() {
       version: app.version,
       tags: app.tags.join(", "),
       icon: app.icon,
+      external: Boolean(app.external),
     });
   };
 
@@ -90,6 +92,7 @@ export default function AdminSubmittedAppsPage() {
           version: editForm.version,
           tags,
           icon: editForm.icon,
+          external: editForm.external,
         }),
       });
       if (res.ok) { setEditingId(null); fetchApps(); }
@@ -219,6 +222,17 @@ export default function AdminSubmittedAppsPage() {
                         )}
                       </button>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editForm.external}
+                        onChange={(e) => setEditForm({ ...editForm, external: e.target.checked })}
+                        className="rounded border-border text-fg focus:ring-fg-muted"
+                      />
+                      <span className="text-xs text-fg">External (open in new tab)</span>
+                    </label>
                   </div>
                   <div className="flex items-center gap-2 pt-1">
                     <button

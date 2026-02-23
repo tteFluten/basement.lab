@@ -12,6 +12,7 @@ export type SubmittedAppForm = {
   editLink: string;
   version: string;
   tags: string[];
+  external: boolean;
 };
 
 const defaultForm: SubmittedAppForm = {
@@ -21,6 +22,7 @@ const defaultForm: SubmittedAppForm = {
   editLink: "",
   version: "1.0",
   tags: [],
+  external: false,
 };
 
 type Props = {
@@ -101,6 +103,7 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
             icon: selectedIcon || null,
             version: form.version.trim() || "1.0",
             tags: form.tags,
+            external: form.external,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -274,6 +277,18 @@ export function AddSubmittedAppModal({ open, onClose, onSuccess }: Props) {
                 Add
               </button>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="external"
+              checked={form.external}
+              onChange={(e) => update({ external: e.target.checked })}
+              className="rounded border-border text-fg focus:ring-fg-muted"
+            />
+            <label htmlFor="external" className="text-sm text-fg cursor-pointer">
+              External (open in new tab)
+            </label>
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-border">
             <button type="button" onClick={handleClose} className="px-4 py-2 text-sm text-fg-muted hover:text-fg border border-border hover:bg-bg-muted transition-colors">
