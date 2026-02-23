@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
-import { getCachedGenerations, isCacheReady, subscribeGenerations } from "@/lib/generationsCache";
+import { getCachedGenerations, isCacheReady, subscribeGenerations, removeFromCachedGenerations } from "@/lib/generationsCache";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow, Loader2,
@@ -683,18 +683,27 @@ export function HistoryClient() {
 
   const groups = useMemo(() => groupItems(filtered, group, projects), [filtered, group, projects]);
 
+  const deletingRef = useRef<string | null>(null);
   const handleDelete = useCallback(async (id: string) => {
-    if (deletingId) return; setDeletingId(id);
+    if (deletingRef.current) return;
+    deletingRef.current = id;
+    setDeletingId(id);
     try {
       if (id.startsWith("h-")) {
         removeFromHistory(id);
         setMemoryItems(getHistory());
       } else {
         const res = await fetch(`/api/generations/${id}`, { method: "DELETE" });
-        if (res.ok) fetchApi();
+        if (res.ok) {
+          removeFromCachedGenerations(id);
+          setApiItems((prev) => prev.filter((i) => i.id !== id));
+        }
       }
-    } finally { setDeletingId(null); }
-  }, [deletingId, fetchApi]);
+    } finally {
+      deletingRef.current = null;
+      setDeletingId(null);
+    }
+  }, []);
 
   const lbSrc = lightboxItem ? imgUrl(lightboxItem) : "";
 
