@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
     const MODEL_MAP: Record<string, string> = {
       "gemini-2.0-flash-exp": "gemini-2.5-flash",
       "gemini-3-flash-preview": "gemini-2.5-flash",
-      "gemini-3-pro-image-preview": "gemini-2.5-flash-image",
       "gemini-3-pro-preview": "gemini-2.5-flash",
     };
     const model = MODEL_MAP[rawModel] ?? rawModel;
