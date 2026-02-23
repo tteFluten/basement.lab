@@ -97,7 +97,7 @@ export function Footer() {
             <select
               value={model}
               onChange={handleModelChange}
-              className="bg-bg border border-border px-2 py-1 text-fg focus:outline-none focus:border-fg-muted min-w-[200px]"
+              className="bg-bg border border-border px-2 py-1 text-fg focus:outline-none focus:border-fg-muted min-w-[240px] max-w-[280px]"
               title="Image generation model for this app"
             >
               {IMAGE_MODELS.map((m) => (
