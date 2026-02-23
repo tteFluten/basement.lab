@@ -554,7 +554,7 @@ function RenderItems({
     return (
       <div className="space-y-2">
         {items.map((item, index) => (
-          <div key={item.id} className="history-card" style={{ animationDelay: `${index * 35}ms` }}>
+          <div key={item.id} className={index < 20 ? "history-card" : ""} style={index < 20 ? { animationDelay: `${index * 25}ms` } : undefined}>
             <ListRow item={item} deleting={deletingId === item.id}
               onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
               projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
@@ -569,7 +569,7 @@ function RenderItems({
   return (
     <div className={cls}>
       {items.map((item, index) => (
-        <div key={item.id} className="history-card" style={{ animationDelay: `${index * 35}ms` }}>
+        <div key={item.id} className={index < 20 ? "history-card" : ""} style={index < 20 ? { animationDelay: `${index * 25}ms` } : undefined}>
           {view === "large" ? (
             <LargeCard item={item} deleting={deletingId === item.id}
               onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
@@ -620,8 +620,12 @@ export function HistoryClient() {
   const [view, setView] = useState<ViewMode>("large");
   const [group, setGroup] = useState<GroupMode>("none");
 
+  const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId);
+
   const qs = useMemo(() => {
-    const p = new URLSearchParams(); p.set("limit", "100");
+    const p = new URLSearchParams();
+    p.set("limit", "200");
+    p.set("light", "1");
     if (filterProjectId) p.set("projectId", filterProjectId);
     if (filterUserId) p.set("userId", filterUserId);
     if (filterTag.trim()) p.set("tag", filterTag.trim());
@@ -646,7 +650,13 @@ export function HistoryClient() {
     finally { setApiLoading(false); setRefreshing(false); }
   }, [qs]);
 
-  useEffect(() => { fetchApi(); }, [fetchApi]);
+  useEffect(() => {
+    if (everLoaded.current && !hasFilters) {
+      const t = setTimeout(fetchApi, 500);
+      return () => clearTimeout(t);
+    }
+    fetchApi();
+  }, [fetchApi, hasFilters]);
   useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setProjects(Array.isArray(d?.items) ? d.items : [])).catch(() => {}); }, []);
   useEffect(() => { fetch("/api/users").then((r) => r.json()).then((d) => { if (Array.isArray(d?.items)) { setUsers(d.items); setIsAdmin(true); } }).catch(() => {}); }, []);
   useEffect(() => {
