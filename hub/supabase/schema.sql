@@ -59,6 +59,10 @@ alter table public.generations
   add column if not exists tags text[] default '{}';
 alter table public.generations
   add column if not exists thumb_url text;
+alter table public.generations
+  add column if not exists prompt text;
+alter table public.generations
+  add column if not exists note text;
 
 create index if not exists idx_generations_user_id on public.generations(user_id);
 create index if not exists idx_generations_project_id on public.generations(project_id);

@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       width,
       height,
       projectId,
+      prompt,
     } = body as {
       dataUrl: string;
       thumbDataUrl?: string;
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
       width?: number;
       height?: number;
       projectId?: string;
+      prompt?: string;
     };
 
     if (!dataUrl || !appId) {
@@ -80,6 +82,7 @@ export async function POST(request: NextRequest) {
       project_id: projectId ?? null,
     };
     if (thumbUrl) row.thumb_url = thumbUrl;
+    if (typeof prompt === "string" && prompt.trim()) row.prompt = prompt.trim();
 
     let { data, error } = await supabase
       .from("generations")
@@ -89,6 +92,16 @@ export async function POST(request: NextRequest) {
 
     if (error && thumbUrl && /thumb_url/i.test(error.message)) {
       delete row.thumb_url;
+      const fb = await supabase
+        .from("generations")
+        .insert(row)
+        .select("id, created_at")
+        .single();
+      data = fb.data;
+      error = fb.error;
+    }
+    if (error && row.prompt !== undefined && /prompt|column/i.test(error.message)) {
+      delete row.prompt;
       const fb = await supabase
         .from("generations")
         .insert(row)
@@ -156,8 +169,8 @@ export async function GET(request: NextRequest) {
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
     const supabase = getSupabase();
-    const selectWithTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags";
-    const selectWithoutTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id";
+    const selectWithTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note";
+    const selectWithoutTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, prompt, note";
 
     const buildQuery = (selectColumns: string, includeTagFilter: boolean) => {
       let q = supabase
@@ -181,7 +194,7 @@ export async function GET(request: NextRequest) {
     data = result.data as typeof data;
     error = result.error;
 
-    if (error && /does not exist|column.*(tags|thumb_url)/i.test(error.message)) {
+    if (error && /does not exist|column.*(tags|thumb_url|prompt|note)/i.test(error.message)) {
       hasTagsColumn = false;
       const fallbackCols = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id";
       result = await buildQuery(fallbackCols, false);
@@ -206,6 +219,8 @@ export async function GET(request: NextRequest) {
       user_id: string;
       project_id: string | null;
       tags?: string[];
+      prompt?: string | null;
+      note?: string | null;
     };
     const rows: GenRow[] = (data ?? []) as GenRow[];
 
@@ -241,6 +256,8 @@ export async function GET(request: NextRequest) {
         userId: row.user_id,
         projectId: row.project_id,
         tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
+        prompt: row.prompt ?? null,
+        note: row.note ?? null,
         ...(user ? { user: { fullName: user.fullName, avatarUrl: user.avatarUrl } } : {}),
       };
     });

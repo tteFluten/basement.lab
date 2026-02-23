@@ -52,6 +52,9 @@ export async function PATCH(
   if (typeof body.name === "string") {
     updates.name = body.name.trim() || null;
   }
+  if (body.note !== undefined) {
+    updates.note = typeof body.note === "string" ? body.note.trim() || null : null;
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });

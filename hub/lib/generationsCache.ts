@@ -22,6 +22,8 @@ export interface CachedGeneration {
   userName?: string | null;
   userAvatarUrl?: string | null;
   projectName?: string | null;
+  prompt?: string | null;
+  note?: string | null;
 }
 
 type Listener = () => void;
@@ -117,6 +119,8 @@ function parseRow(row: Record<string, unknown>): CachedGeneration {
     userName: row.userName != null ? String(row.userName) : null,
     userAvatarUrl: row.userAvatarUrl != null ? String(row.userAvatarUrl) : null,
     projectName: row.projectName != null ? String(row.projectName) : null,
+    prompt: row.prompt != null ? String(row.prompt) : null,
+    note: row.note != null ? String(row.note) : null,
   };
 }
 

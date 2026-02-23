@@ -65,7 +65,7 @@ const App: React.FC = () => {
     if (!generatedStill) return;
     if (isHubEnv()) {
       try {
-        await openDownloadAction(generatedStill, 'cineprompt');
+        await openDownloadAction(generatedStill, 'cineprompt', { prompt: config.actionDescription?.trim() || undefined });
       } catch {
         const link = document.createElement('a');
         link.href = generatedStill;

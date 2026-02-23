@@ -28,6 +28,8 @@ export type BridgeOpenDownloadAction = {
   appId: string;
   mimeType?: string;
   fileName?: string;
+  /** Prompt used to generate the image (saved to history when adding) */
+  prompt?: string;
 };
 
 export type BridgeDownloadDone = {

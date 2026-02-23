@@ -12,6 +12,8 @@ type Props = {
   appId: string;
   mimeType?: string;
   fileName?: string;
+  /** Prompt used to generate (saved to history when adding) */
+  prompt?: string;
   onDone: () => void;
 };
 
@@ -22,6 +24,7 @@ export function DownloadActionModal({
   appId,
   mimeType,
   fileName,
+  prompt,
   onDone,
 }: Props) {
   if (!open || !assetDataUrl) return null;
@@ -99,6 +102,7 @@ export function DownloadActionModal({
         width,
         height,
         thumbUrl: thumbDataUrl || undefined,
+        ...(prompt?.trim() ? { prompt: prompt.trim() } : {}),
       });
       triggerDownload();
       const projectId = getCurrentProjectId();
@@ -113,6 +117,7 @@ export function DownloadActionModal({
           width,
           height,
           ...(projectId ? { projectId } : {}),
+          ...(prompt?.trim() ? { prompt: prompt.trim() } : {}),
         }),
       })
         .then(async (r) => {
@@ -132,6 +137,8 @@ export function DownloadActionModal({
             tags: Array.isArray(json.tags) ? json.tags : [],
             projectId: projectId ?? null,
             userId: null,
+            prompt: prompt?.trim() || null,
+            note: null,
           });
         })
         .catch(() => {});

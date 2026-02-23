@@ -21,6 +21,7 @@ export function AppTabsContainer() {
     appId: string;
     mimeType?: string;
     fileName?: string;
+    prompt?: string;
   } | null>(null);
 
   const pendingRef = useRef<{
@@ -61,6 +62,7 @@ export function AppTabsContainer() {
             appId: data.appId ?? "app",
             mimeType: data.mimeType,
             fileName: data.fileName,
+            prompt: data.prompt,
           });
           setDownloadOpen(true);
           break;
@@ -145,6 +147,7 @@ export function AppTabsContainer() {
         appId={downloadPayload?.appId ?? ""}
         mimeType={downloadPayload?.mimeType}
         fileName={downloadPayload?.fileName}
+        prompt={downloadPayload?.prompt}
         onDone={handleDownloadDone}
       />
     </>

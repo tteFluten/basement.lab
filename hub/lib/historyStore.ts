@@ -26,6 +26,10 @@ export interface HistoryItem {
   projectId?: string;
   /** User ID of the generation owner */
   userId?: string;
+  /** Prompt used to generate (when saving from app) */
+  prompt?: string;
+  /** User note/explanation (editable in history detail) */
+  note?: string;
 }
 
 const MAX_ITEMS = 30;

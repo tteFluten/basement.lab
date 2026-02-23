@@ -20,6 +20,7 @@ function toItem(row: {
   createdAt: number; tags?: string[]; projectId?: string | null;
   user?: { fullName?: string | null; avatarUrl?: string | null };
   userId?: string | null;
+  prompt?: string | null; note?: string | null;
 }): HistoryItem {
   return {
     id: row.id, dataUrl: row.dataUrl || "", appId: row.appId,
@@ -32,6 +33,8 @@ function toItem(row: {
     userName: row.user?.fullName ?? undefined,
     userAvatarUrl: row.user?.avatarUrl ?? undefined,
     userId: row.userId ?? undefined,
+    prompt: row.prompt ?? undefined,
+    note: row.note ?? undefined,
   };
 }
 
@@ -127,6 +130,7 @@ function EditPanel({
   const [tags, setTags] = useState<string[]>(item.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [projId, setProjId] = useState(item.projectId ?? "");
+  const [note, setNote] = useState(item.note ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const url = imgUrl(item);
@@ -147,7 +151,7 @@ function EditPanel({
       const res = await fetch(`/api/generations/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags, projectId: projId || null }),
+        body: JSON.stringify({ tags, projectId: projId || null, note: note.trim() || null }),
       });
       if (res.ok) {
         setSaved(true);
@@ -188,6 +192,14 @@ function EditPanel({
           {/* Info */}
           {item.width && item.height && (
             <p className="text-xs text-fg-muted">{item.width} × {item.height} px</p>
+          )}
+
+          {/* Prompt (read-only) */}
+          {item.prompt && (
+            <div>
+              <label className="text-xs text-fg-muted uppercase tracking-wider flex items-center gap-1.5 mb-2">Prompt</label>
+              <p className="text-xs text-fg-muted bg-bg-muted border border-border p-3 rounded max-h-24 overflow-y-auto whitespace-pre-wrap">{item.prompt}</p>
+            </div>
           )}
 
           {isMemory ? (
@@ -236,6 +248,15 @@ function EditPanel({
                   <option value="">No project</option>
                   {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="text-xs text-fg-muted uppercase tracking-wider flex items-center gap-1.5 mb-2">Note</label>
+                <textarea value={note} onChange={(e) => setNote(e.target.value)}
+                  placeholder="Short explanation or context for this generation..."
+                  rows={3}
+                  className="w-full bg-bg-muted border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-fg-muted resize-y min-h-[72px]" />
               </div>
 
               {/* Save */}

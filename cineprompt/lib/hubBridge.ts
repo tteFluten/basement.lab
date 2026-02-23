@@ -51,7 +51,7 @@ export function openReferencePicker(): Promise<string> {
 export function openDownloadAction(
   assetDataUrl: string,
   appId: string,
-  options?: { mimeType?: string; fileName?: string }
+  options?: { mimeType?: string; fileName?: string; prompt?: string }
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.self === window.top) {
@@ -76,6 +76,7 @@ export function openDownloadAction(
         appId,
         mimeType: options?.mimeType,
         fileName: options?.fileName,
+        prompt: options?.prompt,
       },
       "*"
     );
