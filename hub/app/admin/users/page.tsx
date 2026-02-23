@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Search, X, Pencil, Check, Trash2, Plus, Camera, Ban, CheckCircle, UserPlus, KeyRound } from "lucide-react";
+import { Search, X, Pencil, Check, Trash2, Plus, Camera, Ban, CheckCircle, UserPlus, KeyRound, List, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 
 type User = {
@@ -14,10 +14,17 @@ type User = {
   status?: string;
 };
 
+type ViewMode = "list" | "grid" | "table";
+const VIEW_KEY = "admin-users-view";
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "list";
+    return (localStorage.getItem(VIEW_KEY) as ViewMode) || "list";
+  });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -189,6 +196,11 @@ export default function AdminUsersPage() {
       })
     : users;
 
+  const setView = (mode: ViewMode) => {
+    setViewMode(mode);
+    try { localStorage.setItem(VIEW_KEY, mode); } catch {}
+  };
+
   return (
     <div>
       <div className="flex items-end justify-between gap-4 mb-6">
@@ -253,20 +265,27 @@ export default function AdminUsersPage() {
         </form>
       )}
 
-      <div className="flex items-center gap-2 bg-bg-muted border border-border px-3 py-2 max-w-sm mb-6">
-        <Search className="w-3.5 h-3.5 text-fg-muted shrink-0" />
-        <input
-          type="text"
-          placeholder="Search by name, email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-0 bg-transparent text-sm text-fg placeholder:text-fg-muted focus:outline-none"
-        />
-        {search && (
-          <button type="button" onClick={() => setSearch("")} className="text-fg-muted hover:text-fg">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex items-center gap-1 border border-border p-0.5">
+          <button type="button" onClick={() => setView("list")} title="List view" className={`p-1.5 ${viewMode === "list" ? "bg-bg-muted text-fg" : "text-fg-muted hover:text-fg"}`}><List className="w-4 h-4" /></button>
+          <button type="button" onClick={() => setView("grid")} title="Grid view" className={`p-1.5 ${viewMode === "grid" ? "bg-bg-muted text-fg" : "text-fg-muted hover:text-fg"}`}><LayoutGrid className="w-4 h-4" /></button>
+          <button type="button" onClick={() => setView("table")} title="Table view" className={`p-1.5 ${viewMode === "table" ? "bg-bg-muted text-fg" : "text-fg-muted hover:text-fg"}`}><TableIcon className="w-4 h-4" /></button>
+        </div>
+        <div className="flex items-center gap-2 bg-bg-muted border border-border px-3 py-2 max-w-sm">
+          <Search className="w-3.5 h-3.5 text-fg-muted shrink-0" />
+          <input
+            type="text"
+            placeholder="Search by name, email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 min-w-0 bg-transparent text-sm text-fg placeholder:text-fg-muted focus:outline-none"
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch("")} className="text-fg-muted hover:text-fg">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -275,7 +294,7 @@ export default function AdminUsersPage() {
         <p className="text-sm text-fg-muted py-8 text-center">
           {users.length === 0 ? "No users found." : "No users match your search."}
         </p>
-      ) : (
+      ) : viewMode === "list" ? (
         <ul className="border border-border divide-y divide-border">
           {filtered.map((u) => {
             const isEditing = editingId === u.id;
@@ -415,15 +434,169 @@ export default function AdminUsersPage() {
                           <span className={`text-xs ${passwordMsg.ok ? "text-green-400" : "text-red-400"}`}>
                             {passwordMsg.text}
                           </span>
-                        )}
-                      </div>
                     )}
-                  </>
+                  </div>
+                )}
+              </>
                 )}
               </li>
             );
           })}
         </ul>
+      ) : viewMode === "grid" ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {filtered.map((u) => {
+            const isEditing = editingId === u.id;
+            const isSuspended = u.status === "suspended";
+            if (isEditing) {
+              return (
+                <div key={u.id} className="col-span-full p-4 bg-bg-muted/30 border border-border space-y-3">
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => avatarInputRef.current?.click()} className="relative group shrink-0" disabled={uploadingAvatar}>
+                      <Avatar src={editAvatarUrl} name={editName || undefined} email={u.email} size="md" />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="w-4 h-4 text-white" /></span>
+                    </button>
+                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                    <div>
+                      <span className="text-sm text-fg-muted">{u.email}</span>
+                      {uploadingAvatar && <span className="text-[10px] text-fg-muted ml-2">Uploading…</span>}
+                      {editAvatarUrl && <button type="button" onClick={() => setEditAvatarUrl(null)} className="block text-[10px] text-red-400 hover:text-red-300 mt-0.5">Remove avatar</button>}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-fg-muted uppercase mb-1">Full name</label>
+                      <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full bg-bg border border-border px-2 py-1.5 text-sm text-fg focus:outline-none focus:border-fg-muted" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-fg-muted uppercase mb-1">Nickname</label>
+                      <input type="text" value={editNickname} onChange={(e) => setEditNickname(e.target.value)} className="w-full bg-bg border border-border px-2 py-1.5 text-sm text-fg focus:outline-none focus:border-fg-muted" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-fg-muted uppercase mb-1">Role</label>
+                      <select value={editRole} onChange={(e) => setEditRole(e.target.value)} className="w-full bg-bg border border-border px-2 py-1.5 text-sm text-fg">
+                        <option value="member">member</option>
+                        <option value="admin">admin</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => saveEdit(u.id)} disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-fg text-bg hover:opacity-90 disabled:opacity-50"><Check className="w-3 h-3" /> Save</button>
+                    <button type="button" onClick={cancelEdit} className="px-3 py-1.5 text-xs border border-border hover:bg-bg-muted">Cancel</button>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div key={u.id} className={`border border-border p-4 flex flex-col items-center text-center transition-colors hover:bg-bg-muted/30 ${isSuspended ? "opacity-50" : ""}`}>
+                <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="lg" className="mb-2" />
+                <p className="text-sm font-medium text-fg truncate w-full">{u.full_name || u.email}</p>
+                {u.nickname && <p className="text-[10px] text-fg-muted truncate w-full">{u.nickname}</p>}
+                <p className="text-xs text-fg-muted truncate w-full">{u.email}</p>
+                <div className="flex items-center gap-1 mt-2 flex-wrap justify-center">
+                  <span className={`text-[10px] px-1.5 py-0.5 border ${u.role === "admin" ? "border-amber-600 text-amber-400" : "border-border text-fg-muted"}`}>{u.role}</span>
+                  {isSuspended && <span className="text-[10px] px-1.5 py-0.5 border border-red-800 text-red-400">suspended</span>}
+                </div>
+                <div className="flex gap-0.5 mt-3">
+                  <button type="button" onClick={() => startEdit(u)} className="p-1.5 text-fg-muted hover:text-fg" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => { setPasswordUserId(passwordUserId === u.id ? null : u.id); setNewPassword(""); setPasswordMsg(null); }} className={`p-1.5 ${passwordUserId === u.id ? "text-fg border border-border" : "text-fg-muted hover:text-fg"}`} title="Change password"><KeyRound className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => toggleSuspend(u)} className={`p-1.5 ${isSuspended ? "text-green-500 hover:text-green-400" : "text-fg-muted hover:text-amber-400"}`} title={isSuspended ? "Reactivate" : "Suspend"}>{isSuspended ? <CheckCircle className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}</button>
+                  <button type="button" onClick={() => deleteUser(u.id, u.email)} className="p-1.5 text-fg-muted hover:text-red-400" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+                {passwordUserId === u.id && (
+                  <div className="mt-3 pt-3 border-t border-border w-full flex flex-wrap items-center justify-center gap-2">
+                    <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password" className="max-w-[180px] bg-bg border border-border px-2 py-1.5 text-sm text-fg focus:outline-none focus:border-fg-muted" />
+                    <button type="button" onClick={() => handleChangePassword(u.id)} disabled={savingPassword || newPassword.length < 4} className="px-2 py-1.5 text-xs bg-fg text-bg disabled:opacity-50">Set</button>
+                    <button type="button" onClick={() => { setPasswordUserId(null); setPasswordMsg(null); }} className="px-2 py-1.5 text-xs border border-border">Cancel</button>
+                    {passwordMsg && <span className={`text-xs ${passwordMsg.ok ? "text-green-400" : "text-red-400"}`}>{passwordMsg.text}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="border border-border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-bg-muted/50">
+                <th className="text-left py-2 px-3 font-medium text-fg">Name</th>
+                <th className="text-left py-2 px-3 font-medium text-fg">Email</th>
+                <th className="text-left py-2 px-3 font-medium text-fg w-20">Role</th>
+                <th className="text-left py-2 px-3 font-medium text-fg w-20">Status</th>
+                <th className="w-36" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((u) => {
+                const isEditing = editingId === u.id;
+                const isSuspended = u.status === "suspended";
+                if (isEditing) {
+                  return (
+                    <tr key={u.id}>
+                      <td colSpan={5} className="p-0 align-top">
+                        <div className="p-4 bg-bg-muted/30 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <button type="button" onClick={() => avatarInputRef.current?.click()} className="relative group shrink-0" disabled={uploadingAvatar}>
+                              <Avatar src={editAvatarUrl} name={editName || undefined} email={u.email} size="md" />
+                              <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="w-4 h-4 text-white" /></span>
+                            </button>
+                            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+                              <div>
+                                <label className="block text-[10px] text-fg-muted uppercase mb-1">Full name</label>
+                                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full bg-bg border border-border px-2 py-1.5 text-sm text-fg" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-fg-muted uppercase mb-1">Nickname</label>
+                                <input type="text" value={editNickname} onChange={(e) => setEditNickname(e.target.value)} className="w-full bg-bg border border-border px-2 py-1.5 text-sm text-fg" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-fg-muted uppercase mb-1">Role</label>
+                                <select value={editRole} onChange={(e) => setEditRole(e.target.value)} className="w-full bg-bg border border-border px-2 py-1.5 text-sm text-fg">
+                                  <option value="member">member</option>
+                                  <option value="admin">admin</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => saveEdit(u.id)} disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-fg text-bg hover:opacity-90 disabled:opacity-50"><Check className="w-3 h-3" /> Save</button>
+                            <button type="button" onClick={cancelEdit} className="px-3 py-1.5 text-xs border border-border hover:bg-bg-muted">Cancel</button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={u.id} className={`border-b border-border last:border-b-0 hover:bg-bg-muted/20 ${isSuspended ? "opacity-60" : ""}`}>
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" />
+                        <span className="font-medium text-fg">{u.full_name || u.email}</span>
+                        {u.nickname && <span className="text-fg-muted text-xs">({u.nickname})</span>}
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-fg-muted text-xs">{u.email}</td>
+                    <td className="py-2 px-3">
+                      <span className={`text-[10px] px-1.5 py-0.5 border ${u.role === "admin" ? "border-amber-600 text-amber-400" : "border-border text-fg-muted"}`}>{u.role}</span>
+                    </td>
+                    <td className="py-2 px-3 text-fg-muted text-xs">{isSuspended ? "suspended" : "active"}</td>
+                    <td className="py-2 px-3">
+                      <div className="flex gap-0.5">
+                        <button type="button" onClick={() => startEdit(u)} className="p-1.5 text-fg-muted hover:text-fg" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => { setPasswordUserId(passwordUserId === u.id ? null : u.id); setNewPassword(""); setPasswordMsg(null); }} className={`p-1.5 ${passwordUserId === u.id ? "text-fg border border-border" : "text-fg-muted hover:text-fg"}`} title="Password"><KeyRound className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => toggleSuspend(u)} className="p-1.5 text-fg-muted hover:text-amber-400" title={isSuspended ? "Reactivate" : "Suspend"}>{isSuspended ? <CheckCircle className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}</button>
+                        <button type="button" onClick={() => deleteUser(u.id, u.email)} className="p-1.5 text-fg-muted hover:text-red-400" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

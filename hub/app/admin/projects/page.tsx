@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Search, X, Check, Users, Trash2, Plus, Pencil, Link2 } from "lucide-react";
+import { Search, X, Check, Users, Trash2, Plus, Pencil, Link2, List, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { LinkPreview } from "@/components/LinkPreview";
 
@@ -265,10 +265,17 @@ function ProjectForm({
   );
 }
 
+type ViewMode = "list" | "grid" | "table";
+const VIEW_KEY = "admin-projects-view";
+
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "list";
+    return (localStorage.getItem(VIEW_KEY) as ViewMode) || "list";
+  });
   const [formProject, setFormProject] = useState<Project | null | "new">(null);
   const [formSaving, setFormSaving] = useState(false);
   const [membersModal, setMembersModal] = useState<{ projectId: string; name: string } | null>(null);
@@ -396,6 +403,11 @@ export default function AdminProjectsPage() {
     });
   };
 
+  const setView = (mode: ViewMode) => {
+    setViewMode(mode);
+    try { localStorage.setItem(VIEW_KEY, mode); } catch {}
+  };
+
   if (loading) {
     return <p className="text-fg-muted text-sm p-8">Loading...</p>;
   }
@@ -404,7 +416,7 @@ export default function AdminProjectsPage() {
     <div>
       <h1 className="text-lg font-medium border-b border-border pb-3 mb-6">Projects</h1>
 
-      <div className="mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <button
           type="button"
           onClick={() => setFormProject("new")}
@@ -413,8 +425,14 @@ export default function AdminProjectsPage() {
           <Plus className="w-3.5 h-3.5" />
           New project
         </button>
+        <div className="flex items-center gap-1 border border-border p-0.5">
+          <button type="button" onClick={() => setView("list")} title="List view" className={`p-1.5 ${viewMode === "list" ? "bg-bg-muted text-fg" : "text-fg-muted hover:text-fg"}`}><List className="w-4 h-4" /></button>
+          <button type="button" onClick={() => setView("grid")} title="Grid view" className={`p-1.5 ${viewMode === "grid" ? "bg-bg-muted text-fg" : "text-fg-muted hover:text-fg"}`}><LayoutGrid className="w-4 h-4" /></button>
+          <button type="button" onClick={() => setView("table")} title="Table view" className={`p-1.5 ${viewMode === "table" ? "bg-bg-muted text-fg" : "text-fg-muted hover:text-fg"}`}><TableIcon className="w-4 h-4" /></button>
+        </div>
       </div>
 
+      {viewMode === "list" && (
       <ul className="space-y-2">
         {projects.map((p) => {
           const members = (p.memberIds ?? []).map((id) => userById.get(id)).filter(Boolean) as User[];
@@ -474,6 +492,102 @@ export default function AdminProjectsPage() {
           );
         })}
       </ul>
+      )}
+
+      {viewMode === "grid" && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {projects.map((p) => {
+            const members = (p.memberIds ?? []).map((id) => userById.get(id)).filter(Boolean) as User[];
+            const linkEntries: { label: string; url: string }[] = [];
+            if (p.links?.web) linkEntries.push({ label: "Web", url: p.links.web });
+            if (p.links?.figma) linkEntries.push({ label: "Figma", url: p.links.figma });
+            if (p.links?.linear) linkEntries.push({ label: "Linear", url: p.links.linear });
+            if (p.links?.others) { for (const o of p.links.others) { if (o.url) linkEntries.push({ label: o.label || "Link", url: o.url }); } }
+            return (
+              <div key={p.id} className="border border-border hover:border-fg-muted transition-colors flex flex-col">
+                <div className="aspect-video w-full border-b border-border bg-bg-muted overflow-hidden flex items-center justify-center">
+                  {p.thumbnail_url ? <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" /> : <span className="text-fg-muted text-xs">No img</span>}
+                </div>
+                <div className="p-3 flex-1 min-w-0">
+                  <p className="font-medium text-fg truncate">{p.name}</p>
+                  {p.client && <p className="text-xs text-fg-muted truncate">{p.client}</p>}
+                  {members.length > 0 && (
+                    <div className="flex items-center gap-0.5 mt-2 flex-wrap">
+                      {members.slice(0, 4).map((u) => (
+                        <span key={u.id} title={u.full_name || u.email}><Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" /></span>
+                      ))}
+                      {members.length > 4 && <span className="text-[10px] text-fg-muted">+{members.length - 4}</span>}
+                    </div>
+                  )}
+                </div>
+                <div className="p-2 border-t border-border flex flex-wrap gap-1">
+                  <button type="button" onClick={() => editProject(p)} className="text-xs px-2 py-1 border border-border hover:bg-bg-muted flex items-center gap-1"><Pencil className="w-3 h-3" /> Edit</button>
+                  <button type="button" onClick={() => openMembers(p.id, p.name)} className="text-xs px-2 py-1 border border-border hover:bg-bg-muted flex items-center gap-1"><Users className="w-3 h-3" /> Users</button>
+                  <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-xs px-2 py-1 border border-red-900/50 text-red-400 hover:bg-red-900/20 flex items-center gap-1"><Trash2 className="w-3 h-3" /> Delete</button>
+                </div>
+                {linkEntries.length > 0 && (
+                  <div className="px-3 pb-3 flex flex-wrap gap-1">
+                    {linkEntries.slice(0, 3).map((link, i) => (
+                      <LinkPreview key={`${link.url}-${i}`} url={link.url} label={link.label} />
+                    ))}
+                    {linkEntries.length > 3 && <span className="text-[10px] text-fg-muted">+{linkEntries.length - 3}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {viewMode === "table" && (
+        <div className="border border-border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-bg-muted/50">
+                <th className="text-left py-2 px-3 font-medium text-fg">Project</th>
+                <th className="text-left py-2 px-3 font-medium text-fg">Client</th>
+                <th className="text-left py-2 px-3 font-medium text-fg w-24">Members</th>
+                <th className="w-40" />
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((p) => {
+                const members = (p.memberIds ?? []).map((id) => userById.get(id)).filter(Boolean) as User[];
+                return (
+                  <tr key={p.id} className="border-b border-border last:border-b-0 hover:bg-bg-muted/20">
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-2">
+                        {p.thumbnail_url ? (
+                          <div className="w-8 h-8 shrink-0 border border-border overflow-hidden bg-bg-muted"><img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" /></div>
+                        ) : (
+                          <div className="w-8 h-8 shrink-0 border border-border bg-bg-muted flex items-center justify-center text-fg-muted text-[10px]">—</div>
+                        )}
+                        <span className="font-medium text-fg">{p.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-fg-muted">{p.client ?? "—"}</td>
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-0.5">
+                        {members.slice(0, 3).map((u) => (
+                          <span key={u.id} title={u.full_name || u.email}><Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" /></span>
+                        ))}
+                        {members.length > 3 && <span className="text-[10px] text-fg-muted">+{members.length - 3}</span>}
+                      </div>
+                    </td>
+                    <td className="py-2 px-3">
+                      <div className="flex gap-1">
+                        <button type="button" onClick={() => editProject(p)} className="text-xs px-2 py-1 border border-border hover:bg-bg-muted flex items-center gap-1"><Pencil className="w-3 h-3" /> Edit</button>
+                        <button type="button" onClick={() => openMembers(p.id, p.name)} className="text-xs px-2 py-1 border border-border hover:bg-bg-muted flex items-center gap-1"><Users className="w-3 h-3" /> Users</button>
+                        <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-xs px-2 py-1 border border-red-900/50 text-red-400 hover:bg-red-900/20"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {projects.length === 0 && <p className="text-fg-muted text-sm mt-4">No projects yet. Create one above.</p>}
 
