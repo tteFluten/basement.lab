@@ -686,6 +686,7 @@ export function HistoryClient() {
   const deletingRef = useRef<string | null>(null);
   const handleDelete = useCallback(async (id: string) => {
     if (deletingRef.current) return;
+    if (!window.confirm("Delete this generation? This action cannot be undone.")) return;
     deletingRef.current = id;
     setDeletingId(id);
     try {
