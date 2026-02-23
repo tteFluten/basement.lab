@@ -55,9 +55,16 @@ function fmtDay(ts: number) {
   return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
+const FOUR_K_MIN = 2160;
+
 function isSmallRes(i: HistoryItem) {
   const w = i.width ?? 0; const h = i.height ?? 0;
   return w > 0 && h > 0 && (w < SMALL_RESOLUTION_THRESHOLD || h < SMALL_RESOLUTION_THRESHOLD);
+}
+
+function is4KOrHigher(i: HistoryItem) {
+  const w = i.width ?? 0; const h = i.height ?? 0;
+  return w >= FOUR_K_MIN && h >= FOUR_K_MIN;
 }
 
 function isImgType(i: HistoryItem) { return (i.mimeType || "image/png").startsWith("image/"); }
@@ -249,7 +256,7 @@ function EditPanel({
               className="flex-1 py-2 text-xs text-fg-muted hover:text-fg border border-border hover:bg-bg-muted flex items-center justify-center gap-1.5 transition-colors">
               <Download className="w-3.5 h-3.5" /> Download
             </button>
-            {isSmallRes(item) && isImgType(item) && (
+            {isSmallRes(item) && !is4KOrHigher(item) && isImgType(item) && (
               <button type="button"
                 onClick={() => { const a = document.createElement("a"); a.href = imgUrl(item); a.download = `${item.name ?? item.id}-4k.png`; a.click(); }}
                 className="flex-1 py-2 text-xs text-fg-muted hover:text-amber-400 border border-border hover:bg-bg-muted flex items-center justify-center gap-1.5 transition-colors">
@@ -972,7 +979,7 @@ export function HistoryClient() {
               </button>
               <button type="button" onClick={() => dlItem(lightboxItem)}
                 className="py-2 px-5 bg-fg text-bg text-xs font-bold uppercase hover:bg-white transition-colors">Download</button>
-              {isSmallRes(lightboxItem) && (
+              {isSmallRes(lightboxItem) && !is4KOrHigher(lightboxItem) && (
                 <button type="button"
                   onClick={() => { const a = document.createElement("a"); a.href = lbSrc; a.download = `${lightboxItem.name ?? lightboxItem.id}-4k.png`; a.click(); }}
                   className="py-2 px-5 border border-border text-fg-muted text-xs font-bold uppercase hover:border-amber-500 hover:text-amber-400 transition-colors">
