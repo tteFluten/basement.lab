@@ -103,7 +103,7 @@ function ProjectSelector() {
       </button>
       {open && (
         <ul
-          className="absolute right-0 top-full mt-1 min-w-[200px] border border-border bg-bg-muted py-1 z-50 max-h-[280px] overflow-auto"
+          className="scrollbar-menu absolute right-0 top-full mt-1 min-w-[200px] border border-border bg-bg-muted py-1 z-50 max-h-[280px] overflow-auto"
           role="menu"
         >
           {projects.length === 0 ? (
@@ -257,7 +257,7 @@ function SubmittedAppsMenu() {
       </button>
       {open && (
         <ul
-          className="absolute left-0 top-full mt-1 min-w-[260px] border border-border bg-bg-muted py-1 z-50 max-h-[320px] overflow-auto"
+          className="scrollbar-menu absolute left-0 top-full mt-1 min-w-[260px] border border-border bg-bg-muted py-1 z-50 max-h-[320px] overflow-auto"
           role="menu"
         >
           {items.length === 0 ? (

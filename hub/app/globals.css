@@ -25,6 +25,24 @@
   border-radius: 0;
 }
 
+/* Scrollbar for dropdown menus (e.g. projects, submitted apps) */
+.scrollbar-menu {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-bg-muted);
+}
+.scrollbar-menu::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-menu::-webkit-scrollbar-track {
+  background: var(--color-bg-muted);
+}
+.scrollbar-menu::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+}
+.scrollbar-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--color-fg-muted);
+}
+
 body {
   background-color: var(--color-bg);
   color: var(--color-fg);
