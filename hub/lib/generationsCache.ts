@@ -2,8 +2,8 @@
 
 /**
  * Global client-side cache for API generations.
- * Shared across all components — fetches once, returns instantly after.
- * Uses light endpoint to skip user lookups for speed.
+ * Persists lightweight metadata to localStorage for instant cold starts.
+ * Heavy payloads (dataUrl) are never persisted — only thumbUrl/blobUrl refs.
  */
 
 export interface CachedGeneration {
@@ -26,15 +26,64 @@ export interface CachedGeneration {
 
 type Listener = () => void;
 
+const LS_KEY = "bl_gen_cache";
+const LS_TS_KEY = "bl_gen_cache_ts";
+const STALE_MS = 60_000;
+
 let cachedItems: CachedGeneration[] = [];
 let lastFetchTime = 0;
 let fetchPromise: Promise<void> | null = null;
 const listeners = new Set<Listener>();
 
-const STALE_MS = 60_000;
-
 function notify() {
   listeners.forEach((fn) => fn());
+}
+
+function persistToStorage() {
+  try {
+    const slim = cachedItems.map((g) => ({
+      id: g.id, a: g.appId, b: g.blobUrl ?? null, t: g.thumbUrl ?? null,
+      w: g.width ?? null, h: g.height ?? null, n: g.name ?? null,
+      c: g.createdAt, tg: g.tags?.length ? g.tags : undefined,
+      p: g.projectId ?? null, u: g.userId ?? null,
+    }));
+    localStorage.setItem(LS_KEY, JSON.stringify(slim));
+    localStorage.setItem(LS_TS_KEY, String(lastFetchTime));
+  } catch { /* quota exceeded or unavailable */ }
+}
+
+function hydrateFromStorage(): boolean {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    const ts = Number(localStorage.getItem(LS_TS_KEY) || 0);
+    if (!raw || !ts) return false;
+    const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
+    if (!Array.isArray(parsed) || parsed.length === 0) return false;
+    cachedItems = parsed.map((r) => ({
+      id: String(r.id ?? ""),
+      appId: String(r.a ?? ""),
+      blobUrl: r.b != null ? String(r.b) : undefined,
+      thumbUrl: r.t != null ? String(r.t) : null,
+      width: typeof r.w === "number" ? r.w : null,
+      height: typeof r.h === "number" ? r.h : null,
+      name: r.n != null ? String(r.n) : null,
+      createdAt: typeof r.c === "number" ? r.c : 0,
+      tags: Array.isArray(r.tg) ? r.tg.map(String) : [],
+      projectId: r.p != null ? String(r.p) : null,
+      userId: r.u != null ? String(r.u) : null,
+      dataUrl: null,
+      userName: null,
+      userAvatarUrl: null,
+      projectName: null,
+    }));
+    lastFetchTime = ts;
+    return true;
+  } catch { return false; }
+}
+
+// Hydrate immediately on module load
+if (typeof window !== "undefined") {
+  hydrateFromStorage();
 }
 
 export function subscribeGenerations(fn: Listener): () => void {
@@ -78,6 +127,7 @@ async function doFetch(limit = 200): Promise<void> {
     if (Array.isArray(json?.items)) {
       cachedItems = json.items.map((r: Record<string, unknown>) => parseRow(r));
       lastFetchTime = Date.now();
+      persistToStorage();
       notify();
     }
   } catch {
@@ -85,10 +135,6 @@ async function doFetch(limit = 200): Promise<void> {
   }
 }
 
-/**
- * Returns cached items immediately if fresh. Otherwise fetches.
- * Multiple concurrent callers share one in-flight request.
- */
 export async function fetchGenerations(force = false): Promise<CachedGeneration[]> {
   const isStale = Date.now() - lastFetchTime > STALE_MS;
 
@@ -114,10 +160,12 @@ export function invalidateGenerationsCache(): void {
 
 export function addToCachedGenerations(item: CachedGeneration): void {
   cachedItems = [item, ...cachedItems.filter((g) => g.id !== item.id)];
+  persistToStorage();
   notify();
 }
 
 export function removeFromCachedGenerations(id: string): void {
   cachedItems = cachedItems.filter((g) => g.id !== id);
+  persistToStorage();
   notify();
 }
