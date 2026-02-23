@@ -6,9 +6,6 @@ export const IMAGE_MODELS = [
   { id: "gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image (recommended)" },
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { id: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash Exp" },
-  { id: "imagen-3.0-generate-002", label: "Imagen 3.0 Generate 002" },
-  { id: "imagen-3.0-generate-001", label: "Imagen 3.0 Generate 001" },
-  { id: "imagen-4.0-generate-001", label: "Imagen 4.0 Generate 001" },
 ] as const;
 
 export const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
