@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
 import { getCachedGenerations, isCacheReady, subscribeGenerations, removeFromCachedGenerations, fetchGenerations } from "@/lib/generationsCache";
+import { useSession } from "next-auth/react";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow, Loader2,
@@ -265,20 +266,29 @@ function EditPanel({
 /* ─── card components ─── */
 
 function LargeCard({
-  item, deleting, onDelete, onView, onEdit, projectName,
-}: { item: HistoryItem; deleting: boolean; onDelete: () => void; onView: () => void; onEdit: () => void; projectName?: string }) {
+  item, deleting, onDelete, onView, onEdit, projectName, selected, onToggleSelect, canSelect,
+}: {
+  item: HistoryItem; deleting: boolean; onDelete: () => void; onView: () => void; onEdit: () => void; projectName?: string;
+  selected?: boolean; onToggleSelect?: () => void; canSelect?: boolean;
+}) {
   const Icon = getAppIcon(item.appId);
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
+    <div className={`border overflow-hidden bg-bg-muted group transition-colors ${selected ? "border-fg ring-1 ring-fg/30" : "border-border hover:border-fg-muted"}`}>
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-full h-56 sm:h-64 relative block overflow-hidden focus:outline-none">
         {image && url ? (
           <>
+            {canSelect && (
+              <button type="button" aria-label={selected ? "Deselect" : "Select"} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect?.(); }}
+                className="absolute top-2 left-2 z-10 w-6 h-6 flex items-center justify-center bg-black/70 border border-white/30 text-white hover:bg-black/90">
+                {selected ? <Check className="w-3.5 h-3.5" /> : null}
+              </button>
+            )}
             <LazyImg src={url} thumb={item.thumbUrl} appId={item.appId} className="object-cover transition-transform duration-500 group-hover:scale-105" />
             {projectName && (
-              <span className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-black/70 text-white text-[10px] font-medium uppercase tracking-wider border border-white/20 max-w-[80%] truncate" title={projectName}>
+              <span className={`absolute top-2 flex items-center gap-1 px-2 py-1 bg-black/70 text-white text-[10px] font-medium uppercase tracking-wider border border-white/20 max-w-[80%] truncate ${canSelect ? "left-10" : "left-2"}`} title={projectName}>
                 <FolderIcon className="w-2.5 h-2.5 shrink-0" /> {projectName}
               </span>
             )}
@@ -345,20 +355,29 @@ function LargeCard({
 }
 
 function SmallCard({
-  item, deleting, onDelete, onView, onEdit, projectName,
-}: { item: HistoryItem; deleting: boolean; onDelete: () => void; onView: () => void; onEdit: () => void; projectName?: string }) {
+  item, deleting, onDelete, onView, onEdit, projectName, selected, onToggleSelect, canSelect,
+}: {
+  item: HistoryItem; deleting: boolean; onDelete: () => void; onView: () => void; onEdit: () => void; projectName?: string;
+  selected?: boolean; onToggleSelect?: () => void; canSelect?: boolean;
+}) {
   const Icon = getAppIcon(item.appId);
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="border border-border overflow-hidden bg-bg-muted group hover:border-fg-muted transition-colors">
+    <div className={`border overflow-hidden bg-bg-muted group transition-colors ${selected ? "border-fg ring-1 ring-fg/30" : "border-border hover:border-fg-muted"}`}>
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-full h-36 sm:h-44 relative block overflow-hidden focus:outline-none">
         {image && url ? (
           <>
+            {canSelect && (
+              <button type="button" aria-label={selected ? "Deselect" : "Select"} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect?.(); }}
+                className="absolute top-1.5 left-1.5 z-10 w-5 h-5 flex items-center justify-center bg-black/70 border border-white/30 text-white hover:bg-black/90">
+                {selected ? <Check className="w-3 h-3" /> : null}
+              </button>
+            )}
             <LazyImg src={url} thumb={item.thumbUrl} appId={item.appId} className="object-cover transition-transform duration-500 group-hover:scale-105" />
             {projectName && (
-              <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-medium uppercase tracking-wider border border-white/20 max-w-[85%] truncate" title={projectName}>
+              <span className={`absolute top-1.5 flex items-center gap-0.5 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-medium uppercase tracking-wider border border-white/20 max-w-[85%] truncate ${canSelect ? "left-7" : "left-1.5"}`} title={projectName}>
                 <FolderIcon className="w-2 h-2 shrink-0" /> {projectName}
               </span>
             )}
@@ -412,13 +431,22 @@ function SmallCard({
 }
 
 function ListRow({
-  item, deleting, onDelete, onView, onEdit, projectName,
-}: { item: HistoryItem; deleting: boolean; onDelete: () => void; onView: () => void; onEdit: () => void; projectName?: string }) {
+  item, deleting, onDelete, onView, onEdit, projectName, selected, onToggleSelect, canSelect,
+}: {
+  item: HistoryItem; deleting: boolean; onDelete: () => void; onView: () => void; onEdit: () => void; projectName?: string;
+  selected?: boolean; onToggleSelect?: () => void; canSelect?: boolean;
+}) {
   const Icon = getAppIcon(item.appId);
   const url = imgUrl(item);
   const image = isImgType(item);
   return (
-    <div className="flex items-center gap-4 px-4 py-3 border border-border bg-bg-muted hover:border-fg-muted transition-colors group">
+    <div className={`flex items-center gap-4 px-4 py-3 border bg-bg-muted transition-colors group ${selected ? "border-fg ring-1 ring-fg/30" : "border-border hover:border-fg-muted"}`}>
+      {canSelect && (
+        <button type="button" aria-label={selected ? "Deselect" : "Select"} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect?.(); }}
+          className="w-6 h-6 shrink-0 flex items-center justify-center border border-border bg-bg text-fg-muted hover:text-fg hover:border-fg-muted">
+          {selected ? <Check className="w-3.5 h-3.5" /> : null}
+        </button>
+      )}
       <button type="button" onClick={() => image && url ? onView() : onEdit()}
         className="w-20 h-20 shrink-0 overflow-hidden relative focus:outline-none">
         {image && url ? (
@@ -544,20 +572,31 @@ function groupItems(items: HistoryItem[], mode: GroupMode, projects: Proj[]): { 
 
 function RenderItems({
   items, view, deletingId, onDelete, onView, onEdit, projects,
+  selectedIds, onToggleSelect, canSelect,
 }: {
   items: HistoryItem[]; view: ViewMode; deletingId: string | null;
   onDelete: (id: string) => void; onView: (item: HistoryItem) => void;
   onEdit: (item: HistoryItem) => void; projects: Proj[];
+  selectedIds?: Set<string>; onToggleSelect?: (id: string) => void; canSelect?: (item: HistoryItem) => boolean;
 }) {
   const projMap = useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
+  const cardProps = (item: HistoryItem) => ({
+    item,
+    deleting: deletingId === item.id,
+    onDelete: () => onDelete(item.id),
+    onView: () => onView(item),
+    onEdit: () => onEdit(item),
+    projectName: item.projectId ? projMap.get(item.projectId) : undefined,
+    selected: selectedIds?.has(item.id),
+    onToggleSelect: onToggleSelect ? () => onToggleSelect(item.id) : undefined,
+    canSelect: canSelect?.(item),
+  });
   if (view === "list") {
     return (
       <div className="space-y-2">
         {items.map((item, index) => (
           <div key={item.id} className={index < 20 ? "history-card" : ""} style={index < 20 ? { animationDelay: `${index * 25}ms` } : undefined}>
-            <ListRow item={item} deleting={deletingId === item.id}
-              onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
-              projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
+            <ListRow {...cardProps(item)} />
           </div>
         ))}
       </div>
@@ -571,13 +610,9 @@ function RenderItems({
       {items.map((item, index) => (
         <div key={item.id} className={index < 20 ? "history-card" : ""} style={index < 20 ? { animationDelay: `${index * 25}ms` } : undefined}>
           {view === "large" ? (
-            <LargeCard item={item} deleting={deletingId === item.id}
-              onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
-              projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
+            <LargeCard {...cardProps(item)} />
           ) : (
-            <SmallCard item={item} deleting={deletingId === item.id}
-              onDelete={() => onDelete(item.id)} onView={() => onView(item)} onEdit={() => onEdit(item)}
-              projectName={item.projectId ? projMap.get(item.projectId) : undefined} />
+            <SmallCard {...cardProps(item)} />
           )}
         </div>
       ))}
@@ -597,6 +632,9 @@ function ToolBtn({ active, onClick, children, title }: { active: boolean; onClic
 /* ─── main ─── */
 
 export function HistoryClient() {
+  const { data: session } = useSession();
+  const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
+
   const [cachedItems, setCachedItems] = useState<HistoryItem[]>(() =>
     isCacheReady() ? getCachedGenerations().map(toItem) : [],
   );
@@ -617,6 +655,11 @@ export function HistoryClient() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("large");
   const [group, setGroup] = useState<GroupMode>("none");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchActionLoading, setBatchActionLoading] = useState(false);
+  const [batchTagInput, setBatchTagInput] = useState("");
+  const BATCH_PROJECT_UNCHANGED = "__unchanged__";
+  const [batchProjectId, setBatchProjectId] = useState(BATCH_PROJECT_UNCHANGED);
 
   const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId);
 
@@ -690,6 +733,71 @@ export function HistoryClient() {
   }, [items, search]);
 
   const groups = useMemo(() => groupItems(filtered, group, projects), [filtered, group, projects]);
+
+  const canSelectItem = useCallback((item: HistoryItem) => {
+    if (item.id.startsWith("h-")) return false;
+    return isAdmin || item.userId === currentUserId;
+  }, [isAdmin, currentUserId]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const selectedList = useMemo(() => Array.from(selectedIds), [selectedIds]);
+  const handleBatchUpdate = useCallback(async () => {
+    if (selectedList.length === 0) return;
+    const tagsToAdd = batchTagInput.trim() ? [batchTagInput.trim().toLowerCase()] : undefined;
+    const sendProject = batchProjectId !== BATCH_PROJECT_UNCHANGED;
+    if (!sendProject && !tagsToAdd?.length) return;
+    setBatchActionLoading(true);
+    try {
+      const body: { ids: string[]; projectId?: string | null; tagsToAdd?: string[] } = { ids: selectedList };
+      if (sendProject) body.projectId = batchProjectId === "" ? null : batchProjectId;
+      if (tagsToAdd?.length) body.tagsToAdd = tagsToAdd;
+      const res = await fetch("/api/generations/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.updated) {
+        await fetchGenerations(true);
+        setCachedItems(getCachedGenerations().map(toItem));
+        if (hasFilters) {
+          const r = await fetch(`/api/generations?${filterQs}`);
+          const d = await r.json().catch(() => ({}));
+          if (r.ok && Array.isArray(d?.items)) setFilteredApiItems(d.items.map(toItem));
+        }
+        clearSelection();
+        setBatchTagInput("");
+        setBatchProjectId(BATCH_PROJECT_UNCHANGED);
+      }
+    } finally {
+      setBatchActionLoading(false);
+    }
+  }, [selectedList, batchProjectId, batchTagInput, hasFilters, filterQs, clearSelection]);
+
+  const handleBatchDelete = useCallback(async () => {
+    if (selectedList.length === 0) return;
+    if (!window.confirm(`Delete ${selectedList.length} generation(s)? This cannot be undone.`)) return;
+    setBatchActionLoading(true);
+    try {
+      const res = await fetch("/api/generations/batch", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selectedList }) });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.deleted) {
+        const deletedSet = new Set(selectedList);
+        deletedSet.forEach((id) => removeFromCachedGenerations(id));
+        setCachedItems(getCachedGenerations().map(toItem));
+        setFilteredApiItems((prev) => prev.filter((i) => !deletedSet.has(i.id)));
+        clearSelection();
+      }
+    } finally {
+      setBatchActionLoading(false);
+    }
+  }, [selectedList, clearSelection]);
 
   const deletingRef = useRef<string | null>(null);
   const handleDelete = useCallback(async (id: string) => {
@@ -800,9 +908,43 @@ export function HistoryClient() {
                   </div>
                 )}
                 <RenderItems items={g.items} view={view} deletingId={deletingId}
-                  onDelete={handleDelete} onView={setLightboxItem} onEdit={setEditItem} projects={projects} />
+                  onDelete={handleDelete} onView={setLightboxItem} onEdit={setEditItem} projects={projects}
+                  selectedIds={selectedIds} onToggleSelect={toggleSelect} canSelect={canSelectItem} />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Batch actions toolbar */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-5 py-3 bg-bg border border-border shadow-lg">
+            <span className="text-sm text-fg font-medium whitespace-nowrap">{selectedIds.size} selected</span>
+            <select value={batchProjectId} onChange={(e) => setBatchProjectId(e.target.value)}
+              className="bg-bg-muted border border-border px-3 py-2 text-sm text-fg min-w-[140px]">
+              <option value={BATCH_PROJECT_UNCHANGED}>— Project: unchanged —</option>
+              <option value="">No project</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <div className="flex items-center gap-1.5">
+              <input type="text" placeholder="Add tag..." value={batchTagInput} onChange={(e) => setBatchTagInput(e.target.value)}
+                className="w-28 bg-bg-muted border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-muted" />
+              <button type="button" onClick={handleBatchUpdate}
+                disabled={batchActionLoading || (batchProjectId === BATCH_PROJECT_UNCHANGED && !batchTagInput.trim())}
+                className="px-3 py-2 border border-border text-fg-muted text-sm hover:text-fg hover:border-fg-muted transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none">
+                {batchActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
+                Apply
+              </button>
+            </div>
+            <button type="button" onClick={handleBatchDelete} disabled={batchActionLoading}
+              className="px-3 py-2 border border-red-900/50 text-red-400 text-sm hover:bg-red-900/20 transition-colors flex items-center gap-1.5">
+              <Trash2 className="w-4 h-4" /> Delete
+            </button>
+            <button type="button" onClick={clearSelection}
+              className="px-3 py-2 border border-border text-fg-muted text-sm hover:text-fg transition-colors">
+              Clear
+            </button>
           </div>
         )}
 
