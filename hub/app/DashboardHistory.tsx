@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getHistory, type HistoryItem } from "@/lib/historyStore";
 import { getAppLabel } from "@/lib/appIcons";
 import { useGenerations } from "@/lib/useGenerations";
+import { subscribeGenerations } from "@/lib/generationsCache";
 import Link from "next/link";
 import { ArrowRight, Download } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
@@ -76,8 +77,9 @@ export function DashboardHistory() {
 
   useEffect(() => {
     setMemoryItems(getHistory());
+    const unsub = subscribeGenerations(() => setMemoryItems(getHistory()));
     const iv = setInterval(() => setMemoryItems(getHistory()), 3000);
-    return () => clearInterval(iv);
+    return () => { clearInterval(iv); unsub(); };
   }, []);
 
   const apiItems = useMemo(() => apiGens.map(toHistoryItem), [apiGens]);

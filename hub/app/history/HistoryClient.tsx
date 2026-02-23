@@ -667,7 +667,10 @@ export function HistoryClient() {
 
   const [cacheExtra, setCacheExtra] = useState<HistoryItem[]>([]);
   useEffect(() => {
-    const sync = () => setCacheExtra(getCachedGenerations().map(toItem));
+    const sync = () => {
+      setCacheExtra(getCachedGenerations().map(toItem));
+      setMemoryItems(getHistory());
+    };
     const unsub = subscribeGenerations(sync);
     return unsub;
   }, []);
