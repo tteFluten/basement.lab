@@ -14,10 +14,11 @@ import { Avatar } from "@/components/Avatar";
 /* ─── helpers ─── */
 
 function toItem(row: {
-  id: string; appId: string; dataUrl?: string | null; blobUrl?: string;
+  id: string; appId: string; dataUrl?: string | null; blobUrl?: string; thumbUrl?: string | null;
   width?: number | null; height?: number | null; name?: string | null;
   createdAt: number; tags?: string[]; projectId?: string | null;
   user?: { fullName?: string | null; avatarUrl?: string | null };
+  userId?: string | null;
 }): HistoryItem {
   return {
     id: row.id, dataUrl: row.dataUrl || "", appId: row.appId,
@@ -25,9 +26,11 @@ function toItem(row: {
     height: row.height ?? undefined, mimeType: "image/png",
     createdAt: row.createdAt,
     tags: Array.isArray(row.tags) ? row.tags : undefined,
-    blobUrl: row.blobUrl, projectId: row.projectId ?? undefined,
+    blobUrl: row.blobUrl, thumbUrl: row.thumbUrl ?? undefined,
+    projectId: row.projectId ?? undefined,
     userName: row.user?.fullName ?? undefined,
     userAvatarUrl: row.user?.avatarUrl ?? undefined,
+    userId: row.userId ?? undefined,
   };
 }
 
@@ -82,12 +85,12 @@ type Usr = { id: string; email: string; full_name: string | null };
 
 /* ─── LazyImg with loading indicator ─── */
 
-function LazyImg({ src: s, appId, className }: { src: string; appId: string; className?: string }) {
-  const [loaded, setLoaded] = useState(false);
+function LazyImg({ src: s, thumb, appId, className }: { src: string; thumb?: string; appId: string; className?: string }) {
+  const [fullLoaded, setFullLoaded] = useState(false);
   const Icon = getAppIcon(appId);
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: APP_BG[appId] ?? "#151515" }}>
-      {!loaded && (
+      {!fullLoaded && !thumb && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
           <Icon className="w-5 h-5 text-zinc-600 animate-pulse" />
           <div className="w-8 h-px bg-zinc-700 overflow-hidden">
@@ -96,8 +99,11 @@ function LazyImg({ src: s, appId, className }: { src: string; appId: string; cla
           </div>
         </div>
       )}
-      <img src={s} alt="" loading="lazy" decoding="async" onLoad={() => setLoaded(true)}
-        className={`w-full h-full transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"} ${className ?? ""}`} />
+      {thumb && !fullLoaded && (
+        <img src={thumb} alt="" className={`w-full h-full object-cover ${className ?? ""}`} />
+      )}
+      <img src={s} alt="" loading="lazy" decoding="async" onLoad={() => setFullLoaded(true)}
+        className={`w-full h-full transition-opacity duration-300 ${fullLoaded ? "opacity-100" : "absolute inset-0 opacity-0"} ${className ?? ""}`} />
     </div>
   );
 }
@@ -270,7 +276,7 @@ function LargeCard({
         className="w-full h-56 sm:h-64 relative block overflow-hidden focus:outline-none">
         {image && url ? (
           <>
-            <LazyImg src={url} appId={item.appId} className="object-cover transition-transform duration-500 group-hover:scale-105" />
+            <LazyImg src={url} thumb={item.thumbUrl} appId={item.appId} className="object-cover transition-transform duration-500 group-hover:scale-105" />
             {projectName && (
               <span className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-black/70 text-white text-[10px] font-medium uppercase tracking-wider border border-white/20 max-w-[80%] truncate" title={projectName}>
                 <FolderIcon className="w-2.5 h-2.5 shrink-0" /> {projectName}
@@ -350,7 +356,7 @@ function SmallCard({
         className="w-full h-36 sm:h-44 relative block overflow-hidden focus:outline-none">
         {image && url ? (
           <>
-            <LazyImg src={url} appId={item.appId} className="object-cover transition-transform duration-500 group-hover:scale-105" />
+            <LazyImg src={url} thumb={item.thumbUrl} appId={item.appId} className="object-cover transition-transform duration-500 group-hover:scale-105" />
             {projectName && (
               <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-medium uppercase tracking-wider border border-white/20 max-w-[85%] truncate" title={projectName}>
                 <FolderIcon className="w-2 h-2 shrink-0" /> {projectName}
@@ -417,7 +423,7 @@ function ListRow({
         className="w-20 h-20 shrink-0 overflow-hidden relative focus:outline-none">
         {image && url ? (
           <>
-            <LazyImg src={url} appId={item.appId} className="object-cover" />
+            <LazyImg src={url} thumb={item.thumbUrl} appId={item.appId} className="object-cover" />
             {projectName && (
               <span className="absolute top-0.5 left-0.5 px-1 py-0.5 bg-black/70 text-white text-[8px] font-medium uppercase tracking-wider border border-white/20 max-w-[90%] truncate" title={projectName}>
                 <FolderIcon className="w-1.5 h-1.5 inline shrink-0 mr-0.5 align-middle" /> {projectName}

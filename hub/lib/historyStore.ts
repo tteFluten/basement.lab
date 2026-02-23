@@ -20,6 +20,8 @@ export interface HistoryItem {
   tags?: string[];
   /** Blob URL from API; when set, client may resolve for display if dataUrl is empty */
   blobUrl?: string;
+  /** Small JPEG thumbnail for fast loading */
+  thumbUrl?: string;
   /** Project ID from API */
   projectId?: string;
   /** User ID of the generation owner */

@@ -21,24 +21,28 @@ const APP_BG: Record<string, string> = {
   avatar: "#15111a", render: "#1a1611", "frame-variator": "#111a1a",
 };
 
-function LazyThumb({ src: s, appId }: { src: string; appId: string }) {
-  const [loaded, setLoaded] = useState(false);
+function LazyThumb({ src: s, thumb, appId }: { src: string; thumb?: string; appId: string }) {
+  const [fullLoaded, setFullLoaded] = useState(false);
   const Icon = getAppIcon(appId);
+  const showSrc = thumb || s;
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: APP_BG[appId] ?? "#151515" }}>
-      {!loaded && (
+      {!fullLoaded && !thumb && (
         <div className="absolute inset-0 flex items-center justify-center">
           <Icon className="w-4 h-4 text-zinc-600 animate-pulse" />
         </div>
       )}
-      <img src={s} alt="" loading="lazy" decoding="async" onLoad={() => setLoaded(true)}
-        className={`w-full h-full object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`} />
+      {thumb && !fullLoaded && (
+        <img src={thumb} alt="" className="w-full h-full object-cover" />
+      )}
+      <img src={s} alt="" loading="lazy" decoding="async" onLoad={() => setFullLoaded(true)}
+        className={`w-full h-full object-cover transition-opacity duration-200 ${fullLoaded ? "opacity-100" : thumb ? "absolute inset-0 opacity-0" : "opacity-0"}`} />
     </div>
   );
 }
 
 function toHistoryItem(row: {
-  id: string; appId: string; dataUrl?: string | null; blobUrl?: string;
+  id: string; appId: string; dataUrl?: string | null; blobUrl?: string; thumbUrl?: string | null;
   width?: number | null; height?: number | null; name?: string | null;
   createdAt: number; tags?: string[]; userId?: string | null;
 }): HistoryItem {
@@ -49,6 +53,7 @@ function toHistoryItem(row: {
     createdAt: row.createdAt,
     tags: Array.isArray(row.tags) ? row.tags : undefined,
     blobUrl: row.blobUrl,
+    thumbUrl: row.thumbUrl ?? undefined,
     userId: row.userId ?? undefined,
   };
 }
@@ -277,7 +282,7 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
                         className={`relative aspect-square border overflow-hidden transition-colors group ${
                           isSelected ? "border-fg" : "border-border hover:border-fg-muted"
                         }`}>
-                        <LazyThumb src={url} appId={item.appId} />
+                        <LazyThumb src={url} thumb={item.thumbUrl} appId={item.appId} />
                         {isSelected && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                             <div className="w-6 h-6 border-2 border-white flex items-center justify-center animate-pulse">

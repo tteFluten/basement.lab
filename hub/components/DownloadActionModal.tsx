@@ -3,6 +3,7 @@
 import { addToHistory, removeFromHistory } from "@/lib/historyStore";
 import { getCurrentProjectId } from "@/lib/currentProject";
 import { addToCachedGenerations } from "@/lib/generationsCache";
+import { generateThumbnail } from "@/lib/thumbnail";
 
 type Props = {
   open: boolean;
@@ -83,9 +84,12 @@ export function DownloadActionModal({
     }
 
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
       const width = img.naturalWidth;
       const height = img.naturalHeight;
+
+      const thumbDataUrl = await generateThumbnail(assetDataUrl).catch(() => "");
+
       const memItem = addToHistory({
         dataUrl: assetDataUrl,
         appId,
@@ -94,6 +98,7 @@ export function DownloadActionModal({
         mimeType: inferredMimeType,
         width,
         height,
+        thumbUrl: thumbDataUrl || undefined,
       });
       triggerDownload();
       const projectId = getCurrentProjectId();
@@ -102,6 +107,7 @@ export function DownloadActionModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dataUrl: assetDataUrl,
+          thumbDataUrl: thumbDataUrl || undefined,
           appId,
           name,
           width,
@@ -118,6 +124,7 @@ export function DownloadActionModal({
             appId,
             dataUrl: assetDataUrl,
             blobUrl: json.blob_url ?? undefined,
+            thumbUrl: json.thumb_url ?? thumbDataUrl ?? null,
             width,
             height,
             name,

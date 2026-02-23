@@ -54,9 +54,11 @@ create table if not exists public.generations (
   created_at timestamptz default now()
 );
 
--- If generations already existed without tags, add the column so the index can be created
+-- If generations already existed without tags/thumb_url, add the columns
 alter table public.generations
   add column if not exists tags text[] default '{}';
+alter table public.generations
+  add column if not exists thumb_url text;
 
 create index if not exists idx_generations_user_id on public.generations(user_id);
 create index if not exists idx_generations_project_id on public.generations(project_id);

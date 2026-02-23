@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       dataUrl,
+      thumbDataUrl,
       appId,
       name,
       width,
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
       projectId,
     } = body as {
       dataUrl: string;
+      thumbDataUrl?: string;
       appId: string;
       name?: string;
       width?: number;
@@ -53,31 +55,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const ts = Date.now();
     let blobUrl: string | null = null;
+    let thumbUrl: string | null = null;
     if (hasBlob()) {
-      const pathname = `generations/${appId}/${Date.now()}.png`;
-      blobUrl = await uploadDataUrl(dataUrl, pathname);
+      const [fullResult, thumbResult] = await Promise.all([
+        uploadDataUrl(dataUrl, `generations/${appId}/${ts}.png`),
+        thumbDataUrl ? uploadDataUrl(thumbDataUrl, `generations/${appId}/${ts}_thumb.jpg`) : Promise.resolve(null),
+      ]);
+      blobUrl = fullResult;
+      thumbUrl = thumbResult;
     }
 
     const storedUrl = blobUrl ?? dataUrl;
     const supabase = getSupabase();
-    const { data, error } = await supabase
+
+    const row: Record<string, unknown> = {
+      app_id: appId,
+      blob_url: storedUrl,
+      width: width ?? null,
+      height: height ?? null,
+      name: name ?? null,
+      user_id: session.user.id,
+      project_id: projectId ?? null,
+    };
+    if (thumbUrl) row.thumb_url = thumbUrl;
+
+    let { data, error } = await supabase
       .from("generations")
-      .insert({
-        app_id: appId,
-        blob_url: storedUrl,
-        width: width ?? null,
-        height: height ?? null,
-        name: name ?? null,
-        user_id: session.user.id,
-        project_id: projectId ?? null,
-      })
+      .insert(row)
       .select("id, created_at")
       .single();
 
-    if (error) {
+    if (error && thumbUrl && /thumb_url/i.test(error.message)) {
+      delete row.thumb_url;
+      const fb = await supabase
+        .from("generations")
+        .insert(row)
+        .select("id, created_at")
+        .single();
+      data = fb.data;
+      error = fb.error;
+    }
+
+    if (error || !data) {
       console.error("Supabase generations insert:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
     }
 
     let tags: string[] = [];
@@ -96,6 +119,7 @@ export async function POST(request: NextRequest) {
       id: data.id,
       created_at: data.created_at,
       blob_url: blobUrl,
+      thumb_url: thumbUrl,
       tags,
     });
   } catch (e) {
@@ -132,8 +156,8 @@ export async function GET(request: NextRequest) {
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
     const supabase = getSupabase();
-    const selectWithTags = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id, tags";
-    const selectWithoutTags = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id";
+    const selectWithTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags";
+    const selectWithoutTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id";
 
     const buildQuery = (selectColumns: string, includeTagFilter: boolean) => {
       let q = supabase
@@ -157,9 +181,10 @@ export async function GET(request: NextRequest) {
     data = result.data as typeof data;
     error = result.error;
 
-    if (error && /does not exist|column.*tags/i.test(error.message)) {
+    if (error && /does not exist|column.*(tags|thumb_url)/i.test(error.message)) {
       hasTagsColumn = false;
-      result = await buildQuery(selectWithoutTags, false);
+      const fallbackCols = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id";
+      result = await buildQuery(fallbackCols, false);
       data = result.data as typeof data;
       error = result.error;
     }
@@ -173,6 +198,7 @@ export async function GET(request: NextRequest) {
       id: string;
       app_id: string;
       blob_url: string;
+      thumb_url?: string | null;
       width: number;
       height: number;
       name: string;
@@ -207,6 +233,7 @@ export async function GET(request: NextRequest) {
         appId: row.app_id,
         dataUrl: null as string | null,
         blobUrl: row.blob_url,
+        thumbUrl: row.thumb_url ?? null,
         width: row.width,
         height: row.height,
         name: row.name,

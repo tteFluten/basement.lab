@@ -11,6 +11,7 @@ export interface CachedGeneration {
   appId: string;
   dataUrl?: string | null;
   blobUrl?: string;
+  thumbUrl?: string | null;
   width?: number | null;
   height?: number | null;
   name?: string | null;
@@ -55,6 +56,7 @@ function parseRow(row: Record<string, unknown>): CachedGeneration {
     appId: String(row.appId ?? row.app_id ?? ""),
     dataUrl: row.dataUrl != null ? String(row.dataUrl) : (row.data_url != null ? String(row.data_url) : null),
     blobUrl: row.blobUrl != null ? String(row.blobUrl) : (row.blob_url != null ? String(row.blob_url) : undefined),
+    thumbUrl: row.thumbUrl != null ? String(row.thumbUrl) : (row.thumb_url != null ? String(row.thumb_url) : null),
     width: typeof row.width === "number" ? row.width : null,
     height: typeof row.height === "number" ? row.height : null,
     name: row.name != null ? String(row.name) : null,

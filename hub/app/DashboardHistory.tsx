@@ -8,7 +8,7 @@ import Link from "next/link";
 import { ArrowRight, Download } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 
-function toHistoryItem(g: { id: string; appId: string; dataUrl?: string | null; blobUrl?: string; width?: number | null; height?: number | null; name?: string | null; createdAt: number; tags?: string[] }): HistoryItem {
+function toHistoryItem(g: { id: string; appId: string; dataUrl?: string | null; blobUrl?: string; thumbUrl?: string | null; width?: number | null; height?: number | null; name?: string | null; createdAt: number; tags?: string[] }): HistoryItem {
   return {
     id: g.id, dataUrl: g.dataUrl || "", appId: g.appId,
     name: g.name ?? undefined, width: g.width ?? undefined,
@@ -16,6 +16,7 @@ function toHistoryItem(g: { id: string; appId: string; dataUrl?: string | null; 
     createdAt: g.createdAt,
     tags: Array.isArray(g.tags) ? g.tags : undefined,
     blobUrl: g.blobUrl,
+    thumbUrl: g.thumbUrl ?? undefined,
   };
 }
 
@@ -29,24 +30,28 @@ function downloadUrl(url: string, name: string) {
 }
 
 function GalleryImage({ item }: { item: HistoryItem }) {
-  const url = item.dataUrl || item.blobUrl || "";
-  const [loaded, setLoaded] = useState(false);
+  const fullUrl = item.dataUrl || item.blobUrl || "";
+  const thumb = item.thumbUrl || "";
+  const [fullLoaded, setFullLoaded] = useState(false);
   const label = item.name || getAppLabel(item.appId);
 
-  if (!url) return null;
+  if (!fullUrl && !thumb) return null;
 
   return (
     <Link
       href={`/history?highlight=${item.id}`}
       className="block relative overflow-hidden group"
     >
+      {thumb && !fullLoaded && (
+        <img src={thumb} alt={label} className="w-full h-auto block" />
+      )}
       <img
-        src={url}
+        src={fullUrl || thumb}
         alt={label}
         loading="lazy"
         decoding="async"
-        onLoad={() => setLoaded(true)}
-        className={`w-full h-auto block transition-all duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+        onLoad={() => setFullLoaded(true)}
+        className={`w-full h-auto block transition-opacity duration-300 ${fullLoaded ? "opacity-100" : thumb ? "absolute inset-0 w-full h-full opacity-0" : "opacity-0"}`}
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-end justify-between p-3 opacity-0 group-hover:opacity-100">
         <span className="text-[10px] text-white/80 font-medium tracking-wider uppercase">
@@ -54,7 +59,7 @@ function GalleryImage({ item }: { item: HistoryItem }) {
         </span>
         <button
           type="button"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); downloadUrl(url, label); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); downloadUrl(fullUrl || thumb, label); }}
           className="flex items-center justify-center w-7 h-7 bg-white/90 hover:bg-white text-black transition-colors shrink-0"
           title="Download"
         >
