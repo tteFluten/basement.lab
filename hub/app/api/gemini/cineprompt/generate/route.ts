@@ -19,9 +19,19 @@ export async function POST(request: NextRequest) {
       "gemini-3-flash-preview": "gemini-2.5-flash",
       "gemini-3-pro-preview": "gemini-2.5-flash",
     };
-    const model = MODEL_MAP[rawModel] ?? rawModel;
+    let model = MODEL_MAP[rawModel] ?? rawModel;
     const aspectRatio = body.aspectRatio as string | undefined;
     const imageSize = body.imageSize as string | undefined;
+
+    const IMAGE_CAPABLE_MODELS = new Set([
+      "gemini-3.1-flash-image-preview",
+      "gemini-3-pro-image-preview",
+      "gemini-2.5-flash-image",
+    ]);
+    const needsImageConfig = !!(aspectRatio || imageSize);
+    if (needsImageConfig && !IMAGE_CAPABLE_MODELS.has(model)) {
+      model = "gemini-2.5-flash-image";
+    }
     const responseMimeType = body.responseMimeType as string | undefined;
 
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [];
