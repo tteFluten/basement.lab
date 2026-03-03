@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
-import { uploadDataUrl, hasBlob } from "@/lib/blob";
+import { uploadDataUrl, hasBlob, resolveBlobUrl } from "@/lib/blob";
 import { authOptions } from "@/lib/auth";
 import { generateImageTags } from "@/lib/generateImageTags";
 
@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const items = rows.map((row) => {
+    const rawItems = rows.map((row) => {
       const user = !light && row.user_id ? userMap.get(row.user_id) : undefined;
       return {
         id: row.id,
@@ -261,6 +261,27 @@ export async function GET(request: NextRequest) {
         ...(user ? { user: { fullName: user.fullName, avatarUrl: user.avatarUrl } } : {}),
       };
     });
+
+    // Resolve private blob URLs to signed download URLs so <img src> works
+    const items = await Promise.all(
+      rawItems.map(async (item) => {
+        let blobUrl = item.blobUrl;
+        let thumbUrl = item.thumbUrl;
+        if (hasBlob()) {
+          try {
+            if (blobUrl && blobUrl.includes("blob.vercel-storage.com")) {
+              blobUrl = await resolveBlobUrl(blobUrl);
+            }
+            if (thumbUrl && thumbUrl.includes("blob.vercel-storage.com")) {
+              thumbUrl = await resolveBlobUrl(thumbUrl);
+            }
+          } catch (e) {
+            console.warn("Blob URL resolve failed for", item.id, e);
+          }
+        }
+        return { ...item, blobUrl, thumbUrl };
+      })
+    );
 
     const headers: HeadersInit = {};
     if (light) {

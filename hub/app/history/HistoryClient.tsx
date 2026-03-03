@@ -94,11 +94,24 @@ type GroupMode = "none" | "date" | "project" | "app";
 type Proj = { id: string; name: string };
 type Usr = { id: string; email: string; full_name: string | null };
 
-/* ─── LazyImg with loading indicator ─── */
+/* ─── LazyImg with loading indicator and blob URL fallback ─── */
 
 function LazyImg({ src: s, thumb, appId, className }: { src: string; thumb?: string; appId: string; className?: string }) {
   const [fullLoaded, setFullLoaded] = useState(false);
+  const [imgSrc, setImgSrc] = useState(s);
+  const [retried, setRetried] = useState(false);
   const Icon = getAppIcon(appId);
+  useEffect(() => { setImgSrc(s); setRetried(false); }, [s]);
+
+  const handleError = useCallback(() => {
+    if (retried || !imgSrc.includes("blob.vercel-storage.com")) return;
+    setRetried(true);
+    fetch(`/api/generations/resolve-url?url=${encodeURIComponent(imgSrc)}`)
+      .then((r) => r.json())
+      .then((j) => { if (j?.url) setImgSrc(j.url); })
+      .catch(() => {});
+  }, [imgSrc, retried]);
+
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: APP_BG[appId] ?? "#151515" }}>
       {!fullLoaded && !thumb && (
@@ -113,7 +126,8 @@ function LazyImg({ src: s, thumb, appId, className }: { src: string; thumb?: str
       {thumb && !fullLoaded && (
         <img src={thumb} alt="" className={`w-full h-full object-cover ${className ?? ""}`} />
       )}
-      <img src={s} alt="" loading="lazy" decoding="async" onLoad={() => setFullLoaded(true)}
+      <img src={imgSrc} alt="" loading="lazy" decoding="async"
+        onLoad={() => setFullLoaded(true)} onError={handleError}
         className={`w-full h-full transition-opacity duration-300 ${fullLoaded ? "opacity-100" : "absolute inset-0 opacity-0"} ${className ?? ""}`} />
     </div>
   );
