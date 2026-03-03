@@ -9,7 +9,7 @@ function getHubApiBase(): string | null {
 
 function getHubModel(): string {
   if (typeof window === "undefined") return "gemini-2.5-flash-image";
-  return window.localStorage.getItem("hub_model_render") ?? "gemini-2.5-flash-image";
+  return window.localStorage.getItem("hub_model_render") ?? "gemini-3.1-flash-image-preview";
 }
 
 export async function generateRender(

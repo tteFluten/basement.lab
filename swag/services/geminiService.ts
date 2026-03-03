@@ -22,7 +22,7 @@ export interface GenerateImageParams {
 export const generateMockup = async (params: GenerateImageParams): Promise<string> => {
   const base = getHubApiBase();
   if (base) {
-    const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_swag") ?? "gemini-2.5-flash-image") : "gemini-2.5-flash-image";
+    const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_swag") ?? "gemini-3.1-flash-image-preview") : "gemini-2.5-flash-image";
     const res = await fetch(`${base}/api/gemini/swag/generate-mockup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

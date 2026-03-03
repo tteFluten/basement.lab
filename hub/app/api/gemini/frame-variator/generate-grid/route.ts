@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     
     Output: Clean 3x3 contact sheet image.`;
 
-    const model = (body.model as string) ?? "gemini-2.5-flash-image";
+    const model = (body.model as string) ?? "gemini-3.1-flash-image-preview";
     const ai = getGemini();
     const response = await ai.models.generateContent({
       model,

@@ -83,3 +83,8 @@ export function openDownloadAction(
     }, 60000);
   });
 }
+
+export function reportGenerationTime(durationMs: number): void {
+  if (window.self === window.top) return;
+  window.parent.postMessage({ type: "BASEMENT_GENERATION_DONE", durationMs }, "*");
+}

@@ -143,7 +143,7 @@ export const reconstructFrame = async (
 ): Promise<string> => {
   const hubBase = getHubApiBase();
   if (hubBase) {
-    const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_chronos") ?? "gemini-2.5-flash-image") : "gemini-2.5-flash-image";
+    const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_chronos") ?? "gemini-3.1-flash-image-preview") : "gemini-2.5-flash-image";
     const res = await fetch(`${hubBase}/api/gemini/chronos/reconstruct`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ visualPrompt, sourceImageBase64, aspectRatio, direction, model }),

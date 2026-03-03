@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       parts.push({ inlineData: { data: styleData, mimeType: "image/jpeg" } });
     }
 
-    const model = (body.model as string) ?? "gemini-2.5-flash-image";
+    const model = (body.model as string) ?? "gemini-3.1-flash-image-preview";
     const ai = getGemini();
     const response = await ai.models.generateContent({
       model,

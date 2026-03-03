@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       ? "GENERATE FUTURE FRAME: The attached image is the CURRENT state. Generate the frame for T+5 seconds LATER."
       : "GENERATE PRECEDING FRAME: The attached image is the CURRENT state. Generate the frame for T-5 seconds EARLIER.";
 
-    const model = (body.model as string) ?? "gemini-2.5-flash-image";
+    const model = (body.model as string) ?? "gemini-3.1-flash-image-preview";
     const ai = getGemini();
     const response = await ai.models.generateContent({
       model,

@@ -9,10 +9,11 @@ import {
   BASEMENT_REFERENCE_SELECTED,
   BASEMENT_OPEN_DOWNLOAD_ACTION,
   BASEMENT_DOWNLOAD_DONE,
+  BASEMENT_GENERATION_DONE,
 } from "@/lib/bridgeTypes";
 
 export function AppTabsContainer() {
-  const { openTabs, activeSlug } = useAppTabs();
+  const { openTabs, activeSlug, setLastGenerationMs } = useAppTabs();
 
   const [refPickerOpen, setRefPickerOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
@@ -65,6 +66,11 @@ export function AppTabsContainer() {
             prompt: data.prompt,
           });
           setDownloadOpen(true);
+          break;
+        }
+        case BASEMENT_GENERATION_DONE: {
+          const ms = typeof data.durationMs === "number" ? data.durationMs : null;
+          if (ms != null) setLastGenerationMs(ms);
           break;
         }
         default:

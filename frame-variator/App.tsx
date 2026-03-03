@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { GeminiService, CAMERA_POVS } from './services/geminiService';
 import { Variation, SceneAnalysis, GridState } from './types';
-import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime } from './lib/hubBridge';
 import { resizeImageForApi, RETRY_PRESET } from './lib/imageResize';
 import { 
   Upload, 
@@ -139,6 +139,7 @@ const App: React.FC = () => {
 
   const generateProcess = async () => {
     if (!originalImage || !originalImageForApi || loading) return;
+    const start = performance.now();
     setLoading(true);
     setLoadingStage('Analyzing Plate');
     setError(null);
@@ -157,6 +158,7 @@ const App: React.FC = () => {
           throw err;
         }
       }
+      if (isHubEnv()) reportGenerationTime(Math.round(performance.now() - start));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -223,6 +225,7 @@ const App: React.FC = () => {
 
   const renderFinal = async (size: "1K" | "2K" | "4K" = "4K") => {
     if (currentGrid.selectedIndex === null || !analysis || !originalImageForApi || !currentGrid.imageUrl || loading) return;
+    const start = performance.now();
     setLoading(true);
     setLoadingStage(`Master Render ${size}`);
     setFinalImage(null);
@@ -237,6 +240,7 @@ const App: React.FC = () => {
         size
       );
       setFinalImage(url);
+      if (isHubEnv()) reportGenerationTime(Math.round(performance.now() - start));
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       text: `Render this viewport preview into a high-fidelity final image. Instructions: ${prompt}. Output must be hyper-realistic, high detail, 4K professional architectural/product rendering.`,
     });
 
-    const model = (body.model as string) ?? "gemini-2.5-flash-image";
+    const model = (body.model as string) ?? "gemini-3.1-flash-image-preview";
     const ai = getGemini();
     const response = await ai.models.generateContent({
       model,

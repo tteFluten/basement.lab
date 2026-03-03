@@ -36,3 +36,10 @@ export type BridgeDownloadDone = {
   type: typeof BASEMENT_DOWNLOAD_DONE;
   requestId: string;
 };
+
+export const BASEMENT_GENERATION_DONE = "BASEMENT_GENERATION_DONE";
+
+export type BridgeGenerationDone = {
+  type: typeof BASEMENT_GENERATION_DONE;
+  durationMs: number;
+};

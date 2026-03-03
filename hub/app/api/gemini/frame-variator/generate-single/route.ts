@@ -21,19 +21,19 @@ export async function POST(request: NextRequest) {
     }
     const row = Math.floor(selectedIndex / 3) + 1;
     const col = (selectedIndex % 3) + 1;
-    const model = (body.model as string) ?? "gemini-2.5-flash-image";
-    const masterPrompt = `HIGH-FIDELITY NEURAL UPSCALE (16:9 CINEMATIC MASTER).
+    const model = (body.model as string) ?? "gemini-3.1-flash-image-preview";
+    const masterPrompt = `LITERAL UPSCALE: Copy the Reference Grid cell exactly. Do not reinterpret, reimagine, or alter anything.
     
-    TASK: Perform a literal high-resolution reconstruction of Frame #${selectedIndex + 1} from the provided Reference Grid.
+    TASK: Pixel-perfect high-resolution reconstruction of the EXACT frame from Cell #${selectedIndex + 1} (Row ${row}, Col ${col}) in the Reference Grid.
     
-    STRICT MANDATE:
-    1. CONTENT FIDELITY: You must match the composition, pose, character expression, and environment of Cell #${selectedIndex + 1} (Row ${row}, Col ${col}) in the Reference Grid with 100% accuracy.
-    2. DETAIL FIDELITY: Use the "SOURCE PLATE" provided as a reference for high-frequency textures, lighting Kelvin, and skin details.
-    3. NO CREATIVE VARIATION: Do not change the angle, do not add elements, do not change the actor's clothing or position. This is an UPSCALE, not a re-generation.
-    4. ASPECT RATIO: The output MUST be in cinematic 16:9 format.
+    NON-NEGOTIABLE:
+    1. COPY EXACTLY: Match composition, pose, expression, wardrobe, colors, lighting, and environment of the Reference Grid cell with 100% fidelity. No creative variation.
+    2. UPSCALE ONLY: Add detail and sharpness. Do NOT add or remove objects, change faces, alter poses, or reinterpret the scene. This is a resolution increase, not a new generation.
+    3. SOURCE PLATE: Use the first image for reference textures, skin, and lighting. The output must match the Reference Grid cell.
+    4. ASPECT RATIO: 16:9 cinematic.
     5. NO TEXT: No labels, numbers, or watermarks.
     
-    The resulting image must look like the original cinema camera capture for: ${prompt}.`;
+    Output must be a direct upscale of the reference cell. Do not add artistic interpretation.`;
 
     const ai = getGemini();
     const response = await ai.models.generateContent({

@@ -1,11 +1,12 @@
 /**
- * Bridge to Hub: reference picker (upload or history) and download actions.
+ * Bridge to Hub: reference picker (upload or history), download actions, and generation timer.
  */
 const PREFIX = "BASEMENT_";
 const REQUEST_OPEN_REFERENCE = PREFIX + "OPEN_REFERENCE_PICKER";
 const RESPONSE_REFERENCE_SELECTED = PREFIX + "REFERENCE_SELECTED";
 const REQUEST_OPEN_DOWNLOAD = PREFIX + "OPEN_DOWNLOAD_ACTION";
 const RESPONSE_DOWNLOAD_DONE = PREFIX + "DOWNLOAD_DONE";
+const GENERATION_DONE = "BASEMENT_GENERATION_DONE";
 
 function nextId() {
   return "r-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9);
@@ -82,4 +83,10 @@ export function openDownloadAction(
       reject(new Error("Download action timeout"));
     }, 60000);
   });
+}
+
+/** Report generation duration to Hub (shows in Footer timer). */
+export function reportGenerationTime(durationMs: number): void {
+  if (window.self === window.top) return;
+  window.parent.postMessage({ type: GENERATION_DONE, durationMs }, "*");
 }

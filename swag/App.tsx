@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MockupType, AspectRatio, StylePreset, GenerationResult } from './types';
 import { generateMockup } from './services/geminiService';
-import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime } from './lib/hubBridge';
 
 interface PendingGeneration {
   id: string;
@@ -106,6 +106,7 @@ const App: React.FC = () => {
     setItems(prev => [pendingItem, ...prev]);
 
     try {
+      const start = performance.now();
       const imageUrl = await generateMockup({
         logoBase64: logo,
         styleBase64: styleRef || undefined,
@@ -116,6 +117,7 @@ const App: React.FC = () => {
         additionalDetails,
         strictReference
       });
+      if (isHubEnv()) reportGenerationTime(Math.round(performance.now() - start));
 
       const finishedResult: GenerationResult = {
         id: tempId,

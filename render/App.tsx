@@ -3,7 +3,7 @@ import Sidebar from './components/Sidebar';
 import { RenderJob } from './types';
 import { generateRender } from './services/geminiService';
 import ApiKeyOverlay from './components/ApiKeyOverlay';
-import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime } from './lib/hubBridge';
 
 const RANDOM_PROMPTS = [
   "Brutalist concrete villa, overgrown jungle vines, harsh noon shadows, 4k",
@@ -100,7 +100,9 @@ const App: React.FC = () => {
       setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'rendering' } : j));
       
       try {
+        const start = performance.now();
         const result = await generateRender(job.previewBase64, prompt, referenceBase64);
+        if (isHubEnv()) reportGenerationTime(Math.round(performance.now() - start));
         setJobs(prev => prev.map(j => j.id === job.id ? { 
           ...j, 
           status: 'completed', 

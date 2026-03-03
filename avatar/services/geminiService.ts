@@ -68,7 +68,7 @@ export const transformImage = async (
 
   const hubBase = getHubApiBase();
   if (hubBase) {
-    const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_avatar") ?? "gemini-2.5-flash-image") : "gemini-2.5-flash-image";
+    const model = typeof window !== "undefined" ? (window.localStorage.getItem("hub_model_avatar") ?? "gemini-3.1-flash-image-preview") : "gemini-2.5-flash-image";
     const res = await fetch(`${hubBase}/api/gemini/avatar/transform`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

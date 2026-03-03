@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     ]);
     const needsImageConfig = !!(aspectRatio || imageSize);
     if (needsImageConfig && !IMAGE_CAPABLE_MODELS.has(model)) {
-      model = "gemini-2.5-flash-image";
+      model = "gemini-3.1-flash-image-preview";
     }
     const responseMimeType = body.responseMimeType as string | undefined;
 

@@ -20,6 +20,8 @@ type AppTabsContextType = {
   activeSlug: string | null;
   openTab: (slug: string, label: string, url: string) => void;
   closeTab: (slug: string) => void;
+  lastGenerationMs: number | null;
+  setLastGenerationMs: (ms: number | null) => void;
 };
 
 const AppTabsContext = createContext<AppTabsContextType>({
@@ -27,12 +29,15 @@ const AppTabsContext = createContext<AppTabsContextType>({
   activeSlug: null,
   openTab: () => {},
   closeTab: () => {},
+  lastGenerationMs: null,
+  setLastGenerationMs: () => {},
 });
 
 export const useAppTabs = () => useContext(AppTabsContext);
 
 export function AppTabsProvider({ children }: { children: ReactNode }) {
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
+  const [lastGenerationMs, setLastGenerationMs] = useState<number | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -70,7 +75,7 @@ export function AppTabsProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppTabsContext.Provider
-      value={{ openTabs, activeSlug, openTab, closeTab }}
+      value={{ openTabs, activeSlug, openTab, closeTab, lastGenerationMs, setLastGenerationMs }}
     >
       {children}
     </AppTabsContext.Provider>

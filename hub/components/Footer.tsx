@@ -9,6 +9,7 @@ import {
   setSelectedModel,
   DEFAULT_IMAGE_MODEL,
 } from "@/lib/modelOptions";
+import { useAppTabs } from "@/lib/appTabsContext";
 import { getAppLabel } from "@/lib/appIcons";
 
 const APP_SLUGS_WITH_IMAGE = [
@@ -26,9 +27,16 @@ function getAppSlugFromPath(pathname: string): string | null {
   return slug && APP_SLUGS_WITH_IMAGE.includes(slug) ? slug : null;
 }
 
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const s = (ms / 1000).toFixed(1);
+  return `${s}s`;
+}
+
 export function Footer() {
   const pathname = usePathname();
   const appSlug = getAppSlugFromPath(pathname ?? "");
+  const { lastGenerationMs } = useAppTabs();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
   const [model, setModel] = useState(DEFAULT_IMAGE_MODEL);
@@ -106,6 +114,11 @@ export function Footer() {
                 </option>
               ))}
             </select>
+            {lastGenerationMs != null && (
+              <span className="text-fg-muted" title="Last generation time">
+                Last: {formatDuration(lastGenerationMs)}
+              </span>
+            )}
           </>
         ) : (
           <span className="text-fg-muted">Select an app to choose model</span>

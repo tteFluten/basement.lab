@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { ImageFile, StylingOptions, ProcessingState, AspectRatio, QualityLevel } from './types';
 import { transformImage, analyzeReferenceStyle } from './services/geminiService';
-import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime } from './lib/hubBridge';
 
 function dataUrlToFile(dataUrl: string, name = 'reference.png'): File {
   const [header, base64] = dataUrl.split(',');
@@ -129,6 +129,7 @@ const App: React.FC = () => {
         ));
 
         try {
+          const start = performance.now();
           const result = await transformImage(
             current.file, 
             referenceImage.file, 
@@ -138,6 +139,7 @@ const App: React.FC = () => {
             aspectRatio,
             quality
           );
+          if (isHubEnv()) reportGenerationTime(Math.round(performance.now() - start));
           setSourceImages(prev => prev.map(img => 
             img.id === current.id ? { ...img, status: 'completed', resultUrl: result } : img
           ));
