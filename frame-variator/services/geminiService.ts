@@ -9,6 +9,21 @@ function getHubApiBase(): string | null {
   return null;
 }
 
+/** Parse response as JSON; if body is not JSON (e.g. 413 "Request Entity Too Large"), throw a clear error. */
+async function parseJsonResponse<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  const trimmed = text.trim();
+  if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) {
+    if (res.status === 413) throw new Error("Image or payload too large. Try a smaller image.");
+    throw new Error(res.ok ? "Invalid server response" : (trimmed || `Request failed (${res.status})`));
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(trimmed.slice(0, 80) + (trimmed.length > 80 ? "…" : ""));
+  }
+}
+
 export const CAMERA_POVS = [
   "Gran Plano General (Extreme Wide Shot), focus on architecture and environment context",
   "Plano Americano (Medium Long Shot), frame from knees up, balancing figure and space",
@@ -54,7 +69,7 @@ export class GeminiService {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: base64Image }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<{ error?: string } & SceneAnalysis>(res);
       if (!res.ok) throw new Error(data.error ?? "API_KEY_ERROR");
       return data as SceneAnalysis;
     }
@@ -93,7 +108,7 @@ export class GeminiService {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ analysis, topic }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<{ error?: string } & NarrativeSuggestion[]>(res);
       if (!res.ok) throw new Error(data.error ?? "API_KEY_ERROR");
       return data as NarrativeSuggestion[];
     }
@@ -142,7 +157,7 @@ export class GeminiService {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ originalBase64, analysis, variations, model }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<{ error?: string; dataUrl?: string }>(res);
       if (!res.ok) throw new Error(data.error ?? "API error");
       return data.dataUrl as string;
     }
@@ -213,7 +228,7 @@ export class GeminiService {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ originalBase64, gridBase64, selectedIndex, prompt, size, model }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<{ error?: string; dataUrl?: string }>(res);
       if (!res.ok) throw new Error(data.error ?? "API error");
       return data.dataUrl as string;
     }
