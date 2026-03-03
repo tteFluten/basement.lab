@@ -14,6 +14,8 @@ type Props = {
   fileName?: string;
   /** Prompt used to generate (saved to history when adding) */
   prompt?: string;
+  /** When saving to history, use this visibility (from toolbar toggle) */
+  defaultIsPublic?: boolean;
   onDone: () => void;
 };
 
@@ -25,6 +27,7 @@ export function DownloadActionModal({
   mimeType,
   fileName,
   prompt,
+  defaultIsPublic = false,
   onDone,
 }: Props) {
   if (!open || !assetDataUrl) return null;
@@ -118,6 +121,7 @@ export function DownloadActionModal({
           height,
           ...(projectId ? { projectId } : {}),
           ...(prompt?.trim() ? { prompt: prompt.trim() } : {}),
+          isPublic: defaultIsPublic,
         }),
       })
         .then(async (r) => {
@@ -139,7 +143,7 @@ export function DownloadActionModal({
             userId: null,
             prompt: prompt?.trim() || null,
             note: null,
-            isPublic: false,
+            isPublic: defaultIsPublic,
           });
         })
         .catch(() => {});

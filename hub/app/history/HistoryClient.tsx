@@ -960,6 +960,7 @@ export function HistoryClient() {
 
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
+          <span className="text-xs text-fg-muted self-center">Visibility:</span>
           <div className="flex items-center gap-1.5 border border-border bg-bg-muted p-0.5" role="group" aria-label="Visibility">
             <button type="button" title="All (yours + public from others)"
               className={`flex items-center gap-1.5 px-3 py-2 text-xs transition-colors ${filterVisibility === "all" ? "bg-bg text-fg" : "text-fg-muted hover:text-fg"}`}

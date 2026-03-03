@@ -13,7 +13,7 @@ import {
 } from "@/lib/bridgeTypes";
 
 export function AppTabsContainer() {
-  const { openTabs, activeSlug, setLastGenerationMs } = useAppTabs();
+  const { openTabs, activeSlug, setLastGenerationMs, defaultIsPublic } = useAppTabs();
 
   const [refPickerOpen, setRefPickerOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
@@ -154,6 +154,7 @@ export function AppTabsContainer() {
         mimeType={downloadPayload?.mimeType}
         fileName={downloadPayload?.fileName}
         prompt={downloadPayload?.prompt}
+        defaultIsPublic={defaultIsPublic}
         onDone={handleDownloadDone}
       />
     </>

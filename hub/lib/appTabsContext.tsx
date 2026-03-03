@@ -5,9 +5,22 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+
+const DEFAULT_PUBLIC_LS_KEY = "basement-lab-default-public";
+
+function getStoredDefaultPublic(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const v = window.localStorage.getItem(DEFAULT_PUBLIC_LS_KEY);
+    return v === "true";
+  } catch {
+    return false;
+  }
+}
 
 export type OpenTab = {
   slug: string;
@@ -22,6 +35,8 @@ type AppTabsContextType = {
   closeTab: (slug: string) => void;
   lastGenerationMs: number | null;
   setLastGenerationMs: (ms: number | null) => void;
+  defaultIsPublic: boolean;
+  setDefaultIsPublic: (value: boolean) => void;
 };
 
 const AppTabsContext = createContext<AppTabsContextType>({
@@ -31,6 +46,8 @@ const AppTabsContext = createContext<AppTabsContextType>({
   closeTab: () => {},
   lastGenerationMs: null,
   setLastGenerationMs: () => {},
+  defaultIsPublic: false,
+  setDefaultIsPublic: () => {},
 });
 
 export const useAppTabs = () => useContext(AppTabsContext);
@@ -38,8 +55,20 @@ export const useAppTabs = () => useContext(AppTabsContext);
 export function AppTabsProvider({ children }: { children: ReactNode }) {
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
   const [lastGenerationMs, setLastGenerationMs] = useState<number | null>(null);
+  const [defaultIsPublic, setDefaultIsPublicState] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    setDefaultIsPublicState(getStoredDefaultPublic());
+  }, []);
+
+  const setDefaultIsPublic = useCallback((value: boolean) => {
+    setDefaultIsPublicState(value);
+    try {
+      window.localStorage.setItem(DEFAULT_PUBLIC_LS_KEY, value ? "true" : "false");
+    } catch { /* ignore */ }
+  }, []);
 
   const activeSlug =
     pathname?.startsWith("/apps/") ? (pathname.split("/")[2] ?? null) : null;
@@ -75,7 +104,7 @@ export function AppTabsProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppTabsContext.Provider
-      value={{ openTabs, activeSlug, openTab, closeTab, lastGenerationMs, setLastGenerationMs }}
+      value={{ openTabs, activeSlug, openTab, closeTab, lastGenerationMs, setLastGenerationMs, defaultIsPublic, setDefaultIsPublic }}
     >
       {children}
     </AppTabsContext.Provider>

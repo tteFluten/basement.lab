@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Lock, Globe } from "lucide-react";
 import {
   IMAGE_MODELS,
   getSelectedModel,
@@ -36,7 +36,7 @@ function formatDuration(ms: number): string {
 export function Footer() {
   const pathname = usePathname();
   const appSlug = getAppSlugFromPath(pathname ?? "");
-  const { lastGenerationMs } = useAppTabs();
+  const { lastGenerationMs, defaultIsPublic, setDefaultIsPublic } = useAppTabs();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
   const [model, setModel] = useState(DEFAULT_IMAGE_MODEL);
@@ -114,11 +114,28 @@ export function Footer() {
                 </option>
               ))}
             </select>
-            {lastGenerationMs != null && (
-              <span className="text-fg-muted" title="Last generation time">
-                Last: {formatDuration(lastGenerationMs)}
-              </span>
-            )}
+            <span className="text-fg-muted" title="Last generation time">
+              Last: {lastGenerationMs != null ? formatDuration(lastGenerationMs) : "—"}
+            </span>
+            <span className="text-fg-muted">Save as:</span>
+            <span className="flex border border-border">
+              <button
+                type="button"
+                title="New saves will be private (only you)"
+                onClick={() => setDefaultIsPublic(false)}
+                className={`flex items-center gap-1 px-2 py-1 text-xs border-r border-border ${!defaultIsPublic ? "bg-bg-muted text-fg" : "text-fg-muted hover:text-fg"}`}
+              >
+                <Lock className="w-3 h-3" /> Private
+              </button>
+              <button
+                type="button"
+                title="New saves will be public (visible to everyone)"
+                onClick={() => setDefaultIsPublic(true)}
+                className={`flex items-center gap-1 px-2 py-1 text-xs ${defaultIsPublic ? "bg-bg-muted text-fg" : "text-fg-muted hover:text-fg"}`}
+              >
+                <Globe className="w-3 h-3" /> Public
+              </button>
+            </span>
           </>
         ) : (
           <span className="text-fg-muted">Select an app to choose model</span>
