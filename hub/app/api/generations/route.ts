@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       height,
       projectId,
       prompt,
+      isPublic,
     } = body as {
       dataUrl: string;
       thumbDataUrl?: string;
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       height?: number;
       projectId?: string;
       prompt?: string;
+      isPublic?: boolean;
     };
 
     if (!dataUrl || !appId) {
@@ -80,6 +82,7 @@ export async function POST(request: NextRequest) {
       name: name ?? null,
       user_id: session.user.id,
       project_id: projectId ?? null,
+      is_public: Boolean(isPublic),
     };
     if (thumbUrl) row.thumb_url = thumbUrl;
     if (typeof prompt === "string" && prompt.trim()) row.prompt = prompt.trim();
@@ -92,11 +95,13 @@ export async function POST(request: NextRequest) {
 
     if (error && thumbUrl && /thumb_url/i.test(error.message)) {
       delete row.thumb_url;
-      const fb = await supabase
-        .from("generations")
-        .insert(row)
-        .select("id, created_at")
-        .single();
+      const fb = await supabase.from("generations").insert(row).select("id, created_at").single();
+      data = fb.data;
+      error = fb.error;
+    }
+    if (error && /is_public|column/i.test(error.message)) {
+      delete row.is_public;
+      const fb = await supabase.from("generations").insert(row).select("id, created_at").single();
       data = fb.data;
       error = fb.error;
     }
@@ -164,13 +169,14 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId") ?? undefined;
     const tag = searchParams.get("tag") ?? undefined;
     const appId = searchParams.get("appId") ?? undefined;
+    const visibility = searchParams.get("visibility") ?? "all"; // "all" | "public" | "mine"
     const limit = Math.min(Number(searchParams.get("limit")) || 500, 1000);
     const light = searchParams.get("light") === "1";
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
     const supabase = getSupabase();
-    const selectWithTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note";
-    const selectWithoutTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, prompt, note";
+    const selectWithTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note, is_public";
+    const selectWithoutTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, prompt, note, is_public";
 
     const buildQuery = (selectColumns: string, includeTagFilter: boolean) => {
       let q = supabase
@@ -178,7 +184,13 @@ export async function GET(request: NextRequest) {
         .select(selectColumns)
         .order("created_at", { ascending: false })
         .limit(limit);
-      if (!isAdmin) q = q.eq("user_id", session.user.id);
+      if (visibility === "public") {
+        q = q.eq("is_public", true);
+      } else if (visibility === "mine") {
+        q = q.eq("user_id", session.user.id);
+      } else {
+        if (!isAdmin) q = q.or(`user_id.eq.${session.user.id},is_public.eq.true`);
+      }
       if (projectId) q = q.eq("project_id", projectId);
       if (userId && isAdmin) q = q.eq("user_id", userId);
       if (appId) q = q.eq("app_id", appId);
@@ -197,9 +209,22 @@ export async function GET(request: NextRequest) {
     if (error && /does not exist|column.*(tags|thumb_url|prompt|note)/i.test(error.message)) {
       hasTagsColumn = false;
       const fallbackCols = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id";
-      result = await buildQuery(fallbackCols, false);
-      data = result.data as typeof data;
-      error = result.error;
+      const fallback1 = await buildQuery(fallbackCols, false);
+      data = fallback1.data as typeof data;
+      error = fallback1.error;
+    }
+    if (error && /is_public/i.test(error.message)) {
+      const colsNoPublic = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note";
+      let q = supabase.from("generations").select(colsNoPublic).order("created_at", { ascending: false }).limit(limit);
+      if (visibility === "mine") q = q.eq("user_id", session.user.id);
+      else if (!isAdmin) q = q.eq("user_id", session.user.id);
+      if (projectId) q = q.eq("project_id", projectId);
+      if (userId && isAdmin) q = q.eq("user_id", userId);
+      if (appId) q = q.eq("app_id", appId);
+      if (tag) q = q.contains("tags", [tag]);
+      const fallbackResult = await q;
+      data = fallbackResult.data as typeof data;
+      error = fallbackResult.error;
     }
 
     if (error) {
@@ -221,6 +246,7 @@ export async function GET(request: NextRequest) {
       tags?: string[];
       prompt?: string | null;
       note?: string | null;
+      is_public?: boolean;
     };
     const rows: GenRow[] = (data ?? []) as GenRow[];
 
@@ -259,6 +285,7 @@ export async function GET(request: NextRequest) {
         tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
         prompt: row.prompt ?? null,
         note: row.note ?? null,
+        isPublic: Boolean(row.is_public),
         ...(user ? { user: { fullName: user.fullName, avatarUrl: user.avatarUrl } } : {}),
       };
     });

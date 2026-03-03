@@ -55,6 +55,9 @@ export async function PATCH(
   if (body.note !== undefined) {
     updates.note = typeof body.note === "string" ? body.note.trim() || null : null;
   }
+  if (body.isPublic !== undefined) {
+    updates.is_public = Boolean(body.isPublic);
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });

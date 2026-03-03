@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow, Loader2,
+  Lock, Globe,
 } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { Avatar } from "@/components/Avatar";
@@ -21,6 +22,7 @@ function toItem(row: {
   user?: { fullName?: string | null; avatarUrl?: string | null };
   userId?: string | null;
   prompt?: string | null; note?: string | null;
+  isPublic?: boolean;
 }): HistoryItem {
   return {
     id: row.id, dataUrl: row.dataUrl || "", appId: row.appId,
@@ -35,6 +37,7 @@ function toItem(row: {
     userId: row.userId ?? undefined,
     prompt: row.prompt ?? undefined,
     note: row.note ?? undefined,
+    isPublic: Boolean(row.isPublic),
   };
 }
 
@@ -145,6 +148,7 @@ function EditPanel({
   const [tagInput, setTagInput] = useState("");
   const [projId, setProjId] = useState(item.projectId ?? "");
   const [note, setNote] = useState(item.note ?? "");
+  const [isPublic, setIsPublic] = useState(item.isPublic ?? false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const url = imgUrl(item);
@@ -165,7 +169,7 @@ function EditPanel({
       const res = await fetch(`/api/generations/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags, projectId: projId || null, note: note.trim() || null }),
+        body: JSON.stringify({ tags, projectId: projId || null, note: note.trim() || null, isPublic }),
       });
       if (res.ok) {
         setSaved(true);
@@ -223,6 +227,25 @@ function EditPanel({
             </p>
           ) : (
             <>
+              {/* Public / Private */}
+              <div>
+                <label className="text-xs text-fg-muted uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  Visibility
+                </label>
+                <div className="flex gap-2">
+                  <button type="button"
+                    className={`flex items-center gap-2 px-3 py-2 text-xs border transition-colors ${!isPublic ? "border-fg bg-bg-muted text-fg" : "border-border text-fg-muted hover:text-fg"}`}
+                    onClick={() => setIsPublic(false)}>
+                    <Lock className="w-3.5 h-3.5" /> Private
+                  </button>
+                  <button type="button"
+                    className={`flex items-center gap-2 px-3 py-2 text-xs border transition-colors ${isPublic ? "border-fg bg-bg-muted text-fg" : "border-border text-fg-muted hover:text-fg"}`}
+                    onClick={() => setIsPublic(true)}>
+                    <Globe className="w-3.5 h-3.5" /> Public
+                  </button>
+                </div>
+                <p className="text-[10px] text-fg-muted mt-1.5">Public items are visible to all users.</p>
+              </div>
               {/* Tags */}
               <div>
                 <label className="text-xs text-fg-muted uppercase tracking-wider flex items-center gap-1.5 mb-2">
@@ -334,6 +357,11 @@ function LargeCard({
                 <FolderIcon className="w-2.5 h-2.5 shrink-0" /> {projectName}
               </span>
             )}
+            {!item.id.startsWith("h-") && (
+              <span className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center bg-black/70 border border-white/20 rounded" title={item.isPublic ? "Public" : "Private"}>
+                {item.isPublic ? <Globe className="w-3 h-3 text-white" /> : <Lock className="w-3 h-3 text-white/80" />}
+              </span>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <div className="absolute inset-0 flex items-center justify-center">
               <ZoomIn className="w-7 h-7 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg" />
@@ -423,6 +451,11 @@ function SmallCard({
                 <FolderIcon className="w-2 h-2 shrink-0" /> {projectName}
               </span>
             )}
+            {!item.id.startsWith("h-") && (
+              <span className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center bg-black/70 border border-white/20 rounded" title={item.isPublic ? "Public" : "Private"}>
+                {item.isPublic ? <Globe className="w-2.5 h-2.5 text-white" /> : <Lock className="w-2.5 h-2.5 text-white/80" />}
+              </span>
+            )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
               <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
@@ -442,6 +475,7 @@ function SmallCard({
         <div className="flex items-center gap-2">
           <Icon className="w-3.5 h-3.5 text-fg-muted shrink-0" />
           <span className="text-xs text-fg truncate flex-1 min-w-0">{getAppLabel(item.appId)}</span>
+          {!item.id.startsWith("h-") && (item.isPublic ? <span title="Public"><Globe className="w-3 h-3 text-fg-muted shrink-0" /></span> : <span title="Private"><Lock className="w-3 h-3 text-fg-muted shrink-0" /></span>)}
           {(item.userName || item.userAvatarUrl) && (
             <Avatar src={item.userAvatarUrl} name={item.userName} size="sm" className="shrink-0" />
           )}
@@ -694,6 +728,7 @@ export function HistoryClient() {
   const [filterUserId, setFilterUserId] = useState("");
   const [filterTag, setFilterTag] = useState("");
   const [filterAppId, setFilterAppId] = useState("");
+  const [filterVisibility, setFilterVisibility] = useState<"all" | "public" | "mine">("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("large");
   const [group, setGroup] = useState<GroupMode>("none");
@@ -703,7 +738,7 @@ export function HistoryClient() {
   const BATCH_PROJECT_UNCHANGED = "__unchanged__";
   const [batchProjectId, setBatchProjectId] = useState(BATCH_PROJECT_UNCHANGED);
 
-  const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId);
+  const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId || filterVisibility !== "all");
 
   const handleRetry = useCallback(() => {
     setApiError(null);
@@ -724,12 +759,13 @@ export function HistoryClient() {
     const p = new URLSearchParams();
     p.set("limit", "1000");
     p.set("light", "1");
+    if (filterVisibility !== "all") p.set("visibility", filterVisibility);
     if (filterProjectId) p.set("projectId", filterProjectId);
     if (filterUserId) p.set("userId", filterUserId);
     if (filterTag.trim()) p.set("tag", filterTag.trim());
     if (filterAppId) p.set("appId", filterAppId);
     return p.toString();
-  }, [hasFilters, filterProjectId, filterUserId, filterTag, filterAppId]);
+  }, [hasFilters, filterVisibility, filterProjectId, filterUserId, filterTag, filterAppId]);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -924,6 +960,23 @@ export function HistoryClient() {
 
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 border border-border bg-bg-muted p-0.5" role="group" aria-label="Visibility">
+            <button type="button" title="All (yours + public from others)"
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs transition-colors ${filterVisibility === "all" ? "bg-bg text-fg" : "text-fg-muted hover:text-fg"}`}
+              onClick={() => setFilterVisibility("all")}>
+              <Layers className="w-3.5 h-3.5" /> All
+            </button>
+            <button type="button" title="Public (visible to everyone)"
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs transition-colors ${filterVisibility === "public" ? "bg-bg text-fg" : "text-fg-muted hover:text-fg"}`}
+              onClick={() => setFilterVisibility("public")}>
+              <Globe className="w-3.5 h-3.5" /> Public
+            </button>
+            <button type="button" title="My private (only yours)"
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs transition-colors ${filterVisibility === "mine" ? "bg-bg text-fg" : "text-fg-muted hover:text-fg"}`}
+              onClick={() => setFilterVisibility("mine")}>
+              <Lock className="w-3.5 h-3.5" /> My private
+            </button>
+          </div>
           <input type="text" placeholder="Search by name, app, tags..." value={search} onChange={(e) => setSearch(e.target.value)}
             className="flex-1 min-w-[200px] max-w-sm bg-bg-muted border border-border px-4 py-2.5 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-fg-muted transition-colors" />
           <select value={filterProjectId} onChange={(e) => setFilterProjectId(e.target.value)} className="bg-bg-muted border border-border px-3 py-2.5 text-sm text-fg">
@@ -1014,7 +1067,15 @@ export function HistoryClient() {
 
         {/* Edit panel */}
         {editItem && (
-          <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={() => fetchGenerations(true)} />
+          <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={async () => {
+            await fetchGenerations(true);
+            setCachedItems(getCachedGenerations().map(toItem));
+            if (hasFilters) {
+              const r = await fetch(`/api/generations?${filterQs}`);
+              const j = await r.json().catch(() => ({}));
+              if (r.ok && Array.isArray(j?.items)) setFilteredApiItems(j.items.map(toItem));
+            }
+          }} />
         )}
 
         {/* Lightbox */}

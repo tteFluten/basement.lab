@@ -30,6 +30,8 @@ export interface HistoryItem {
   prompt?: string;
   /** User note/explanation (editable in history detail) */
   note?: string;
+  /** Visible to all users (public) or only owner (private) */
+  isPublic?: boolean;
 }
 
 const MAX_ITEMS = 30;

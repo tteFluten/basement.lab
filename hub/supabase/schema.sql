@@ -63,12 +63,15 @@ alter table public.generations
   add column if not exists prompt text;
 alter table public.generations
   add column if not exists note text;
+alter table public.generations
+  add column if not exists is_public boolean not null default false;
 
 create index if not exists idx_generations_user_id on public.generations(user_id);
 create index if not exists idx_generations_project_id on public.generations(project_id);
 create index if not exists idx_generations_created_at on public.generations(created_at desc);
 create index if not exists idx_generations_tags on public.generations using gin(tags);
 create index if not exists idx_generations_app_id on public.generations(app_id);
+create index if not exists idx_generations_is_public on public.generations(is_public) where is_public = true;
 
 -- User-submitted apps (title, description, deploy/edit links, optional thumbnail; listed separately from lab apps)
 create table if not exists public.submitted_apps (

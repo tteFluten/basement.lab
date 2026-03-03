@@ -139,6 +139,7 @@ export function DownloadActionModal({
             userId: null,
             prompt: prompt?.trim() || null,
             note: null,
+            isPublic: false,
           });
         })
         .catch(() => {});

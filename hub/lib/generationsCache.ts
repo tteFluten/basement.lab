@@ -24,6 +24,7 @@ export interface CachedGeneration {
   projectName?: string | null;
   prompt?: string | null;
   note?: string | null;
+  isPublic?: boolean;
 }
 
 type Listener = () => void;
@@ -121,6 +122,7 @@ function parseRow(row: Record<string, unknown>): CachedGeneration {
     projectName: row.projectName != null ? String(row.projectName) : null,
     prompt: row.prompt != null ? String(row.prompt) : null,
     note: row.note != null ? String(row.note) : null,
+    isPublic: Boolean(row.isPublic ?? row.is_public),
   };
 }
 
