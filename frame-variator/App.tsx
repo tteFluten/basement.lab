@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GeminiService, CAMERA_POVS } from './services/geminiService';
 import { Variation, SceneAnalysis, GridState } from './types';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
-import { resizeImageForApi } from './lib/imageResize';
+import { resizeImageForApi, RETRY_PRESET } from './lib/imageResize';
 import { 
   Upload, 
   RefreshCw, 
@@ -78,7 +78,7 @@ const App: React.FC = () => {
   const setCurrentGrid = mode === 'camera' ? setCameraGrid : setNarrativeGrid;
 
   const applyOriginalImage = async (dataUrl: string) => {
-    const forApi = await resizeImageForApi(dataUrl, 2048, 0.75);
+    const forApi = await resizeImageForApi(dataUrl);
     setOriginalImage(dataUrl);
     setOriginalImageForApi(forApi);
     setCameraGrid({ imageUrl: null, variations: [], selectedIndex: null });
@@ -117,32 +117,46 @@ const App: React.FC = () => {
     }
   };
 
+  const runAnalysisAndGrid = async (imageForApi: string) => {
+    let sceneData = analysis;
+    if (!sceneData) {
+      sceneData = await GeminiService.analyzeImage(imageForApi);
+      setAnalysis(sceneData);
+    }
+    let vars: Variation[] = [];
+    if (mode === 'camera') {
+      setLoadingStage('Mapping POV Matrix');
+      vars = CAMERA_POVS.map((p, i) => ({ id: i, prompt: p, type: 'camera' as const }));
+    } else {
+      setLoadingStage('Narrative Synthesis');
+      const suggestions = await GeminiService.getNarrativeSuggestions(sceneData, topic);
+      vars = suggestions.map((s, i) => ({ id: i, prompt: `${s.title}: ${s.description}`, type: 'narrative' as const }));
+    }
+    setLoadingStage('Rendering Contact Sheet');
+    const gridUrl = await GeminiService.generateGrid(imageForApi, sceneData, vars);
+    setCurrentGrid({ imageUrl: gridUrl, variations: vars, selectedIndex: null });
+  };
+
   const generateProcess = async () => {
     if (!originalImage || !originalImageForApi || loading) return;
     setLoading(true);
     setLoadingStage('Analyzing Plate');
     setError(null);
     try {
-      let sceneData = analysis;
-      if (!sceneData) {
-        sceneData = await GeminiService.analyzeImage(originalImageForApi);
-        setAnalysis(sceneData);
+      try {
+        await runAnalysisAndGrid(originalImageForApi);
+      } catch (err: any) {
+        const msg = String(err?.message ?? '');
+        const is413 = msg.includes('413') || msg.includes('too large') || msg.includes('Content Too Large');
+        if (is413) {
+          setLoadingStage('Resizing (payload too large)');
+          const smaller = await resizeImageForApi(originalImage, RETRY_PRESET);
+          setOriginalImageForApi(smaller);
+          await runAnalysisAndGrid(smaller);
+        } else {
+          throw err;
+        }
       }
-
-      let vars: Variation[] = [];
-
-      if (mode === 'camera') {
-        setLoadingStage('Mapping POV Matrix');
-        vars = CAMERA_POVS.map((p, i) => ({ id: i, prompt: p, type: 'camera' as const }));
-      } else {
-        setLoadingStage('Narrative Synthesis');
-        const suggestions = await GeminiService.getNarrativeSuggestions(sceneData, topic);
-        vars = suggestions.map((s, i) => ({ id: i, prompt: `${s.title}: ${s.description}`, type: 'narrative' as const }));
-      }
-
-      setLoadingStage('Rendering Contact Sheet');
-      const gridUrl = await GeminiService.generateGrid(originalImageForApi, sceneData, vars);
-      setCurrentGrid({ imageUrl: gridUrl, variations: vars, selectedIndex: null });
     } catch (err: any) {
       setError(err.message);
     } finally {
