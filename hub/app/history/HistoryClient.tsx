@@ -708,7 +708,7 @@ export function HistoryClient() {
   const filterQs = useMemo(() => {
     if (!hasFilters) return "";
     const p = new URLSearchParams();
-    p.set("limit", "200");
+    p.set("limit", "1000");
     p.set("light", "1");
     if (filterProjectId) p.set("projectId", filterProjectId);
     if (filterUserId) p.set("userId", filterUserId);
