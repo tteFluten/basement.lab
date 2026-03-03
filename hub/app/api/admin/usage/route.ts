@@ -46,7 +46,7 @@ export async function GET() {
       supabase.from("generations").select("id", { count: "exact", head: true }),
       supabase.from("generations").select("id", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
       supabase.from("generations").select("id", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
-      supabase.from("generations").select("app_id, user_id, created_at").order("created_at", { ascending: false }).limit(1000),
+      supabase.from("generations").select("app_id, user_id, created_at").order("created_at", { ascending: false }).limit(500),
       supabase.from("submitted_apps").select("id, user_id, title, created_at"),
       supabase.from("bug_reports").select("id", { count: "exact", head: true }),
       supabase.from("bug_reports").select("id", { count: "exact", head: true }).eq("status", "open"),

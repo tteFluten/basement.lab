@@ -126,4 +126,13 @@ create table if not exists public.app_ratings (
 create index if not exists idx_app_ratings_app_id on public.app_ratings(app_id);
 create index if not exists idx_app_ratings_user_id on public.app_ratings(user_id);
 
+-- RLS: enable on all tables. API uses service role (bypasses RLS). Direct/anon access is denied.
+alter table public.users enable row level security;
+alter table public.projects enable row level security;
+alter table public.project_members enable row level security;
+alter table public.generations enable row level security;
+alter table public.submitted_apps enable row level security;
+alter table public.bug_reports enable row level security;
+alter table public.app_ratings enable row level security;
+
 -- Optional: seed admin. Run hub/supabase/seed.sql after this schema to set lautaro@basement.studio as admin.

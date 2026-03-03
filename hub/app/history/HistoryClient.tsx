@@ -743,7 +743,7 @@ export function HistoryClient() {
   const handleRetry = useCallback(() => {
     setApiError(null);
     setApiLoading(true);
-    fetchGenerations(true)
+    fetchGenerations(true, true)
       .then(() => {
         setCachedItems(getCachedGenerations().map(toItem));
         setApiLoading(false);
@@ -757,7 +757,7 @@ export function HistoryClient() {
   const filterQs = useMemo(() => {
     if (!hasFilters) return "";
     const p = new URLSearchParams();
-    p.set("limit", "500");
+    p.set("limit", "300");
     p.set("light", "1");
     if (filterVisibility !== "all") p.set("visibility", filterVisibility);
     if (filterProjectId) p.set("projectId", filterProjectId);
@@ -776,7 +776,7 @@ export function HistoryClient() {
     };
     sync();
     const unsub = subscribeGenerations(sync);
-    fetchGenerations()
+    fetchGenerations(undefined, true)
       .then(() => { setApiLoading(false); setApiError(null); })
       .catch((e) => {
         setApiLoading(false);
@@ -861,7 +861,7 @@ export function HistoryClient() {
       const res = await fetch("/api/generations/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.updated) {
-        await fetchGenerations(true);
+        await fetchGenerations(true, true);
         setCachedItems(getCachedGenerations().map(toItem));
         if (hasFilters) {
           const r = await fetch(`/api/generations?${filterQs}`);
@@ -1068,7 +1068,7 @@ export function HistoryClient() {
         {/* Edit panel */}
         {editItem && (
           <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={async () => {
-            await fetchGenerations(true);
+            await fetchGenerations(true, true);
             setCachedItems(getCachedGenerations().map(toItem));
             if (hasFilters) {
               const r = await fetch(`/api/generations?${filterQs}`);

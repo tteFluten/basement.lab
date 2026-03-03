@@ -31,9 +31,9 @@ type Listener = () => void;
 
 const LS_KEY = "bl_gen_cache";
 const LS_TS_KEY = "bl_gen_cache_ts";
-const STALE_MS = 60_000;
+const STALE_MS = 120_000;
 const FAST_LIMIT = 50;
-const FULL_LIMIT = 300;
+const FULL_LIMIT = 150;
 
 let cachedItems: CachedGeneration[] = [];
 let lastFetchTime = 0;
@@ -134,7 +134,7 @@ async function apiFetch(limit: number): Promise<CachedGeneration[] | null> {
   return json.items.map((r: Record<string, unknown>) => parseRow(r));
 }
 
-async function doFetch(): Promise<void> {
+async function doFetch(full: boolean): Promise<void> {
   try {
     const fast = await apiFetch(FAST_LIMIT);
     if (fast && fast.length >= 0) {
@@ -142,19 +142,22 @@ async function doFetch(): Promise<void> {
       lastFetchTime = Date.now();
       notify();
     }
-    const full = await apiFetch(FULL_LIMIT);
-    if (full && full.length >= 0) {
-      cachedItems = full;
-      lastFetchTime = Date.now();
-      persistToStorage();
-      notify();
+    if (full) {
+      const fullData = await apiFetch(FULL_LIMIT);
+      if (fullData && fullData.length >= 0) {
+        cachedItems = fullData;
+        lastFetchTime = Date.now();
+        persistToStorage();
+        notify();
+      }
     }
   } catch {
     // Keep existing cache on failure; don't clear
   }
 }
 
-export async function fetchGenerations(force = false): Promise<CachedGeneration[]> {
+/** @param full If true, also fetches the larger batch (FULL_LIMIT). Use on History page; skip for dashboard to save Disk I/O. */
+export async function fetchGenerations(force = false, full = false): Promise<CachedGeneration[]> {
   const isStale = Date.now() - lastFetchTime > STALE_MS;
 
   if (!force && !isStale && lastFetchTime > 0) {
@@ -162,12 +165,12 @@ export async function fetchGenerations(force = false): Promise<CachedGeneration[
   }
 
   if (!force && lastFetchTime > 0) {
-    doFetch();
+    doFetch(full);
     return cachedItems;
   }
 
   if (!fetchPromise) {
-    fetchPromise = doFetch().finally(() => { fetchPromise = null; });
+    fetchPromise = doFetch(full).finally(() => { fetchPromise = null; });
   }
   await fetchPromise;
   return cachedItems;
