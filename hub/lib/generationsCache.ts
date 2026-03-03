@@ -125,34 +125,30 @@ function parseRow(row: Record<string, unknown>): CachedGeneration {
 }
 
 async function apiFetch(limit: number): Promise<CachedGeneration[] | null> {
-  try {
-    const res = await fetch(`/api/generations?limit=${limit}&light=1`);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (!Array.isArray(json?.items)) return null;
-    return json.items.map((r: Record<string, unknown>) => parseRow(r));
-  } catch {
-    return null;
-  }
+  const res = await fetch(`/api/generations?limit=${limit}&light=1`);
+  if (!res.ok) return null;
+  const json = await res.json().catch(() => null);
+  if (!json || !Array.isArray(json.items)) return null;
+  return json.items.map((r: Record<string, unknown>) => parseRow(r));
 }
 
 async function doFetch(): Promise<void> {
-  const fastP = apiFetch(FAST_LIMIT);
-  const fullP = apiFetch(FULL_LIMIT);
-
-  const fast = await fastP;
-  if (fast) {
-    cachedItems = fast;
-    lastFetchTime = Date.now();
-    notify();
-  }
-
-  const full = await fullP;
-  if (full) {
-    cachedItems = full;
-    lastFetchTime = Date.now();
-    persistToStorage();
-    notify();
+  try {
+    const fast = await apiFetch(FAST_LIMIT);
+    if (fast && fast.length >= 0) {
+      cachedItems = fast;
+      lastFetchTime = Date.now();
+      notify();
+    }
+    const full = await apiFetch(FULL_LIMIT);
+    if (full && full.length >= 0) {
+      cachedItems = full;
+      lastFetchTime = Date.now();
+      persistToStorage();
+      notify();
+    }
+  } catch {
+    // Keep existing cache on failure; don't clear
   }
 }
 

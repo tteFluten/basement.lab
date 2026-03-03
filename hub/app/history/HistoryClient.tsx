@@ -705,6 +705,20 @@ export function HistoryClient() {
 
   const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId);
 
+  const handleRetry = useCallback(() => {
+    setApiError(null);
+    setApiLoading(true);
+    fetchGenerations(true)
+      .then(() => {
+        setCachedItems(getCachedGenerations().map(toItem));
+        setApiLoading(false);
+      })
+      .catch((e) => {
+        setApiLoading(false);
+        setApiError(e instanceof Error ? e.message : "Failed to load history");
+      });
+  }, []);
+
   const filterQs = useMemo(() => {
     if (!hasFilters) return "";
     const p = new URLSearchParams();
@@ -726,7 +740,12 @@ export function HistoryClient() {
     };
     sync();
     const unsub = subscribeGenerations(sync);
-    fetchGenerations().then(() => { setApiLoading(false); });
+    fetchGenerations()
+      .then(() => { setApiLoading(false); setApiError(null); })
+      .catch((e) => {
+        setApiLoading(false);
+        setApiError(e instanceof Error ? e.message : "Failed to load history");
+      });
     return unsub;
   }, []);
 
@@ -924,7 +943,7 @@ export function HistoryClient() {
           <input type="text" placeholder="Tag" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}
             className="w-28 bg-bg-muted border border-border px-3 py-2.5 text-sm text-fg placeholder:text-fg-muted" />
           {apiError && (
-            <button type="button" onClick={() => fetchGenerations(true)} className="px-4 py-2.5 border border-amber-600 text-amber-400 text-sm hover:bg-amber-600/20 transition-colors">Retry</button>
+            <button type="button" onClick={handleRetry} className="px-4 py-2.5 border border-amber-600 text-amber-400 text-sm hover:bg-amber-600/20 transition-colors">Retry</button>
           )}
         </div>
 
@@ -932,7 +951,10 @@ export function HistoryClient() {
         {apiLoading && items.length === 0 ? (
           <Spinner size={28} steps={["Loading history", "Fetching generations", "Cleaning duplicates", "Sorting by date", "Preparing gallery"]} />
         ) : apiError && items.length === 0 ? (
-          <p className="text-amber-400/90 text-sm">{apiError}</p>
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <p className="text-amber-400/90 text-sm mb-4">{apiError}</p>
+            <button type="button" onClick={handleRetry} className="px-4 py-2.5 border border-amber-600 text-amber-400 text-sm hover:bg-amber-600/20 transition-colors">Retry</button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-fg-muted">
             <Layers className="w-12 h-12 mb-4 opacity-20" />

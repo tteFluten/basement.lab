@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
-import { uploadDataUrl, hasBlob, resolveBlobUrl } from "@/lib/blob";
+import { uploadDataUrl, hasBlob } from "@/lib/blob";
 import { authOptions } from "@/lib/auth";
 import { generateImageTags } from "@/lib/generateImageTags";
 
@@ -241,47 +241,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const rawItems = rows.map((row) => {
+    const items = rows.map((row) => {
       const user = !light && row.user_id ? userMap.get(row.user_id) : undefined;
+      const createdAt = row.created_at != null ? new Date(row.created_at).getTime() : Date.now();
       return {
         id: row.id,
         appId: row.app_id,
         dataUrl: null as string | null,
-        blobUrl: row.blob_url,
+        blobUrl: row.blob_url ?? null,
         thumbUrl: row.thumb_url ?? null,
-        width: row.width,
-        height: row.height,
-        name: row.name,
-        createdAt: new Date(row.created_at).getTime(),
+        width: row.width ?? null,
+        height: row.height ?? null,
+        name: row.name ?? null,
+        createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
         userId: row.user_id,
-        projectId: row.project_id,
+        projectId: row.project_id ?? null,
         tags: hasTagsColumn && Array.isArray(row.tags) ? row.tags : [],
         prompt: row.prompt ?? null,
         note: row.note ?? null,
         ...(user ? { user: { fullName: user.fullName, avatarUrl: user.avatarUrl } } : {}),
       };
     });
-
-    // Resolve private blob URLs to signed download URLs so <img src> works
-    const items = await Promise.all(
-      rawItems.map(async (item) => {
-        let blobUrl = item.blobUrl;
-        let thumbUrl = item.thumbUrl;
-        if (hasBlob()) {
-          try {
-            if (blobUrl && blobUrl.includes("blob.vercel-storage.com")) {
-              blobUrl = await resolveBlobUrl(blobUrl);
-            }
-            if (thumbUrl && thumbUrl.includes("blob.vercel-storage.com")) {
-              thumbUrl = await resolveBlobUrl(thumbUrl);
-            }
-          } catch (e) {
-            console.warn("Blob URL resolve failed for", item.id, e);
-          }
-        }
-        return { ...item, blobUrl, thumbUrl };
-      })
-    );
 
     const headers: HeadersInit = {};
     if (light) {
