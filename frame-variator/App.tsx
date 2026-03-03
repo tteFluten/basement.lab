@@ -78,7 +78,7 @@ const App: React.FC = () => {
   const setCurrentGrid = mode === 'camera' ? setCameraGrid : setNarrativeGrid;
 
   const applyOriginalImage = async (dataUrl: string) => {
-    const forApi = await resizeImageForApi(dataUrl, 1920, 0.85);
+    const forApi = await resizeImageForApi(dataUrl, 2048, 0.75);
     setOriginalImage(dataUrl);
     setOriginalImageForApi(forApi);
     setCameraGrid({ imageUrl: null, variations: [], selectedIndex: null });
