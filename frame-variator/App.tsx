@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { GeminiService, CAMERA_POVS } from './services/geminiService';
 import { Variation, SceneAnalysis, GridState } from './types';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { resizeImageForApi } from './lib/imageResize';
 import { 
   Upload, 
   RefreshCw, 
@@ -60,6 +61,7 @@ const TaskStatus: React.FC<{ active: boolean; stage: string }> = ({ active, stag
 
 const App: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [originalImageForApi, setOriginalImageForApi] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<SceneAnalysis | null>(null);
   
   const [cameraGrid, setCameraGrid] = useState<GridState>({ imageUrl: null, variations: [], selectedIndex: null });
@@ -75,8 +77,10 @@ const App: React.FC = () => {
   const currentGrid = mode === 'camera' ? cameraGrid : narrativeGrid;
   const setCurrentGrid = mode === 'camera' ? setCameraGrid : setNarrativeGrid;
 
-  const applyOriginalImage = (dataUrl: string) => {
+  const applyOriginalImage = async (dataUrl: string) => {
+    const forApi = await resizeImageForApi(dataUrl, 1920, 0.85);
     setOriginalImage(dataUrl);
+    setOriginalImageForApi(forApi);
     setCameraGrid({ imageUrl: null, variations: [], selectedIndex: null });
     setNarrativeGrid({ imageUrl: null, variations: [], selectedIndex: null });
     setFinalImage(null);
@@ -88,28 +92,40 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => applyOriginalImage(event.target?.result as string);
+      reader.onload = async (event) => {
+        const dataUrl = event.target?.result as string;
+        setLoading(true);
+        try {
+          await applyOriginalImage(dataUrl);
+        } finally {
+          setLoading(false);
+        }
+      };
       reader.readAsDataURL(file);
     }
   };
 
   const handleSourcePlateClick = () => {
     if (isHubEnv()) {
-      openReferencePicker().then(applyOriginalImage).catch(() => {});
+      setLoading(true);
+      openReferencePicker()
+        .then((url) => applyOriginalImage(url))
+        .catch(() => {})
+        .finally(() => setLoading(false));
     } else {
       document.getElementById('frame-variator-file-input')?.click();
     }
   };
 
   const generateProcess = async () => {
-    if (!originalImage || loading) return;
+    if (!originalImage || !originalImageForApi || loading) return;
     setLoading(true);
     setLoadingStage('Analyzing Plate');
     setError(null);
     try {
       let sceneData = analysis;
       if (!sceneData) {
-        sceneData = await GeminiService.analyzeImage(originalImage);
+        sceneData = await GeminiService.analyzeImage(originalImageForApi);
         setAnalysis(sceneData);
       }
 
@@ -125,7 +141,7 @@ const App: React.FC = () => {
       }
 
       setLoadingStage('Rendering Contact Sheet');
-      const gridUrl = await GeminiService.generateGrid(originalImage, sceneData, vars);
+      const gridUrl = await GeminiService.generateGrid(originalImageForApi, sceneData, vars);
       setCurrentGrid({ imageUrl: gridUrl, variations: vars, selectedIndex: null });
     } catch (err: any) {
       setError(err.message);
@@ -192,14 +208,14 @@ const App: React.FC = () => {
   };
 
   const renderFinal = async (size: "1K" | "2K" | "4K" = "4K") => {
-    if (currentGrid.selectedIndex === null || !analysis || !originalImage || !currentGrid.imageUrl || loading) return;
+    if (currentGrid.selectedIndex === null || !analysis || !originalImageForApi || !currentGrid.imageUrl || loading) return;
     setLoading(true);
     setLoadingStage(`Master Render ${size}`);
     setFinalImage(null);
     try {
       const selectedVariation = currentGrid.variations[currentGrid.selectedIndex];
       const url = await GeminiService.generateSingle(
-        originalImage, 
+        originalImageForApi, 
         currentGrid.imageUrl, 
         analysis, 
         currentGrid.selectedIndex, 
@@ -294,7 +310,7 @@ const App: React.FC = () => {
           </section>
 
           <button 
-            disabled={!originalImage || loading}
+            disabled={!originalImage || !originalImageForApi || loading}
             onClick={generateProcess}
             className="w-full py-5 bg-zinc-100 text-black font-bold text-[10px] tracking-[0.2em] hover:bg-white transition-all disabled:opacity-10 uppercase flex items-center justify-center gap-3"
           >
