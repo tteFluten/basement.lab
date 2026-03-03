@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
     const tag = searchParams.get("tag") ?? undefined;
     const appId = searchParams.get("appId") ?? undefined;
     const visibility = searchParams.get("visibility") ?? "all"; // "all" | "public" | "mine"
-    const limit = Math.min(Number(searchParams.get("limit")) || 500, 1000);
+    const limit = Math.min(Number(searchParams.get("limit")) || 200, 500);
     const light = searchParams.get("light") === "1";
     const isAdmin = (session.user as { role?: string }).role === "admin";
 

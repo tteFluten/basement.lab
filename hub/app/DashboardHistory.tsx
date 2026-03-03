@@ -78,7 +78,9 @@ export function DashboardHistory() {
   useEffect(() => {
     setMemoryItems(getHistory());
     const unsub = subscribeGenerations(() => setMemoryItems(getHistory()));
-    const iv = setInterval(() => setMemoryItems(getHistory()), 3000);
+    const iv = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") setMemoryItems(getHistory());
+    }, 15000);
     return () => { clearInterval(iv); unsub(); };
   }, []);
 

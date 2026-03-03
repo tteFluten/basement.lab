@@ -32,8 +32,8 @@ type Listener = () => void;
 const LS_KEY = "bl_gen_cache";
 const LS_TS_KEY = "bl_gen_cache_ts";
 const STALE_MS = 60_000;
-const FAST_LIMIT = 100;
-const FULL_LIMIT = 1000;
+const FAST_LIMIT = 50;
+const FULL_LIMIT = 300;
 
 let cachedItems: CachedGeneration[] = [];
 let lastFetchTime = 0;

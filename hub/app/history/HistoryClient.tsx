@@ -757,7 +757,7 @@ export function HistoryClient() {
   const filterQs = useMemo(() => {
     if (!hasFilters) return "";
     const p = new URLSearchParams();
-    p.set("limit", "1000");
+    p.set("limit", "500");
     p.set("light", "1");
     if (filterVisibility !== "all") p.set("visibility", filterVisibility);
     if (filterProjectId) p.set("projectId", filterProjectId);
