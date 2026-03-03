@@ -1001,6 +1001,14 @@ export function HistoryClient() {
           )}
         </div>
 
+        {/* Loading from DB indicator when we already show cache */}
+        {(apiLoading || refreshing) && items.length > 0 && (
+          <div className="mb-6 flex items-center gap-3 px-4 py-3 border border-border bg-bg-muted rounded-md">
+            <Loader2 className="w-5 h-5 text-fg-muted animate-spin shrink-0" aria-hidden />
+            <span className="text-sm text-fg-muted">Updating from database…</span>
+          </div>
+        )}
+
         {/* Content */}
         {apiLoading && items.length === 0 ? (
           <Spinner size={28} steps={["Loading history", "Fetching generations", "Cleaning duplicates", "Sorting by date", "Preparing gallery"]} />
