@@ -13,6 +13,7 @@ const VALID_SLUGS = [
   "render",
   "frame-variator",
   "connect",
+  "nanobanana",
 ] as const;
 
 const APP_LABELS: Record<string, string> = {
@@ -23,6 +24,7 @@ const APP_LABELS: Record<string, string> = {
   render: "Render",
   "frame-variator": "Frame Variator",
   connect: "Connect",
+  nanobanana: "NanoBanana",
 };
 
 export function AppFrameClient() {
