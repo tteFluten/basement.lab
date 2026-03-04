@@ -11,6 +11,7 @@ const BUILT_EMBED_SLUGS = new Set([
   "render",
   "frame-variator",
   "connect",
+  "nanobanana",
 ]);
 
 export function getAppUrl(slug: string): string {

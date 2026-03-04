@@ -8,6 +8,7 @@ import {
   ImagePlus,
   Layers,
   Blocks,
+  Banana,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ const APP_ICONS: Record<string, LucideIcon> = {
   render: ImagePlus,
   "frame-variator": Layers,
   connect: Blocks,
+  nanobanana: Banana,
 };
 
 export function getAppIcon(appId: string): LucideIcon {
@@ -33,6 +35,7 @@ const APP_LABELS: Record<string, string> = {
     render: "Render",
     "frame-variator": "Frame Variator",
     connect: "Connect",
+    nanobanana: "NanoBanana",
 };
 
 export function getAppLabel(appId: string): string {

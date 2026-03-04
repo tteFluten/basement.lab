@@ -1,0 +1,5 @@
+{
+  "name": "NanoBanana",
+  "description": "Minimalist iterative image generation studio with horizontal history carousel and color-coded @mentions.",
+  "requestFramePermissions": []
+}

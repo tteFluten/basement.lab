@@ -22,6 +22,7 @@ import {
   ExternalLink,
   ArrowRight,
   X,
+  Banana,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
@@ -30,7 +31,7 @@ import { Image as ImageIcon } from "lucide-react";
 import { useAppTabs } from "@/lib/appTabsContext";
 
 const APP_LINKS = [
-  { slug: "cineprompt", label: "CinePrompt", Icon: Film },
+  { slug: "nanobanana", label: "NanoBanana", Icon: Banana },
   { slug: "chronos", label: "Chronos", Icon: Clock },
   { slug: "swag", label: "Swag", Icon: Shirt },
   { slug: "avatar", label: "Avatar", Icon: UserCircle },

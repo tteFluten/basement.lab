@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Film, Clock, Shirt, UserCircle, ImagePlus, Layers, ArrowRight, Plus } from "lucide-react";
+import { Film, Clock, Shirt, UserCircle, ImagePlus, Layers, ArrowRight, Plus, Banana } from "lucide-react";
 import { useState, useCallback } from "react";
 import { SubmittedAppsSection } from "@/components/SubmittedAppsSection";
 import { AddSubmittedAppModal } from "@/components/AddSubmittedAppModal";
 
 const APPS = [
-  { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film, span: "col-span-2 row-span-2", cover: "/app-covers/cineprompt.jpg" },
+  { slug: "nanobanana", label: "NanoBanana", desc: "Iterative image generation with @mention references", Icon: Banana, span: "col-span-2 row-span-2", cover: "/app-covers/nanobanana.jpg" },
   { slug: "render", label: "Render", desc: "4K render from viewport previews and prompts", Icon: ImagePlus, span: "col-span-1 row-span-2", cover: "/app-covers/render.jpg" },
   { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock, span: "col-span-1 row-span-1", cover: "/app-covers/chronos.jpg" },
   { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt, span: "col-span-1 row-span-1", cover: "/app-covers/swag.jpg" },
   { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization", Icon: UserCircle, span: "col-span-1 row-span-1", cover: "/app-covers/avatar.jpg" },
-  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-2 row-span-1", cover: "/app-covers/frame-variator.jpg" },
+  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-1 row-span-1", cover: "/app-covers/frame-variator.jpg" },
+  { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film, span: "col-span-1 row-span-1", cover: "/app-covers/cineprompt.jpg" },
 ];
 
 function AppCoverImage({ cover, Icon, alt }: { cover: string; Icon: React.ComponentType<{ size?: string | number; strokeWidth?: string | number; className?: string }>; alt: string }) {
