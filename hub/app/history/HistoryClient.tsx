@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
-import { getCachedGenerations, isCacheReady, subscribeGenerations, removeFromCachedGenerations, fetchGenerations } from "@/lib/generationsCache";
+import { getCachedGenerations, isCacheReady, subscribeGenerations, removeFromCachedGenerations, fetchGenerations, updateCachedGeneration, updateCachedGenerations } from "@/lib/generationsCache";
 import { useSession } from "next-auth/react";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
@@ -174,7 +174,9 @@ function EditPanel({
       });
       if (res.ok) {
         setSaved(true);
-        setTimeout(() => { onSaved(); onClose(); }, 400);
+        updateCachedGeneration(item.id, { isPublic, tags, projectId: projId || null, note: note.trim() || undefined });
+        onSaved();
+        setTimeout(() => onClose(), 400);
       }
     } finally { setSaving(false); }
   };
@@ -743,7 +745,9 @@ export function HistoryClient() {
   const [batchVisibility, setBatchVisibility] = useState<typeof BATCH_VISIBILITY_UNCHANGED | "private" | "public">(BATCH_VISIBILITY_UNCHANGED);
   const [shareLinkFeedback, setShareLinkFeedback] = useState(false);
 
-  const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId || filterVisibility !== "all");
+  /** Filters that require an API call (project, user, tag, app). Visibility is applied client-side when no API filters. */
+  const hasApiFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId);
+  const hasFilters = hasApiFilters || filterVisibility !== "all";
 
   const handleRetry = useCallback(() => {
     setApiError(null);
@@ -760,7 +764,7 @@ export function HistoryClient() {
   }, []);
 
   const filterQs = useMemo(() => {
-    if (!hasFilters) return "";
+    if (!hasApiFilters) return "";
     const p = new URLSearchParams();
     p.set("limit", "300");
     p.set("light", "1");
@@ -770,7 +774,7 @@ export function HistoryClient() {
     if (filterTag.trim()) p.set("tag", filterTag.trim());
     if (filterAppId) p.set("appId", filterAppId);
     return p.toString();
-  }, [hasFilters, filterVisibility, filterProjectId, filterUserId, filterTag, filterAppId]);
+  }, [hasApiFilters, filterVisibility, filterProjectId, filterUserId, filterTag, filterAppId]);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -791,7 +795,7 @@ export function HistoryClient() {
   }, []);
 
   useEffect(() => {
-    if (!hasFilters) { setFilteredApiItems([]); return; }
+    if (!hasApiFilters) { setFilteredApiItems([]); setRefreshing(false); return; }
     let cancelled = false;
     setRefreshing(true);
     setApiError(null);
@@ -805,7 +809,7 @@ export function HistoryClient() {
       .catch((e) => { if (!cancelled) setApiError(e instanceof Error ? e.message : "Network error"); })
       .finally(() => { if (!cancelled) setRefreshing(false); });
     return () => { cancelled = true; };
-  }, [hasFilters, filterQs]);
+  }, [hasApiFilters, filterQs]);
 
   useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setProjects(Array.isArray(d?.items) ? d.items : [])).catch(() => {}); }, []);
   useEffect(() => { fetch("/api/users").then((r) => r.json()).then((d) => { if (Array.isArray(d?.items)) { setUsers(d.items); setIsAdmin(true); } }).catch(() => {}); }, []);
@@ -816,13 +820,15 @@ export function HistoryClient() {
   }, []);
 
   const items = useMemo(() => {
-    const base = hasFilters ? filteredApiItems : cachedItems;
-    const combined = [...base];
-    const seen = new Set(base.map((i) => i.id));
-    for (const m of memoryItems) { if (!seen.has(m.id)) { seen.add(m.id); combined.push(m); } }
-    combined.sort((a, b) => b.createdAt - a.createdAt);
-    return combined;
-  }, [hasFilters, filteredApiItems, cachedItems, memoryItems]);
+    const base = hasApiFilters ? filteredApiItems : cachedItems;
+    let list = [...base];
+    if (!hasApiFilters && filterVisibility === "public") list = list.filter((i) => i.isPublic === true);
+    if (!hasApiFilters && filterVisibility === "mine") list = list.filter((i) => i.userId === currentUserId);
+    const seen = new Set(list.map((i) => i.id));
+    for (const m of memoryItems) { if (!seen.has(m.id)) { seen.add(m.id); list.push(m); } }
+    list.sort((a, b) => b.createdAt - a.createdAt);
+    return list;
+  }, [hasApiFilters, filteredApiItems, cachedItems, memoryItems, filterVisibility, currentUserId]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -920,22 +926,36 @@ export function HistoryClient() {
       const res = await fetch("/api/generations/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.updated) {
-        await fetchGenerations(true, true);
+        const idSet = new Set(selectedList);
+        updateCachedGenerations(selectedList, {
+          isPublic: sendVisibility ? batchVisibility === "public" : undefined,
+          projectId: sendProject ? (batchProjectId === "" ? null : batchProjectId) : undefined,
+          tagsToAdd,
+        });
         setCachedItems(getCachedGenerations().map(toItem));
-        if (hasFilters) {
-          const r = await fetch(`/api/generations?${filterQs}`);
-          const d = await r.json().catch(() => ({}));
-          if (r.ok && Array.isArray(d?.items)) setFilteredApiItems(d.items.map(toItem));
+        if (hasApiFilters) {
+          setFilteredApiItems((prev) =>
+            prev.map((i) => {
+              if (!idSet.has(i.id)) return i;
+              const u = { ...i };
+              if (sendVisibility) u.isPublic = batchVisibility === "public";
+              if (sendProject) u.projectId = batchProjectId === "" ? undefined : batchProjectId;
+              if (tagsToAdd?.length)
+                u.tags = Array.from(new Set([...(i.tags ?? []).map((t) => t.toLowerCase()), ...tagsToAdd]));
+              return u;
+            })
+          );
         }
         clearSelection();
         setBatchTagInput("");
         setBatchProjectId(BATCH_PROJECT_UNCHANGED);
         setBatchVisibility(BATCH_VISIBILITY_UNCHANGED);
+        fetchGenerations(true, true).catch(() => {});
       }
     } finally {
       setBatchActionLoading(false);
     }
-  }, [selectedList, batchProjectId, batchTagInput, batchVisibility, hasFilters, filterQs, clearSelection]);
+  }, [selectedList, batchProjectId, batchTagInput, batchVisibility, hasApiFilters, filterQs, clearSelection]);
 
   const handleBatchDelete = useCallback(async () => {
     if (selectedList.length === 0) return;
@@ -1150,14 +1170,15 @@ export function HistoryClient() {
 
         {/* Edit panel */}
         {editItem && (
-          <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={async () => {
-            await fetchGenerations(true, true);
-            setCachedItems(getCachedGenerations().map(toItem));
-            if (hasFilters) {
-              const r = await fetch(`/api/generations?${filterQs}`);
-              const j = await r.json().catch(() => ({}));
-              if (r.ok && Array.isArray(j?.items)) setFilteredApiItems(j.items.map(toItem));
-            }
+          <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={() => {
+            fetchGenerations(true, true).then(() => {
+              setCachedItems(getCachedGenerations().map(toItem));
+              if (hasApiFilters) {
+                fetch(`/api/generations?${filterQs}`).then((r) => r.json().catch(() => ({}))).then((j) => {
+                  if (j?.items && Array.isArray(j.items)) setFilteredApiItems(j.items.map(toItem));
+                });
+              }
+            }).catch(() => {});
           }} />
         )}
 

@@ -51,6 +51,7 @@ function persistToStorage() {
       w: g.width ?? null, h: g.height ?? null, n: g.name ?? null,
       c: g.createdAt, tg: g.tags?.length ? g.tags : undefined,
       p: g.projectId ?? null, u: g.userId ?? null,
+      pub: g.isPublic ?? null,
     }));
     localStorage.setItem(LS_KEY, JSON.stringify(slim));
     localStorage.setItem(LS_TS_KEY, String(lastFetchTime));
@@ -76,6 +77,7 @@ function hydrateFromStorage(): boolean {
       tags: Array.isArray(r.tg) ? r.tg.map(String) : [],
       projectId: r.p != null ? String(r.p) : null,
       userId: r.u != null ? String(r.u) : null,
+      isPublic: r.pub === true,
       dataUrl: null,
       userName: null,
       userAvatarUrl: null,
@@ -188,6 +190,45 @@ export function addToCachedGenerations(item: CachedGeneration): void {
 
 export function removeFromCachedGenerations(id: string): void {
   cachedItems = cachedItems.filter((g) => g.id !== id);
+  persistToStorage();
+  notify();
+}
+
+/** Update a single generation in cache (e.g. after PATCH). Merges partial into existing. */
+export function updateCachedGeneration(
+  id: string,
+  partial: Partial<Pick<CachedGeneration, "isPublic" | "tags" | "projectId" | "note">>
+): void {
+  const idx = cachedItems.findIndex((g) => g.id === id);
+  if (idx < 0) return;
+  const g = cachedItems[idx];
+  if (partial.isPublic !== undefined) g.isPublic = partial.isPublic;
+  if (partial.tags !== undefined) g.tags = partial.tags;
+  if (partial.projectId !== undefined) g.projectId = partial.projectId;
+  if (partial.note !== undefined) g.note = partial.note;
+  persistToStorage();
+  notify();
+}
+
+/** Batch update cache (e.g. after batch PATCH). Merges tagsToAdd; sets isPublic/projectId when provided. */
+export function updateCachedGenerations(
+  ids: string[],
+  updates: {
+    isPublic?: boolean;
+    projectId?: string | null;
+    tagsToAdd?: string[];
+  }
+): void {
+  const idSet = new Set(ids);
+  for (const g of cachedItems) {
+    if (!idSet.has(g.id)) continue;
+    if (updates.isPublic !== undefined) g.isPublic = updates.isPublic;
+    if (updates.projectId !== undefined) g.projectId = updates.projectId;
+    if (updates.tagsToAdd?.length) {
+      const current = g.tags ?? [];
+      g.tags = Array.from(new Set([...current.map((t) => t.toLowerCase()), ...updates.tagsToAdd.map((t) => t.toLowerCase())]));
+    }
+  }
   persistToStorage();
   notify();
 }
