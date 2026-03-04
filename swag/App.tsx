@@ -157,11 +157,14 @@ const App: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const handleDownload = async (url: string, name: string) => {
+  const handleDownload = async (url: string, name: string, mockupLabel?: string) => {
     if (isHubEnv()) {
       try {
         const dataUrl = await urlToDataUrl(url);
-        await openDownloadAction(dataUrl, 'swag');
+        await openDownloadAction(dataUrl, 'swag', {
+          fileName: `swagify-${name}.png`,
+          prompt: mockupLabel ? `Mockup: ${mockupLabel}` : undefined,
+        });
       } catch {
         downloadImage(url, name);
       }
@@ -469,7 +472,7 @@ const App: React.FC = () => {
                           />
                           <div className="absolute inset-0 bg-[#111]/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                             <button 
-                              onClick={() => handleDownload(item.imageUrl, `${item.config.mockup}-${item.id}`)}
+                              onClick={() => handleDownload(item.imageUrl, `${item.config.mockup}-${item.id}`, item.config.mockup)}
                               className="px-4 py-2 bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-100 transition-all"
                             >
                               Download

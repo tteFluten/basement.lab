@@ -4,6 +4,7 @@ import { addToHistory, removeFromHistory } from "@/lib/historyStore";
 import { getCurrentProjectId } from "@/lib/currentProject";
 import { addToCachedGenerations } from "@/lib/generationsCache";
 import { generateThumbnail } from "@/lib/thumbnail";
+import { resizeDataUrlForApi } from "@/lib/resizeDataUrlForApi";
 
 type Props = {
   open: boolean;
@@ -109,11 +110,12 @@ export function DownloadActionModal({
       });
       triggerDownload();
       const projectId = getCurrentProjectId();
+      const dataUrlForApi = await resizeDataUrlForApi(assetDataUrl).catch(() => assetDataUrl);
       fetch("/api/generations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dataUrl: assetDataUrl,
+          dataUrl: dataUrlForApi,
           thumbDataUrl: thumbDataUrl || undefined,
           appId,
           name,
