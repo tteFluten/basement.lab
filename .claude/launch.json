@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hub",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["hub/node_modules/next/dist/bin/next", "dev", "hub"],
+      "port": 3000
+    }
+  ]
+}

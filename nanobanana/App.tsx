@@ -3,6 +3,7 @@ import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, Re
 import ReactMarkdown from 'react-markdown';
 import { generateImage, isEmbedMode, getHubModel } from './services/geminiService';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { prepareImagePartForApi } from './lib/imageResize';
 
 // --- Types ---
 interface AttachedImage {
@@ -266,9 +267,15 @@ export default function App() {
 
     try {
       const mentionedImages = images.filter(img => prompt.includes(`@${img.id}`));
+      const dataUrls = mentionedImages.map(img => `data:${img.mimeType};base64,${img.data}`);
+      const imageParts = await Promise.all(
+        dataUrls.map((dataUrl, i) =>
+          prepareImagePartForApi(dataUrl, mentionedImages[i].mimeType)
+        )
+      );
       const result = await generateImage({
         prompt,
-        imageParts: mentionedImages.map(img => ({ data: img.data, mimeType: img.mimeType })),
+        imageParts,
         aspectRatio,
         imageSize,
       });

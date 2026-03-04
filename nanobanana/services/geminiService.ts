@@ -39,8 +39,11 @@ export async function generateImage(params: GenerateParams): Promise<GenerateRes
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...params, model }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "API error");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 413) throw new Error("Image or payload too large. Try fewer or smaller images.");
+      throw new Error((data as { error?: string }).error ?? "API error");
+    }
     return data as GenerateResult;
   }
 
