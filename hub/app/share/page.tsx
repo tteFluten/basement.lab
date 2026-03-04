@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { ShareClient } from "./ShareClient";
 
 export default function SharePage() {
-  return <ShareClient />;
+  return (
+    <Suspense>
+      <ShareClient />
+    </Suspense>
+  );
 }
