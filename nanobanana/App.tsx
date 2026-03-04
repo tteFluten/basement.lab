@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Clipboard, History, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen } from 'lucide-react';
+import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { generateImage, isEmbedMode, getHubModel } from './services/geminiService';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { prepareImagePartForApi } from './lib/imageResize';
 
 // --- Types ---
 interface AttachedImage {
@@ -266,9 +267,15 @@ export default function App() {
 
     try {
       const mentionedImages = images.filter(img => prompt.includes(`@${img.id}`));
+      const dataUrls = mentionedImages.map(img => `data:${img.mimeType};base64,${img.data}`);
+      const imageParts = await Promise.all(
+        dataUrls.map((dataUrl, i) =>
+          prepareImagePartForApi(dataUrl, mentionedImages[i].mimeType)
+        )
+      );
       const result = await generateImage({
         prompt,
-        imageParts: mentionedImages.map(img => ({ data: img.data, mimeType: img.mimeType })),
+        imageParts,
         aspectRatio,
         imageSize,
       });
@@ -316,8 +323,8 @@ export default function App() {
   if (hasKey === false) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-6 font-mono">
-        <div className="max-w-md w-full bg-[#111] border border-[#222] p-8 flex flex-col items-center text-center gap-6">
-          <div className="w-16 h-16 bg-[#a0a0a0]/10 border border-[#222] flex items-center justify-center">
+        <div className="max-w-md w-full bg-[#111] border border-[#333] p-8 flex flex-col items-center text-center gap-6">
+          <div className="w-16 h-16 bg-[#a0a0a0]/10 border border-[#333] flex items-center justify-center">
             <Key className="text-[#a0a0a0]" size={32} />
           </div>
           <div className="space-y-4">
@@ -341,52 +348,42 @@ export default function App() {
 
   return (
     <div
-      className="min-h-screen bg-black text-[#a0a0a0] flex flex-col p-4 md:p-8 selection:bg-[#333] selection:text-white font-mono"
+      className="min-h-screen bg-black text-[#bbb] flex flex-col p-4 md:p-8 selection:bg-[#444] selection:text-white font-mono"
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
       {/* Header */}
-      <header className="flex justify-between items-center mb-12 border-b border-[#222] pb-4">
+      <header className="flex justify-between items-center mb-12 border-b border-[#333] pb-4">
         <div className="flex items-center gap-4">
-          <span className="text-xl">🍌</span>
-          <h1 className="text-sm tracking-widest uppercase font-bold">NanoBanana Studio</h1>
+          <h1 className="text-sm tracking-widest uppercase font-bold text-[#ccc]">NanoBanana Studio</h1>
         </div>
-        <div className="flex gap-6">
-          <button
-            onClick={resetAll}
-            className="text-xs hover:text-white transition-colors flex items-center gap-2 uppercase tracking-tighter text-[#444]"
-            title="Reset All"
-          >
-            <RefreshCcw size={14} />
-            Reset
-          </button>
-          <button
-            className="text-xs hover:text-white transition-colors flex items-center gap-2 uppercase tracking-tighter"
-            title="History"
-          >
-            <History size={14} />
-            History
-          </button>
-        </div>
+        <button
+          onClick={resetAll}
+          className="text-xs hover:text-white transition-colors flex items-center gap-2 uppercase tracking-tighter text-[#666]"
+          title="Reset All"
+        >
+          <RefreshCcw size={14} />
+          Reset
+        </button>
       </header>
 
       <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full gap-8">
 
         {/* Timeline Carousel */}
-        <div className="relative h-[450px] flex items-center overflow-hidden border-b border-[#111] pb-8">
+        <div className="relative h-[450px] flex items-center overflow-hidden border-b border-[#282828] pb-8">
           {history.length === 0 && !isGenerating && !error && (
-            <div className="w-full flex flex-col items-center justify-center text-[#222] gap-4">
-              <div className="w-24 h-24 border border-dashed border-[#222] flex items-center justify-center">
+            <div className="w-full flex flex-col items-center justify-center text-[#444] gap-4">
+              <div className="w-24 h-24 border border-dashed border-[#444] flex items-center justify-center">
                 <ImageIcon size={32} />
               </div>
-              <span className="text-[10px] uppercase tracking-[0.4em]">Ready for Generation</span>
+              <span className="text-[12px] uppercase tracking-[0.3em]">Ready for Generation</span>
             </div>
           )}
 
           {isGenerating && (
             <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center overflow-hidden">
               <div className="relative w-64 h-64 flex items-center justify-center">
-                <div className="absolute inset-0 border border-[#222] rounded-full animate-[spin_10s_linear_infinite]" />
+                <div className="absolute inset-0 border border-[#333] rounded-full animate-[spin_10s_linear_infinite]" />
                 <div className="absolute inset-4 border border-dashed border-[#333] rounded-full animate-[spin_15s_linear_infinite_reverse]" />
                 <div className="absolute inset-8 border border-[#111] rounded-full animate-[pulse-ring_4s_ease-in-out_infinite]" />
                 <div className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-[#a0a0a0] to-transparent animate-[scan_2s_ease-in-out_infinite] z-10" />
@@ -394,13 +391,13 @@ export default function App() {
                   <div className="w-12 h-12 border border-[#a0a0a0] flex items-center justify-center animate-pulse mb-4">
                     <div className="w-2 h-2 bg-[#a0a0a0]" />
                   </div>
-                  <div className="text-[10px] font-bold text-white tracking-[0.5em] uppercase">
+                  <div className="text-[12px] font-bold text-white tracking-[0.5em] uppercase">
                     {(generationTime / 1000).toFixed(1)}s
                   </div>
                 </div>
               </div>
               <div className="mt-8 flex flex-col items-center gap-2">
-                <div className="text-[9px] uppercase tracking-[0.3em] text-[#a0a0a0] animate-pulse">Synthesizing Neural Patterns</div>
+                <div className="text-[11px] uppercase tracking-[0.3em] text-[#bbb] animate-pulse">Synthesizing Neural Patterns</div>
                 <div className="flex gap-1">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="w-1 h-1 bg-[#a0a0a0]/40 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />
@@ -429,7 +426,7 @@ export default function App() {
                   onClick={() => handleHistoryClick(idx)}
                   className={`relative flex-shrink-0 transition-all duration-500 cursor-pointer ${isActive ? 'w-[400px] opacity-100 scale-100' : 'w-[200px] opacity-20 scale-75 grayscale hover:opacity-40'}`}
                 >
-                  <div className="border border-[#222] bg-black p-2 relative group">
+                  <div className="border border-[#333] bg-black p-2 relative group">
                     <img src={item.image} alt={`Generation ${idx}`} className="w-full h-auto object-contain" />
                     {isActive && (
                       <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -451,11 +448,11 @@ export default function App() {
                   </div>
                   {isActive && (
                     <div className="mt-4 flex flex-col gap-2">
-                      <div className="flex justify-between items-center text-[9px] uppercase tracking-widest text-[#333]">
+                      <div className="flex justify-between items-center text-[11px] uppercase tracking-widest text-[#777]">
                         <span>Step {idx + 1}</span>
                         <span>{item.stats ? `${(item.stats.time / 1000).toFixed(2)}s` : ''}</span>
                       </div>
-                      <div className="text-[10px] text-[#666] line-clamp-2 italic">"{item.prompt}"</div>
+                      <div className="text-[12px] text-[#888] line-clamp-2 italic">"{item.prompt}"</div>
                     </div>
                   )}
                 </div>
@@ -467,15 +464,15 @@ export default function App() {
         {/* Interaction Area */}
         <div className="relative">
           {/* Settings Bar */}
-          <div className="flex flex-wrap gap-8 mb-6 border-b border-[#111] pb-4">
+          <div className="flex flex-wrap gap-8 mb-6 border-b border-[#282828] pb-4">
             <div className="flex flex-col gap-2">
-              <span className="text-[9px] uppercase tracking-widest text-[#333]">Aspect Ratio</span>
+              <span className="text-[11px] uppercase tracking-widest text-[#777]">Aspect Ratio</span>
               <div className="flex flex-wrap gap-2">
                 {["1:1", "3:4", "4:3", "9:16", "16:9", "1:4", "1:8", "4:1", "8:1"].map(ratio => (
                   <button
                     key={ratio}
                     onClick={() => setAspectRatio(ratio)}
-                    className={`text-[10px] px-2 py-1 border ${aspectRatio === ratio ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[#222] text-[#444] hover:border-[#444]'}`}
+                    className={`text-[12px] px-2 py-1 border ${aspectRatio === ratio ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[#333] text-[#777] hover:border-[#666]'}`}
                   >
                     {ratio}
                   </button>
@@ -483,13 +480,13 @@ export default function App() {
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-[9px] uppercase tracking-widest text-[#333]">Resolution</span>
+              <span className="text-[11px] uppercase tracking-widest text-[#777]">Resolution</span>
               <div className="flex gap-2">
                 {["512px", "1K", "2K", "4K"].map(size => (
                   <button
                     key={size}
                     onClick={() => setImageSize(size)}
-                    className={`text-[10px] px-2 py-1 border ${imageSize === size ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[#222] text-[#444] hover:border-[#444]'}`}
+                    className={`text-[12px] px-2 py-1 border ${imageSize === size ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[#333] text-[#777] hover:border-[#666]'}`}
                   >
                     {size}
                   </button>
@@ -500,7 +497,7 @@ export default function App() {
 
           {/* Attached Images */}
           <div className="flex flex-wrap gap-3 mb-6 items-center">
-            <div className="text-[9px] uppercase tracking-widest text-[#222] mr-2">
+            <div className="text-[11px] uppercase tracking-widest text-[#666] mr-2">
               Inputs [{images.length}/{MAX_IMAGES}]
             </div>
             {images.map((img) => (
@@ -516,7 +513,7 @@ export default function App() {
                   onClick={() => insertId(img.id)}
                 />
                 <div
-                  className="absolute -top-2 -left-2 text-[8px] px-1 font-bold"
+                  className="absolute -top-2 -left-2 text-[10px] px-1 font-bold"
                   style={{ backgroundColor: img.color, color: '#000' }}
                 >
                   @{img.id}
@@ -535,16 +532,16 @@ export default function App() {
               </div>
             ))}
             {images.length > 0 && (
-              <span className="text-[8px] uppercase tracking-widest text-[#333] ml-2">Click image to tag in prompt</span>
+              <span className="text-[10px] uppercase tracking-widest text-[#666] ml-2">Click image to tag in prompt</span>
             )}
           </div>
 
           {/* Prompt Input */}
-          <div className="border border-[#222] bg-[#080808] focus-within:border-[#444] transition-colors relative">
+          <div className="border border-[#333] bg-[#080808] focus-within:border-[#444] transition-colors relative">
             {/* Syntax highlight overlay */}
             <div
               ref={highlighterRef}
-              className="absolute inset-0 p-4 text-xs leading-relaxed pointer-events-none whitespace-pre-wrap break-words overflow-hidden"
+              className="absolute inset-0 p-4 text-sm leading-relaxed pointer-events-none whitespace-pre-wrap break-words overflow-hidden"
               aria-hidden="true"
             >
               {prompt.split(/(@\d+)/g).map((part, i) => {
@@ -565,17 +562,17 @@ export default function App() {
               onScroll={syncScroll}
               onPaste={handlePaste}
               placeholder="Enter prompt... Use @ID to reference images. Ctrl+Enter to generate."
-              className="w-full h-32 p-4 bg-transparent outline-none resize-none text-xs leading-relaxed placeholder:text-[#222] relative z-10 caret-[#a0a0a0] text-transparent selection:bg-[#333] selection:text-white"
+              className="w-full h-32 p-4 bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:text-[#555] relative z-10 caret-[#a0a0a0] text-transparent selection:bg-[#333] selection:text-white"
               style={{ WebkitTextFillColor: 'transparent' }}
             />
 
             {/* Mention menu */}
             {mentionMenu.isOpen && (
               <div
-                className="absolute z-30 bg-[#0a0a0a] border border-[#222] w-48 max-h-48 overflow-auto shadow-2xl"
+                className="absolute z-30 bg-[#0a0a0a] border border-[#333] w-48 max-h-48 overflow-auto shadow-2xl"
                 style={{ left: mentionMenu.x, top: mentionMenu.y }}
               >
-                <div className="p-2 border-b border-[#111] text-[8px] uppercase tracking-widest text-[#333] flex justify-between">
+                <div className="p-2 border-b border-[#282828] text-[10px] uppercase tracking-widest text-[#666] flex justify-between">
                   <span>Select Reference</span>
                   <span>{images.filter(img => img.id.startsWith(mentionMenu.filter)).length} found</span>
                 </div>
@@ -590,24 +587,24 @@ export default function App() {
                       <img src={`data:${img.mimeType};base64,${img.data}`} alt={img.id} className="w-full h-full object-cover grayscale" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold" style={{ color: img.color }}>@{img.id}</span>
-                      <span className="text-[8px] text-[#333] uppercase">Ref Asset</span>
+                      <span className="text-[12px] font-bold" style={{ color: img.color }}>@{img.id}</span>
+                      <span className="text-[10px] text-[#666] uppercase">Ref Asset</span>
                     </div>
                   </div>
                 ))}
                 {images.filter(img => img.id.startsWith(mentionMenu.filter)).length === 0 && (
-                  <div className="p-4 text-[10px] text-[#222] uppercase text-center">No matches</div>
+                  <div className="p-4 text-[10px] text-[#555] uppercase text-center">No matches</div>
                 )}
               </div>
             )}
 
-            <div className="flex justify-between items-center p-2 border-t border-[#111] relative z-20">
+            <div className="flex justify-between items-center p-2 border-t border-[#282828] relative z-20">
               <div className="flex gap-2">
                 {/* Hub upload (from history/library) */}
                 {isHubEnv() && (
                   <button
                     onClick={handleHubUpload}
-                    className="p-2 hover:bg-[#111] transition-colors text-[#444] hover:text-[#a0a0a0]"
+                    className="p-2 hover:bg-[#111] transition-colors text-[#666] hover:text-[#ccc]"
                     title="Pick from Hub History"
                   >
                     <FolderOpen size={16} />
@@ -616,7 +613,7 @@ export default function App() {
                 {/* Local file upload */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 hover:bg-[#111] transition-colors text-[#444] hover:text-[#a0a0a0]"
+                  className="p-2 hover:bg-[#111] transition-colors text-[#666] hover:text-[#ccc]"
                   title="Upload Image"
                 >
                   <Upload size={16} />
@@ -637,7 +634,7 @@ export default function App() {
                       }
                     } catch (e) { console.error("Clipboard access denied", e); }
                   }}
-                  className="p-2 hover:bg-[#111] transition-colors text-[#444] hover:text-[#a0a0a0]"
+                  className="p-2 hover:bg-[#111] transition-colors text-[#666] hover:text-[#ccc]"
                   title="Paste from Clipboard"
                 >
                   <Clipboard size={16} />
@@ -647,7 +644,7 @@ export default function App() {
               <button
                 onClick={generate}
                 disabled={isGenerating || (!prompt.trim() && images.length === 0)}
-                className="flex items-center gap-2 px-6 py-2 bg-[#a0a0a0] text-black text-[10px] font-bold uppercase tracking-widest hover:bg-white disabled:bg-[#222] disabled:text-[#444] transition-all"
+                className="flex items-center gap-2 px-6 py-2 bg-[#a0a0a0] text-black text-[12px] font-bold uppercase tracking-widest hover:bg-white disabled:bg-[#222] disabled:text-[#444] transition-all"
               >
                 {isGenerating ? 'Generating...' : 'Execute'}
                 <Send size={12} />
@@ -658,12 +655,12 @@ export default function App() {
 
         {/* Text result */}
         {resultText && (
-          <div className="border border-[#222] p-4 text-xs text-[#666] leading-relaxed">
+          <div className="border border-[#333] p-4 text-xs text-[#666] leading-relaxed">
             <ReactMarkdown>{resultText}</ReactMarkdown>
           </div>
         )}
 
-        <footer className="mt-auto pt-8 flex justify-between items-end text-[8px] uppercase tracking-[0.4em] text-[#222]">
+        <footer className="mt-auto pt-8 flex justify-between items-end text-[10px] uppercase tracking-[0.3em] text-[#555]">
           <div>Model: {isEmbedMode() ? getHubModel().split('-').slice(-3).join('-') : 'Gemini 3.1 Flash Image'}</div>
           <div>Status: Operational // {new Date().toLocaleTimeString()}</div>
         </footer>

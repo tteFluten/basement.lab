@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat hub/app/apps/[slug]/AppFrameClient.tsx)",
+      "Bash(git commit:*)",
+      "Bash(git push -u origin claude/intelligent-austin)",
+      "Bash(gh auth status)",
+      "Bash(git config --list)",
+      "Bash(git push origin claude/intelligent-austin)",
+      "Bash(cmdkey /list)",
+      "Bash(cmd.exe /c \"cmdkey /list\")",
+      "Bash(cmd.exe /c \"cmdkey /list 2>&1\")",
+      "Bash(powershell.exe -Command \"Get-StoredCredential -Target ''git:https://github.com'' 2>&1\")",
+      "Bash(powershell.exe -Command \"[void][Windows.Security.Credentials.PasswordVault,Windows.Security.Credentials,ContentType=WindowsRuntime]; $vault = New-Object Windows.Security.Credentials.PasswordVault; $vault.FindAllByResource\\(''https://github.com''\\) | ForEach-Object { $_.UserName }\")",
+      "Bash(xargs grep -l \"useSearchParams\")",
+      "Bash(git fetch origin)",
+      "Bash(git add hub/app/share/page.tsx hub/app/share/ShareClient.tsx)",
+      "Bash(git -C \"E:/basement.lab\" add .gitignore)",
+      "Bash(git -C:*)",
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(git add hub/components/Footer.tsx)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where npm)",
+      "Bash(cmd.exe /c \"where npm\")",
+      "Bash(git add nanobanana/App.tsx hub/public/embed/nanobanana/)"
+    ]
+  }
+}
