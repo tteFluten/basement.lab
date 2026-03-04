@@ -19,6 +19,7 @@ const APP_SLUGS_WITH_IMAGE = [
   "avatar",
   "render",
   "frame-variator",
+  "nanobanana",
 ];
 
 function getAppSlugFromPath(pathname: string): string | null {
