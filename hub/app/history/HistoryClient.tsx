@@ -8,8 +8,9 @@ import { useSession } from "next-auth/react";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow, Loader2,
-  Lock, Globe,
+  Lock, Globe, Share2, FileArchive,
 } from "lucide-react";
+import JSZip from "jszip";
 import { Spinner } from "@/components/Spinner";
 import { Avatar } from "@/components/Avatar";
 
@@ -552,6 +553,7 @@ function ListRow({
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-fg-muted shrink-0" />
           <span className="text-sm text-fg font-medium truncate">{item.name || getAppLabel(item.appId)}</span>
+          {!item.id.startsWith("h-") && (item.isPublic ? <span title="Public"><Globe className="w-3.5 h-3.5 text-fg-muted shrink-0" /></span> : <span title="Private"><Lock className="w-3.5 h-3.5 text-fg-muted shrink-0" /></span>)}
           {(item.userName || item.userAvatarUrl) && (
             <Avatar src={item.userAvatarUrl} name={item.userName} size="sm" className="shrink-0" />
           )}
@@ -737,6 +739,9 @@ export function HistoryClient() {
   const [batchTagInput, setBatchTagInput] = useState("");
   const BATCH_PROJECT_UNCHANGED = "__unchanged__";
   const [batchProjectId, setBatchProjectId] = useState(BATCH_PROJECT_UNCHANGED);
+  const BATCH_VISIBILITY_UNCHANGED = "__unchanged__";
+  const [batchVisibility, setBatchVisibility] = useState<typeof BATCH_VISIBILITY_UNCHANGED | "private" | "public">(BATCH_VISIBILITY_UNCHANGED);
+  const [shareLinkFeedback, setShareLinkFeedback] = useState(false);
 
   const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId || filterVisibility !== "all");
 
@@ -848,16 +853,70 @@ export function HistoryClient() {
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const selectedList = useMemo(() => Array.from(selectedIds), [selectedIds]);
+  const selectedItems = useMemo(() => items.filter((i) => selectedIds.has(i.id)), [items, selectedIds]);
+
+  const handleDownloadZip = useCallback(async () => {
+    const toZip = selectedItems.filter((i) => isImgType(i) && imgUrl(i));
+    if (toZip.length === 0) return;
+    setBatchActionLoading(true);
+    try {
+      const zip = new JSZip();
+      const resolveUrl = async (url: string): Promise<string> => {
+        if (!url || url.startsWith("data:")) return url;
+        if (url.includes("blob.vercel-storage.com")) {
+          const r = await fetch(`/api/generations/resolve-url?url=${encodeURIComponent(url)}`);
+          const j = await r.json().catch(() => ({}));
+          if (j?.url) return j.url;
+        }
+        return url;
+      };
+      await Promise.all(
+        toZip.map(async (item, idx) => {
+          const url = imgUrl(item);
+          const resolved = await resolveUrl(url);
+          const res = await fetch(resolved);
+          const blob = await res.blob();
+          const ext = extFromMime(item.mimeType);
+          const name = item.name?.replace(/[^\w.-]/g, "_") || item.id;
+          const fileName = `${name}.${ext}`.replace(/\.+/, ".");
+          zip.file(fileName, blob, { binary: true });
+        })
+      );
+      const blob = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `generations-${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } finally {
+      setBatchActionLoading(false);
+    }
+  }, [selectedItems]);
+
+  const handleShareLink = useCallback(() => {
+    if (selectedList.length === 0) return;
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/share?ids=${selectedList.join(",")}`;
+    navigator.clipboard.writeText(url).then(
+      () => {
+        setShareLinkFeedback(true);
+        setTimeout(() => setShareLinkFeedback(false), 2000);
+      },
+      () => {}
+    );
+  }, [selectedList]);
+
   const handleBatchUpdate = useCallback(async () => {
     if (selectedList.length === 0) return;
     const tagsToAdd = batchTagInput.trim() ? [batchTagInput.trim().toLowerCase()] : undefined;
     const sendProject = batchProjectId !== BATCH_PROJECT_UNCHANGED;
-    if (!sendProject && !tagsToAdd?.length) return;
+    const sendVisibility = batchVisibility !== BATCH_VISIBILITY_UNCHANGED;
+    if (!sendProject && !tagsToAdd?.length && !sendVisibility) return;
     setBatchActionLoading(true);
     try {
-      const body: { ids: string[]; projectId?: string | null; tagsToAdd?: string[] } = { ids: selectedList };
+      const body: { ids: string[]; projectId?: string | null; tagsToAdd?: string[]; isPublic?: boolean } = { ids: selectedList };
       if (sendProject) body.projectId = batchProjectId === "" ? null : batchProjectId;
       if (tagsToAdd?.length) body.tagsToAdd = tagsToAdd;
+      if (sendVisibility) body.isPublic = batchVisibility === "public";
       const res = await fetch("/api/generations/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.updated) {
@@ -871,11 +930,12 @@ export function HistoryClient() {
         clearSelection();
         setBatchTagInput("");
         setBatchProjectId(BATCH_PROJECT_UNCHANGED);
+        setBatchVisibility(BATCH_VISIBILITY_UNCHANGED);
       }
     } finally {
       setBatchActionLoading(false);
     }
-  }, [selectedList, batchProjectId, batchTagInput, hasFilters, filterQs, clearSelection]);
+  }, [selectedList, batchProjectId, batchTagInput, batchVisibility, hasFilters, filterQs, clearSelection]);
 
   const handleBatchDelete = useCallback(async () => {
     if (selectedList.length === 0) return;
@@ -1043,7 +1103,7 @@ export function HistoryClient() {
 
         {/* Batch actions toolbar */}
         {selectedIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-5 py-3 bg-bg border border-border shadow-lg">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-wrap items-center gap-3 px-5 py-3 bg-bg border border-border shadow-lg max-w-[95vw]">
             <span className="text-sm text-fg font-medium whitespace-nowrap">{selectedIds.size} selected</span>
             <select value={batchProjectId} onChange={(e) => setBatchProjectId(e.target.value)}
               className="bg-bg-muted border border-border px-3 py-2 text-sm text-fg min-w-[140px]">
@@ -1053,16 +1113,30 @@ export function HistoryClient() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            <select value={batchVisibility} onChange={(e) => setBatchVisibility(e.target.value as typeof batchVisibility)}
+              className="bg-bg-muted border border-border px-3 py-2 text-sm text-fg min-w-[140px]">
+              <option value={BATCH_VISIBILITY_UNCHANGED}>— Visibility: unchanged —</option>
+              <option value="private">Private</option>
+              <option value="public">Public</option>
+            </select>
             <div className="flex items-center gap-1.5">
               <input type="text" placeholder="Add tag..." value={batchTagInput} onChange={(e) => setBatchTagInput(e.target.value)}
                 className="w-28 bg-bg-muted border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-muted" />
               <button type="button" onClick={handleBatchUpdate}
-                disabled={batchActionLoading || (batchProjectId === BATCH_PROJECT_UNCHANGED && !batchTagInput.trim())}
+                disabled={batchActionLoading || (batchProjectId === BATCH_PROJECT_UNCHANGED && !batchTagInput.trim() && batchVisibility === BATCH_VISIBILITY_UNCHANGED)}
                 className="px-3 py-2 border border-border text-fg-muted text-sm hover:text-fg hover:border-fg-muted transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none">
                 {batchActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
                 Apply
               </button>
             </div>
+            <button type="button" onClick={handleDownloadZip} disabled={batchActionLoading || selectedIds.size === 0}
+              className="px-3 py-2 border border-border text-fg-muted text-sm hover:text-fg hover:border-fg-muted transition-colors flex items-center gap-1.5 disabled:opacity-50" title="Download selected as ZIP">
+              <FileArchive className="w-4 h-4" /> ZIP
+            </button>
+            <button type="button" onClick={handleShareLink} disabled={batchActionLoading}
+              className="px-3 py-2 border border-border text-fg-muted text-sm hover:text-fg hover:border-fg-muted transition-colors flex items-center gap-1.5" title="Copy share link">
+              <Share2 className="w-4 h-4" /> {shareLinkFeedback ? "Copied!" : "Share link"}
+            </button>
             <button type="button" onClick={handleBatchDelete} disabled={batchActionLoading}
               className="px-3 py-2 border border-red-900/50 text-red-400 text-sm hover:bg-red-900/20 transition-colors flex items-center gap-1.5">
               <Trash2 className="w-4 h-4" /> Delete

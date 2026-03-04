@@ -169,6 +169,8 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId") ?? undefined;
     const tag = searchParams.get("tag") ?? undefined;
     const appId = searchParams.get("appId") ?? undefined;
+    const idsParam = searchParams.get("ids") ?? undefined;
+    const ids = idsParam ? idsParam.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
     const visibility = searchParams.get("visibility") ?? "all"; // "all" | "public" | "mine"
     const limit = Math.min(Number(searchParams.get("limit")) || 100, 300);
     const light = searchParams.get("light") === "1";
@@ -184,6 +186,7 @@ export async function GET(request: NextRequest) {
         .select(selectColumns)
         .order("created_at", { ascending: false })
         .limit(limit);
+      if (ids?.length) q = q.in("id", ids);
       if (visibility === "public") {
         q = q.eq("is_public", true);
       } else if (visibility === "mine") {
@@ -216,6 +219,7 @@ export async function GET(request: NextRequest) {
     if (error && /is_public/i.test(error.message)) {
       const colsNoPublic = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note";
       let q = supabase.from("generations").select(colsNoPublic).order("created_at", { ascending: false }).limit(limit);
+      if (ids?.length) q = q.in("id", ids);
       if (visibility === "mine") q = q.eq("user_id", session.user.id);
       else if (!isAdmin) q = q.eq("user_id", session.user.id);
       if (projectId) q = q.eq("project_id", projectId);

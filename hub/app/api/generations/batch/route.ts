@@ -6,8 +6,8 @@ import { authOptions } from "@/lib/auth";
 export const runtime = "nodejs";
 
 /**
- * PATCH: batch update generations (projectId, tagsToAdd).
- * Body: { ids: string[], projectId?: string | null, tagsToAdd?: string[] }
+ * PATCH: batch update generations (projectId, tagsToAdd, isPublic).
+ * Body: { ids: string[], projectId?: string | null, tagsToAdd?: string[], isPublic?: boolean }
  * User can edit own; admin can edit any. Returns { updated: number, errors: string[] }.
  */
 export async function PATCH(request: NextRequest) {
@@ -24,12 +24,13 @@ export async function PATCH(request: NextRequest) {
   const ids = Array.isArray(body.ids) ? body.ids.map((x: unknown) => String(x)).filter(Boolean) : [];
   const projectId = body.projectId !== undefined ? (body.projectId || null) : undefined;
   const tagsToAdd = Array.isArray(body.tagsToAdd) ? body.tagsToAdd.map((t: unknown) => String(t).trim().toLowerCase()).filter(Boolean) : undefined;
+  const isPublic = body.isPublic === true ? true : body.isPublic === false ? false : undefined;
 
   if (ids.length === 0) {
     return NextResponse.json({ error: "ids required (non-empty array)" }, { status: 400 });
   }
-  if (projectId === undefined && !tagsToAdd?.length) {
-    return NextResponse.json({ error: "Provide projectId and/or tagsToAdd" }, { status: 400 });
+  if (projectId === undefined && !tagsToAdd?.length && isPublic === undefined) {
+    return NextResponse.json({ error: "Provide projectId, tagsToAdd, and/or isPublic" }, { status: 400 });
   }
 
   const isAdmin = (session.user as { role?: string }).role === "admin";
@@ -52,9 +53,11 @@ export async function PATCH(request: NextRequest) {
   const errors: string[] = [];
   let updated = 0;
 
+  const hasIsPublicColumn = true; // assume present; fallback below if DB error
   for (const row of allowed) {
     const updates: Record<string, unknown> = {};
     if (projectId !== undefined) updates.project_id = projectId;
+    if (isPublic !== undefined && hasIsPublicColumn) updates.is_public = isPublic;
     if (tagsToAdd?.length && hasTagsColumn) {
       const current = Array.isArray((row as { tags?: string[] }).tags) ? (row as { tags: string[] }).tags : [];
       const merged = Array.from(new Set([...current.map((t) => t.toLowerCase()), ...tagsToAdd]));
