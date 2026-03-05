@@ -3,13 +3,14 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
-import { getCachedGenerations, isCacheReady, subscribeGenerations, removeFromCachedGenerations, fetchGenerations } from "@/lib/generationsCache";
+import { getCachedGenerations, isCacheReady, isRefreshing as getCacheRefreshing, subscribeGenerations, subscribeRefreshing, removeFromCachedGenerations, fetchGenerations, updateCachedGeneration, updateCachedGenerations, getLastFetchTime } from "@/lib/generationsCache";
 import { useSession } from "next-auth/react";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
   LayoutGrid, LayoutList, Grid3X3, Layers, Calendar, FolderOpen, AppWindow, Loader2,
-  Lock, Globe,
+  Lock, Globe, Share2, FileArchive,
 } from "lucide-react";
+import JSZip from "jszip";
 import { Spinner } from "@/components/Spinner";
 import { Avatar } from "@/components/Avatar";
 
@@ -173,7 +174,9 @@ function EditPanel({
       });
       if (res.ok) {
         setSaved(true);
-        setTimeout(() => { onSaved(); onClose(); }, 400);
+        updateCachedGeneration(item.id, { isPublic, tags, projectId: projId || null, note: note.trim() || undefined });
+        onSaved();
+        setTimeout(() => onClose(), 400);
       }
     } finally { setSaving(false); }
   };
@@ -552,6 +555,7 @@ function ListRow({
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-fg-muted shrink-0" />
           <span className="text-sm text-fg font-medium truncate">{item.name || getAppLabel(item.appId)}</span>
+          {!item.id.startsWith("h-") && (item.isPublic ? <span title="Public"><Globe className="w-3.5 h-3.5 text-fg-muted shrink-0" /></span> : <span title="Private"><Lock className="w-3.5 h-3.5 text-fg-muted shrink-0" /></span>)}
           {(item.userName || item.userAvatarUrl) && (
             <Avatar src={item.userAvatarUrl} name={item.userName} size="sm" className="shrink-0" />
           )}
@@ -728,7 +732,7 @@ export function HistoryClient() {
   const [filterUserId, setFilterUserId] = useState("");
   const [filterTag, setFilterTag] = useState("");
   const [filterAppId, setFilterAppId] = useState("");
-  const [filterVisibility, setFilterVisibility] = useState<"all" | "public" | "mine">("all");
+  const [filterVisibility, setFilterVisibility] = useState<"all" | "public" | "mine">("mine");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("large");
   const [group, setGroup] = useState<GroupMode>("none");
@@ -737,12 +741,18 @@ export function HistoryClient() {
   const [batchTagInput, setBatchTagInput] = useState("");
   const BATCH_PROJECT_UNCHANGED = "__unchanged__";
   const [batchProjectId, setBatchProjectId] = useState(BATCH_PROJECT_UNCHANGED);
+  const BATCH_VISIBILITY_UNCHANGED = "__unchanged__";
+  const [batchVisibility, setBatchVisibility] = useState<typeof BATCH_VISIBILITY_UNCHANGED | "private" | "public">(BATCH_VISIBILITY_UNCHANGED);
+  const [shareLinkFeedback, setShareLinkFeedback] = useState(false);
 
-  const hasFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId || filterVisibility !== "all");
+  /** Filters that require an API call (project, user, tag, app). Visibility is applied client-side when no API filters. */
+  const hasApiFilters = !!(filterProjectId || filterUserId || filterTag.trim() || filterAppId);
+  const hasFilters = hasApiFilters || filterVisibility !== "all";
 
   const handleRetry = useCallback(() => {
     setApiError(null);
-    setApiLoading(true);
+    // Only show full loading spinner if we have nothing to show
+    if (!isCacheReady()) setApiLoading(true);
     fetchGenerations(true, true)
       .then(() => {
         setCachedItems(getCachedGenerations().map(toItem));
@@ -755,7 +765,7 @@ export function HistoryClient() {
   }, []);
 
   const filterQs = useMemo(() => {
-    if (!hasFilters) return "";
+    if (!hasApiFilters) return "";
     const p = new URLSearchParams();
     p.set("limit", "300");
     p.set("light", "1");
@@ -765,28 +775,33 @@ export function HistoryClient() {
     if (filterTag.trim()) p.set("tag", filterTag.trim());
     if (filterAppId) p.set("appId", filterAppId);
     return p.toString();
-  }, [hasFilters, filterVisibility, filterProjectId, filterUserId, filterTag, filterAppId]);
+  }, [hasApiFilters, filterVisibility, filterProjectId, filterUserId, filterTag, filterAppId]);
 
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(getCacheRefreshing());
+  const [lastUpdated, setLastUpdated] = useState(getLastFetchTime());
 
   useEffect(() => {
     const sync = () => {
       setCachedItems(getCachedGenerations().map(toItem));
       setMemoryItems(getHistory());
+      setLastUpdated(getLastFetchTime());
     };
+    const onRefresh = () => { setRefreshing(getCacheRefreshing()); };
     sync();
-    const unsub = subscribeGenerations(sync);
+    const unsubData = subscribeGenerations(sync);
+    const unsubRefresh = subscribeRefreshing(onRefresh);
+    // Use full limit on History page; shows stale cache immediately and refreshes in background
     fetchGenerations(undefined, true)
       .then(() => { setApiLoading(false); setApiError(null); })
       .catch((e) => {
         setApiLoading(false);
         setApiError(e instanceof Error ? e.message : "Failed to load history");
       });
-    return unsub;
+    return () => { unsubData(); unsubRefresh(); };
   }, []);
 
   useEffect(() => {
-    if (!hasFilters) { setFilteredApiItems([]); return; }
+    if (!hasApiFilters) { setFilteredApiItems([]); setRefreshing(false); return; }
     let cancelled = false;
     setRefreshing(true);
     setApiError(null);
@@ -800,24 +815,24 @@ export function HistoryClient() {
       .catch((e) => { if (!cancelled) setApiError(e instanceof Error ? e.message : "Network error"); })
       .finally(() => { if (!cancelled) setRefreshing(false); });
     return () => { cancelled = true; };
-  }, [hasFilters, filterQs]);
+  }, [hasApiFilters, filterQs]);
 
   useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setProjects(Array.isArray(d?.items) ? d.items : [])).catch(() => {}); }, []);
   useEffect(() => { fetch("/api/users").then((r) => r.json()).then((d) => { if (Array.isArray(d?.items)) { setUsers(d.items); setIsAdmin(true); } }).catch(() => {}); }, []);
   useEffect(() => {
     setMemoryItems(getHistory());
-    const iv = setInterval(() => setMemoryItems(getHistory()), 3000);
-    return () => clearInterval(iv);
   }, []);
 
   const items = useMemo(() => {
-    const base = hasFilters ? filteredApiItems : cachedItems;
-    const combined = [...base];
-    const seen = new Set(base.map((i) => i.id));
-    for (const m of memoryItems) { if (!seen.has(m.id)) { seen.add(m.id); combined.push(m); } }
-    combined.sort((a, b) => b.createdAt - a.createdAt);
-    return combined;
-  }, [hasFilters, filteredApiItems, cachedItems, memoryItems]);
+    const base = hasApiFilters ? filteredApiItems : cachedItems;
+    let list = [...base];
+    if (!hasApiFilters && filterVisibility === "public") list = list.filter((i) => i.isPublic === true);
+    if (!hasApiFilters && filterVisibility === "mine") list = list.filter((i) => i.userId === currentUserId);
+    const seen = new Set(list.map((i) => i.id));
+    for (const m of memoryItems) { if (!seen.has(m.id)) { seen.add(m.id); list.push(m); } }
+    list.sort((a, b) => b.createdAt - a.createdAt);
+    return list;
+  }, [hasApiFilters, filteredApiItems, cachedItems, memoryItems, filterVisibility, currentUserId]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -848,34 +863,103 @@ export function HistoryClient() {
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const selectedList = useMemo(() => Array.from(selectedIds), [selectedIds]);
+  const selectedItems = useMemo(() => items.filter((i) => selectedIds.has(i.id)), [items, selectedIds]);
+
+  const handleDownloadZip = useCallback(async () => {
+    const toZip = selectedItems.filter((i) => isImgType(i) && imgUrl(i));
+    if (toZip.length === 0) return;
+    setBatchActionLoading(true);
+    try {
+      const zip = new JSZip();
+      const resolveUrl = async (url: string): Promise<string> => {
+        if (!url || url.startsWith("data:")) return url;
+        if (url.includes("blob.vercel-storage.com")) {
+          const r = await fetch(`/api/generations/resolve-url?url=${encodeURIComponent(url)}`);
+          const j = await r.json().catch(() => ({}));
+          if (j?.url) return j.url;
+        }
+        return url;
+      };
+      await Promise.all(
+        toZip.map(async (item, idx) => {
+          const url = imgUrl(item);
+          const resolved = await resolveUrl(url);
+          const res = await fetch(resolved);
+          const blob = await res.blob();
+          const ext = extFromMime(item.mimeType);
+          const name = item.name?.replace(/[^\w.-]/g, "_") || item.id;
+          const fileName = `${name}.${ext}`.replace(/\.+/, ".");
+          zip.file(fileName, blob, { binary: true });
+        })
+      );
+      const blob = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `generations-${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } finally {
+      setBatchActionLoading(false);
+    }
+  }, [selectedItems]);
+
+  const handleShareLink = useCallback(() => {
+    if (selectedList.length === 0) return;
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/share?ids=${selectedList.join(",")}`;
+    navigator.clipboard.writeText(url).then(
+      () => {
+        setShareLinkFeedback(true);
+        setTimeout(() => setShareLinkFeedback(false), 2000);
+      },
+      () => {}
+    );
+  }, [selectedList]);
+
   const handleBatchUpdate = useCallback(async () => {
     if (selectedList.length === 0) return;
     const tagsToAdd = batchTagInput.trim() ? [batchTagInput.trim().toLowerCase()] : undefined;
     const sendProject = batchProjectId !== BATCH_PROJECT_UNCHANGED;
-    if (!sendProject && !tagsToAdd?.length) return;
+    const sendVisibility = batchVisibility !== BATCH_VISIBILITY_UNCHANGED;
+    if (!sendProject && !tagsToAdd?.length && !sendVisibility) return;
     setBatchActionLoading(true);
     try {
-      const body: { ids: string[]; projectId?: string | null; tagsToAdd?: string[] } = { ids: selectedList };
+      const body: { ids: string[]; projectId?: string | null; tagsToAdd?: string[]; isPublic?: boolean } = { ids: selectedList };
       if (sendProject) body.projectId = batchProjectId === "" ? null : batchProjectId;
       if (tagsToAdd?.length) body.tagsToAdd = tagsToAdd;
+      if (sendVisibility) body.isPublic = batchVisibility === "public";
       const res = await fetch("/api/generations/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.updated) {
-        await fetchGenerations(true, true);
+        const idSet = new Set(selectedList);
+        updateCachedGenerations(selectedList, {
+          isPublic: sendVisibility ? batchVisibility === "public" : undefined,
+          projectId: sendProject ? (batchProjectId === "" ? null : batchProjectId) : undefined,
+          tagsToAdd,
+        });
         setCachedItems(getCachedGenerations().map(toItem));
-        if (hasFilters) {
-          const r = await fetch(`/api/generations?${filterQs}`);
-          const d = await r.json().catch(() => ({}));
-          if (r.ok && Array.isArray(d?.items)) setFilteredApiItems(d.items.map(toItem));
+        if (hasApiFilters) {
+          setFilteredApiItems((prev) =>
+            prev.map((i) => {
+              if (!idSet.has(i.id)) return i;
+              const u = { ...i };
+              if (sendVisibility) u.isPublic = batchVisibility === "public";
+              if (sendProject) u.projectId = batchProjectId === "" ? undefined : batchProjectId;
+              if (tagsToAdd?.length)
+                u.tags = Array.from(new Set([...(i.tags ?? []).map((t) => t.toLowerCase()), ...tagsToAdd]));
+              return u;
+            })
+          );
         }
         clearSelection();
         setBatchTagInput("");
         setBatchProjectId(BATCH_PROJECT_UNCHANGED);
+        setBatchVisibility(BATCH_VISIBILITY_UNCHANGED);
+        fetchGenerations(true, true).catch(() => {});
       }
     } finally {
       setBatchActionLoading(false);
     }
-  }, [selectedList, batchProjectId, batchTagInput, hasFilters, filterQs, clearSelection]);
+  }, [selectedList, batchProjectId, batchTagInput, batchVisibility, hasApiFilters, filterQs, clearSelection]);
 
   const handleBatchDelete = useCallback(async () => {
     if (selectedList.length === 0) return;
@@ -938,10 +1022,14 @@ export function HistoryClient() {
             <h1 className="text-lg font-medium text-fg tracking-wide">History</h1>
             <p className="text-xs text-fg-muted mt-1 flex items-center gap-2">
               {items.length} generation{items.length !== 1 ? "s" : ""}
-              {refreshing && (
+              {refreshing ? (
                 <span className="inline-flex items-center gap-1 text-fg-muted">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  <span className="text-[10px]">Updating…</span>
+                  <span className="text-[10px]">Actualizando…</span>
+                </span>
+              ) : lastUpdated > 0 && (
+                <span className="text-[10px] text-fg-muted/60">
+                  · Actualizado {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               )}
             </p>
@@ -1001,11 +1089,11 @@ export function HistoryClient() {
           )}
         </div>
 
-        {/* Loading from DB indicator when we already show cache */}
-        {(apiLoading || refreshing) && items.length > 0 && (
-          <div className="mb-6 flex items-center gap-3 px-4 py-3 border border-border bg-bg-muted rounded-md">
-            <Loader2 className="w-5 h-5 text-fg-muted animate-spin shrink-0" aria-hidden />
-            <span className="text-sm text-fg-muted">Updating from database…</span>
+        {/* Loading indicator for filter-based API refreshes only */}
+        {refreshing && hasApiFilters && items.length > 0 && (
+          <div className="mb-6 flex items-center gap-3 px-4 py-3 border border-border bg-bg-muted">
+            <Loader2 className="w-4 h-4 text-fg-muted animate-spin shrink-0" aria-hidden />
+            <span className="text-sm text-fg-muted">Filtrando…</span>
           </div>
         )}
 
@@ -1043,7 +1131,7 @@ export function HistoryClient() {
 
         {/* Batch actions toolbar */}
         {selectedIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-5 py-3 bg-bg border border-border shadow-lg">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-wrap items-center gap-3 px-5 py-3 bg-bg border border-border shadow-lg max-w-[95vw]">
             <span className="text-sm text-fg font-medium whitespace-nowrap">{selectedIds.size} selected</span>
             <select value={batchProjectId} onChange={(e) => setBatchProjectId(e.target.value)}
               className="bg-bg-muted border border-border px-3 py-2 text-sm text-fg min-w-[140px]">
@@ -1053,16 +1141,30 @@ export function HistoryClient() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            <select value={batchVisibility} onChange={(e) => setBatchVisibility(e.target.value as typeof batchVisibility)}
+              className="bg-bg-muted border border-border px-3 py-2 text-sm text-fg min-w-[140px]">
+              <option value={BATCH_VISIBILITY_UNCHANGED}>— Visibility: unchanged —</option>
+              <option value="private">Private</option>
+              <option value="public">Public</option>
+            </select>
             <div className="flex items-center gap-1.5">
               <input type="text" placeholder="Add tag..." value={batchTagInput} onChange={(e) => setBatchTagInput(e.target.value)}
                 className="w-28 bg-bg-muted border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-muted" />
               <button type="button" onClick={handleBatchUpdate}
-                disabled={batchActionLoading || (batchProjectId === BATCH_PROJECT_UNCHANGED && !batchTagInput.trim())}
+                disabled={batchActionLoading || (batchProjectId === BATCH_PROJECT_UNCHANGED && !batchTagInput.trim() && batchVisibility === BATCH_VISIBILITY_UNCHANGED)}
                 className="px-3 py-2 border border-border text-fg-muted text-sm hover:text-fg hover:border-fg-muted transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none">
                 {batchActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
                 Apply
               </button>
             </div>
+            <button type="button" onClick={handleDownloadZip} disabled={batchActionLoading || selectedIds.size === 0}
+              className="px-3 py-2 border border-border text-fg-muted text-sm hover:text-fg hover:border-fg-muted transition-colors flex items-center gap-1.5 disabled:opacity-50" title="Download selected as ZIP">
+              <FileArchive className="w-4 h-4" /> ZIP
+            </button>
+            <button type="button" onClick={handleShareLink} disabled={batchActionLoading}
+              className="px-3 py-2 border border-border text-fg-muted text-sm hover:text-fg hover:border-fg-muted transition-colors flex items-center gap-1.5" title="Copy share link">
+              <Share2 className="w-4 h-4" /> {shareLinkFeedback ? "Copied!" : "Share link"}
+            </button>
             <button type="button" onClick={handleBatchDelete} disabled={batchActionLoading}
               className="px-3 py-2 border border-red-900/50 text-red-400 text-sm hover:bg-red-900/20 transition-colors flex items-center gap-1.5">
               <Trash2 className="w-4 h-4" /> Delete
@@ -1076,14 +1178,15 @@ export function HistoryClient() {
 
         {/* Edit panel */}
         {editItem && (
-          <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={async () => {
-            await fetchGenerations(true, true);
-            setCachedItems(getCachedGenerations().map(toItem));
-            if (hasFilters) {
-              const r = await fetch(`/api/generations?${filterQs}`);
-              const j = await r.json().catch(() => ({}));
-              if (r.ok && Array.isArray(j?.items)) setFilteredApiItems(j.items.map(toItem));
-            }
+          <EditPanel item={editItem} projects={projects} onClose={() => setEditItem(null)} onSaved={() => {
+            fetchGenerations(true, true).then(() => {
+              setCachedItems(getCachedGenerations().map(toItem));
+              if (hasApiFilters) {
+                fetch(`/api/generations?${filterQs}`).then((r) => r.json().catch(() => ({}))).then((j) => {
+                  if (j?.items && Array.isArray(j.items)) setFilteredApiItems(j.items.map(toItem));
+                });
+              }
+            }).catch(() => {});
           }} />
         )}
 
