@@ -26,6 +26,8 @@ interface HistoryItem {
 }
 
 const MAX_CONCURRENT = 4;
+const SESSION_KEY = 'nanobanana_session';
+const MAX_HISTORY_PERSIST = 8;
 
 const COLORS = [
   '#FF0000', '#FF4500', '#FF8C00', '#FFA500', '#FFD700',
@@ -45,6 +47,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeHistoryIndex, setActiveHistoryIndex] = useState<number>(-1);
   const [imageCounter, setImageCounter] = useState(1);
+  const sessionLoaded = useRef(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
   const [mentionMenu, setMentionMenu] = useState<{
@@ -62,6 +65,41 @@ export default function App() {
   const isGenerating = activeGenerations > 0;
   const latestResult = [...history].reverse().find(h => h.status === 'done');
   const resultText = latestResult?.text ?? null;
+
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw) as {
+        history?: HistoryItem[];
+        images?: AttachedImage[];
+        prompt?: string;
+        imageCounter?: number;
+      };
+      if (s.history?.length) {
+        setHistory(s.history);
+        setActiveHistoryIndex(s.history.length - 1);
+      }
+      if (s.images?.length) setImages(s.images);
+      if (s.prompt) setPrompt(s.prompt);
+      if (s.imageCounter) setImageCounter(s.imageCounter);
+    } catch { /* ignore parse/quota errors */ }
+    sessionLoaded.current = true;
+  }, []);
+
+  // Persist session to localStorage whenever state changes
+  useEffect(() => {
+    if (!sessionLoaded.current) return;
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        history: history.filter(h => h.status === 'done').slice(-MAX_HISTORY_PERSIST),
+        images,
+        prompt,
+        imageCounter,
+      }));
+    } catch { /* quota exceeded — ignore */ }
+  }, [history, images, prompt, imageCounter]);
 
   useEffect(() => {
     if (isEmbedMode()) {
@@ -152,10 +190,11 @@ export default function App() {
   };
 
   const resetAll = () => {
-    // Clear all running timers
     Object.values(timerIntervalsRef.current).forEach(clearInterval);
     timerIntervalsRef.current = {};
     setPrompt(''); setImages([]); setError(null); setHistory([]); setActiveHistoryIndex(-1);
+    setImageCounter(1);
+    try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
