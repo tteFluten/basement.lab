@@ -72,7 +72,7 @@ function hydrateFromStorage(): boolean {
     if (!raw || !ts) return false;
     const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
     if (!Array.isArray(parsed) || parsed.length === 0) return false;
-    cachedItems = parsed.map((r) => ({
+    cachedItems = parsed.slice(0, FULL_LIMIT).map((r) => ({
       id: String(r.id ?? ""),
       appId: String(r.a ?? ""),
       blobUrl: r.b != null ? String(r.b) : undefined,
@@ -179,9 +179,13 @@ async function doFetch(full: boolean): Promise<void> {
         const minPhase1Time = phase1.reduce((m, i) => Math.min(m, i.createdAt), Infinity);
         // Keep stale items that are older than phase1's range (weren't queried yet)
         // Items inside phase1's range that aren't in phase1 were deleted → drop them
-        const olderStale = staleItems.filter((i) => i.createdAt < minPhase1Time && !phase1Ids.has(i.id));
+        // Cap at FULL_LIMIT so items beyond DB range don't haunt us
+        const olderStale = staleItems
+          .filter((i) => i.createdAt < minPhase1Time && !phase1Ids.has(i.id))
+          .slice(0, FULL_LIMIT - phase1.length);
         cachedItems = [...phase1, ...olderStale];
         lastFetchTime = Date.now();
+        persistToStorage(); // persist merged result so next load starts clean
         didNotify = true;
         notify();
       }
