@@ -62,11 +62,19 @@ export async function POST(request: NextRequest) {
     contents.push({ role: "user", parts: currentParts });
 
     const ai = getGemini();
-    const response = await ai.models.generateContent({
-      model,
-      contents: contents as never,
-      config: Object.keys(config).length > 0 ? config : undefined,
-    });
+    const cfg = Object.keys(config).length > 0 ? config : undefined;
+    let response;
+    try {
+      response = await ai.models.generateContent({ model, contents: contents as never, config: cfg });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("thought_signature") && contents.length > 1) {
+        // Thinking models attach thought_signature to image parts; retry without history
+        response = await ai.models.generateContent({ model, contents: [contents[contents.length - 1]] as never, config: cfg });
+      } else {
+        throw e;
+      }
+    }
 
     const r = response as unknown as Record<string, unknown>;
     const candidates = r.candidates as Array<Record<string, unknown>> | undefined;

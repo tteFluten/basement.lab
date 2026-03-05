@@ -142,11 +142,17 @@ export async function generateImage(params: GenerateParams): Promise<GenerateRes
     ],
   });
 
-  const response = await ai.models.generateContent({
-    model: DEFAULT_MODEL,
-    contents: contents as never,
-    config,
-  });
+  let response;
+  try {
+    response = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: contents as never, config });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("thought_signature") && contents.length > 1) {
+      response = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [contents[contents.length - 1]] as never, config });
+    } else {
+      throw e;
+    }
+  }
 
   const candidates = (response as unknown as Record<string, unknown>).candidates as Array<Record<string, unknown>> | undefined;
   const content = candidates?.[0]?.content as { parts?: Array<{ inlineData?: { data: string; mimeType?: string }; text?: string }> } | undefined;
