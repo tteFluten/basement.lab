@@ -1015,7 +1015,13 @@ export function HistoryClient() {
           to { opacity: 1; transform: translateY(0); }
         }
         .history-card { animation: history-fade-in 0.28s ease-out both; }
+        @keyframes refresh-bar { 0% { transform: translateX(-60%); } 100% { transform: translateX(160%); } }
       `}</style>
+      {refreshing && (
+        <div className="sticky top-0 left-0 right-0 z-50 h-px bg-border overflow-hidden">
+          <div className="h-full w-1/2 bg-fg-muted opacity-60" style={{ animation: "refresh-bar 1.2s ease-in-out infinite" }} />
+        </div>
+      )}
       <main className="p-8 lg:p-10 bg-bg min-h-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-5 mb-6">
@@ -1024,13 +1030,13 @@ export function HistoryClient() {
             <p className="text-xs text-fg-muted mt-1 flex items-center gap-2">
               {items.length} generation{items.length !== 1 ? "s" : ""}
               {refreshing ? (
-                <span className="inline-flex items-center gap-1 text-fg-muted">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-border text-fg-muted">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  <span className="text-[10px]">Actualizando…</span>
+                  <span className="text-[10px] uppercase tracking-wider">Updating</span>
                 </span>
               ) : lastUpdated > 0 && (
                 <span className="text-[10px] text-fg-muted/60">
-                  · Actualizado {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  · Updated {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               )}
             </p>
@@ -1094,7 +1100,7 @@ export function HistoryClient() {
         {refreshing && hasApiFilters && items.length > 0 && (
           <div className="mb-6 flex items-center gap-3 px-4 py-3 border border-border bg-bg-muted">
             <Loader2 className="w-4 h-4 text-fg-muted animate-spin shrink-0" aria-hidden />
-            <span className="text-sm text-fg-muted">Filtrando…</span>
+            <span className="text-sm text-fg-muted">Filtering…</span>
           </div>
         )}
 
