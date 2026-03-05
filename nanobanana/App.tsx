@@ -742,33 +742,36 @@ export default function App() {
 
           {/* Prompt Input */}
           <div className="border border-[#333] bg-[#080808] focus-within:border-[#444] transition-colors relative">
-            {/* Syntax highlight overlay */}
-            <div
-              ref={highlighterRef}
-              className="absolute inset-0 p-4 text-sm leading-relaxed pointer-events-none whitespace-pre-wrap break-words overflow-hidden"
-              aria-hidden="true"
-            >
-              {prompt.split(/(@\d+)/g).map((part, i) => {
-                if (part.startsWith('@')) {
-                  const img = images.find(img => img.id === part.substring(1));
-                  if (img) return <span key={i} style={{ color: img.color }}>{part}</span>;
-                }
-                return <span key={i} className="text-[#a0a0a0]">{part}</span>;
-              })}
-              {prompt.endsWith('\n') ? ' ' : ''}
-            </div>
+            {/* Textarea + highlight overlay scoped together */}
+            <div className="relative">
+              {/* Syntax highlight overlay */}
+              <div
+                ref={highlighterRef}
+                className="absolute inset-0 p-4 text-sm leading-relaxed pointer-events-none whitespace-pre-wrap break-words overflow-hidden"
+                aria-hidden="true"
+              >
+                {prompt.split(/(@\d+)/g).map((part, i) => {
+                  if (part.startsWith('@')) {
+                    const img = images.find(img => img.id === part.substring(1));
+                    if (img) return <span key={i} style={{ color: img.color }}>{part}</span>;
+                  }
+                  return <span key={i} className="text-[#a0a0a0]">{part}</span>;
+                })}
+                {prompt.endsWith('\n') ? ' ' : ''}
+              </div>
 
-            <textarea
-              ref={promptRef}
-              value={prompt}
-              onChange={handlePromptChange}
-              onKeyDown={handleKeyDown}
-              onScroll={syncScroll}
-              onPaste={handlePaste}
-              placeholder="Enter prompt... Use @ID to reference images. Ctrl+Enter to generate."
-              className="w-full h-32 p-4 bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:text-[#555] relative z-10 caret-[#a0a0a0] text-transparent selection:bg-[#333] selection:text-white"
-              style={{ WebkitTextFillColor: 'transparent' }}
-            />
+              <textarea
+                ref={promptRef}
+                value={prompt}
+                onChange={handlePromptChange}
+                onKeyDown={handleKeyDown}
+                onScroll={syncScroll}
+                onPaste={handlePaste}
+                placeholder="Enter prompt... Use @ID to reference images. Ctrl+Enter to generate."
+                className="w-full h-32 p-4 bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:text-[#555] relative z-10 caret-[#a0a0a0] text-transparent selection:bg-[#333] selection:text-white"
+                style={{ WebkitTextFillColor: 'transparent' }}
+              />
+            </div>
 
             {/* Mention menu */}
             {mentionMenu.isOpen && (
