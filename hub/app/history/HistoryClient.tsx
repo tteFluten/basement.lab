@@ -828,7 +828,7 @@ export function HistoryClient() {
     const base = hasApiFilters ? filteredApiItems : cachedItems;
     let list = [...base];
     if (!hasApiFilters && filterVisibility === "public") list = list.filter((i) => i.isPublic === true);
-    if (!hasApiFilters && filterVisibility === "mine") list = list.filter((i) => i.userId === currentUserId);
+    if (!hasApiFilters && filterVisibility === "mine" && currentUserId !== null) list = list.filter((i) => i.userId === currentUserId);
     const seen = new Set(list.map((i) => i.id));
     for (const m of memoryItems) { if (!seen.has(m.id)) { seen.add(m.id); list.push(m); } }
     list.sort((a, b) => b.createdAt - a.createdAt);
