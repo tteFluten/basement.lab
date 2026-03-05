@@ -793,8 +793,8 @@ export function HistoryClient() {
     if (isCacheReady()) setApiLoading(false);
     const unsubData = subscribeGenerations(sync);
     const unsubRefresh = subscribeRefreshing(onRefresh);
-    // Use full limit on History page; shows stale cache immediately and refreshes in background
-    fetchGenerations(undefined, true)
+    // Always force a background refresh on History page so deleted items are cleaned up
+    fetchGenerations(true, true)
       .then(() => { setApiLoading(false); setApiError(null); })
       .catch((e) => {
         setApiLoading(false);
