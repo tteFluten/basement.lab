@@ -473,7 +473,7 @@ export default function App() {
       </header>
 
       {/* Timeline Carousel */}
-      <div className="-mx-4 md:-mx-8 relative h-[600px] flex items-center overflow-hidden border-b border-[#282828] pb-8 mb-8">
+      <div className="-mx-4 md:-mx-8 relative h-[600px] flex items-center overflow-hidden border-t border-[#282828] pt-8 mt-8 order-2">
           {history.length === 0 && !isGenerating && !error && (
             <div className="w-full flex flex-col items-center justify-center gap-6">
               <style>{`
