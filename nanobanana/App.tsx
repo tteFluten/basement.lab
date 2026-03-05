@@ -379,30 +379,125 @@ export default function App() {
           )}
 
           {isGenerating && (
-            <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center overflow-hidden">
-              <div className="relative w-64 h-64 flex items-center justify-center">
-                <div className="absolute inset-0 border border-[#333] rounded-full animate-[spin_10s_linear_infinite]" />
-                <div className="absolute inset-4 border border-dashed border-[#333] rounded-full animate-[spin_15s_linear_infinite_reverse]" />
-                <div className="absolute inset-8 border border-[#111] rounded-full animate-[pulse-ring_4s_ease-in-out_infinite]" />
-                <div className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-[#a0a0a0] to-transparent animate-[scan_2s_ease-in-out_infinite] z-10" />
-                <div className="relative flex flex-col items-center z-20">
-                  <div className="w-12 h-12 border border-[#a0a0a0] flex items-center justify-center animate-pulse mb-4">
-                    <div className="w-2 h-2 bg-[#a0a0a0]" />
-                  </div>
-                  <div className="text-[12px] font-bold text-white tracking-[0.5em] uppercase">
-                    {(generationTime / 1000).toFixed(1)}s
-                  </div>
-                </div>
-              </div>
-              <div className="mt-8 flex flex-col items-center gap-2">
-                <div className="text-[11px] uppercase tracking-[0.3em] text-[#bbb] animate-pulse">Synthesizing Neural Patterns</div>
-                <div className="flex gap-1">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="w-1 h-1 bg-[#a0a0a0]/40 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />
+            <>
+              <style>{`
+                @keyframes nb-spin { to { transform: rotate(360deg); } }
+                @keyframes nb-spin-rev { to { transform: rotate(-360deg); } }
+                @keyframes nb-pulse-ring {
+                  0%, 100% { r: 50; opacity: 0.25; }
+                  50% { r: 54; opacity: 0.6; }
+                }
+                @keyframes nb-scan {
+                  0%, 100% { transform: translateY(-50px); opacity: 0; }
+                  15% { opacity: 1; }
+                  85% { opacity: 1; }
+                  50% { transform: translateY(50px); }
+                }
+                @keyframes nb-orbit {
+                  0% { transform: rotate(0deg) translateX(58px) rotate(0deg); }
+                  100% { transform: rotate(360deg) translateX(58px) rotate(-360deg); }
+                }
+                @keyframes nb-orbit2 {
+                  0% { transform: rotate(120deg) translateX(42px) rotate(-120deg); }
+                  100% { transform: rotate(480deg) translateX(42px) rotate(-480deg); }
+                }
+                @keyframes nb-orbit3 {
+                  0% { transform: rotate(240deg) translateX(50px) rotate(-240deg); }
+                  100% { transform: rotate(600deg) translateX(50px) rotate(-600deg); }
+                }
+                @keyframes nb-dash {
+                  to { stroke-dashoffset: -20; }
+                }
+                @keyframes nb-core-pulse {
+                  0%, 100% { opacity: 0.6; }
+                  50% { opacity: 1; }
+                }
+                @keyframes nb-glow-pulse {
+                  0%, 100% { r: 28; opacity: 0.04; }
+                  50% { r: 34; opacity: 0.08; }
+                }
+                @keyframes nb-fade-pulse {
+                  0%, 100% { opacity: 0.4; }
+                  50% { opacity: 1; }
+                }
+                @keyframes nb-dot-wave {
+                  0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+                  30% { transform: translateY(-4px); opacity: 1; }
+                }
+              `}</style>
+              <div className="absolute inset-0 z-20 bg-black/70 backdrop-blur-xl flex flex-col items-center justify-center overflow-hidden">
+                {/* Full SVG animation - immune to global border-radius reset */}
+                <svg width="200" height="200" viewBox="0 0 200 200" className="overflow-visible">
+                  {/* Glow backdrop */}
+                  <circle cx="100" cy="100" r="28" fill="white" style={{ animation: 'nb-glow-pulse 3s ease-in-out infinite' }} />
+                  {/* Outer dashed ring - slow spin */}
+                  <g style={{ transformOrigin: '100px 100px', animation: 'nb-spin 20s linear infinite' }}>
+                    <circle cx="100" cy="100" r="88" fill="none" stroke="#333" strokeWidth="0.5" strokeDasharray="4 6" style={{ animation: 'nb-dash 2s linear infinite' }} />
+                  </g>
+                  {/* Middle ring - reverse spin */}
+                  <g style={{ transformOrigin: '100px 100px', animation: 'nb-spin-rev 12s linear infinite' }}>
+                    <circle cx="100" cy="100" r="70" fill="none" stroke="#2a2a2a" strokeWidth="0.5" />
+                    {/* Tick marks on middle ring */}
+                    {[0, 90, 180, 270].map(deg => (
+                      <line key={deg} x1="100" y1="30" x2="100" y2="34" stroke="#444" strokeWidth="0.5"
+                        transform={`rotate(${deg} 100 100)`} />
+                    ))}
+                  </g>
+                  {/* Inner pulsing ring */}
+                  <circle cx="100" cy="100" r="50" fill="none" stroke="#444" strokeWidth="0.5"
+                    style={{ animation: 'nb-pulse-ring 3s ease-in-out infinite' }} />
+                  {/* Orbiting bananas (lucide Banana icon paths) */}
+                  {[
+                    { anim: 'nb-orbit', dur: '6s', scale: 0.5, opacity: 0.8 },
+                    { anim: 'nb-orbit2', dur: '4.5s', scale: 0.35, opacity: 0.5 },
+                    { anim: 'nb-orbit3', dur: '8s', scale: 0.42, opacity: 0.35 },
+                  ].map((b, i) => (
+                    <g key={i} style={{ transformOrigin: '100px 100px', animation: `${b.anim} ${b.dur} linear infinite` }}>
+                      <g transform={`translate(${100 - 12 * b.scale},${100 - 12 * b.scale}) scale(${b.scale})`}
+                        opacity={b.opacity} fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
+                        <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
+                      </g>
+                    </g>
                   ))}
+                  {/* Center core */}
+                  <circle cx="100" cy="100" r="26" fill="none" stroke="#555" strokeWidth="0.5"
+                    style={{ animation: 'nb-core-pulse 3s ease-in-out infinite' }} />
+                  <circle cx="100" cy="100" r="12" fill="url(#nb-core-grad)" />
+                  {/* Center banana */}
+                  <g transform="translate(91,91) scale(0.75)" opacity="0.9"
+                    fill="none" stroke="#eee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
+                    <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
+                  </g>
+                  {/* Gradient defs */}
+                  <defs>
+                    <radialGradient id="nb-core-grad" cx="50%" cy="50%">
+                      <stop offset="0%" stopColor="#666" />
+                      <stop offset="100%" stopColor="#222" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+                {/* Scanning line - HTML overlay for gradient */}
+                <div className="absolute" style={{ width: 120, height: 1, background: 'linear-gradient(90deg, transparent, rgba(160,160,160,0.5), transparent)', animation: 'nb-scan 2.5s ease-in-out infinite' }} />
+                {/* Timer */}
+                <div className="mt-4 text-[18px] font-light text-white/90 tracking-[0.4em] tabular-nums">
+                  {(generationTime / 1000).toFixed(1)}<span className="text-[11px] text-white/40 ml-0.5">s</span>
+                </div>
+                {/* Status text */}
+                <div className="mt-3 flex flex-col items-center gap-2">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-white/40" style={{ animation: 'nb-fade-pulse 2s ease-in-out infinite' }}>
+                    Synthesizing Neural Patterns
+                  </div>
+                  <svg width="30" height="8" viewBox="0 0 30 8">
+                    {[0, 1, 2].map(i => (
+                      <circle key={i} cx={6 + i * 9} cy="4" r="2" fill="rgba(255,255,255,0.5)"
+                        style={{ animation: `nb-dot-wave 1.2s ease-in-out infinite`, animationDelay: `${i * 0.15}s` }} />
+                    ))}
+                  </svg>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {error && (

@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["hub/node_modules/next/dist/bin/next", "dev", "hub"],
       "port": 3000
+    },
+    {
+      "name": "nanobanana",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["nanobanana/node_modules/vite/bin/vite.js", "nanobanana", "--port", "5173"],
+      "port": 5173
     }
   ]
 }
