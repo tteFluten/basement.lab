@@ -1106,7 +1106,7 @@ export function HistoryClient() {
         )}
 
         {/* Content */}
-        {apiLoading && items.length === 0 ? (
+        {(apiLoading || (cacheRefreshing && items.length === 0)) ? (
           <Spinner size={28} steps={["Loading history", "Fetching generations", "Cleaning duplicates", "Sorting by date", "Preparing gallery"]} />
         ) : apiError && items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
