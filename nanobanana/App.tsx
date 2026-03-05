@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen, Copy, Check } from 'lucide-react';
+import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen, Copy, Check, Wand2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { generateImage, isEmbedMode, getHubModel } from './services/geminiService';
+import { generateImage, improvePrompt, isEmbedMode, getHubModel } from './services/geminiService';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
 import { prepareImagePartForApi } from './lib/imageResize';
 
@@ -46,6 +46,7 @@ export default function App() {
   const [activeHistoryIndex, setActiveHistoryIndex] = useState<number>(-1);
   const [imageCounter, setImageCounter] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
   const [mentionMenu, setMentionMenu] = useState<{
     isOpen: boolean; x: number; y: number;
     selectedIndex: number; filter: string; cursorPosition: number;
@@ -260,6 +261,20 @@ export default function App() {
     link.href = dataUrl;
     link.download = `nanobanana-${Date.now()}.png`;
     link.click();
+  };
+
+  const handleImprovePrompt = async () => {
+    if (isImprovingPrompt) return;
+    setIsImprovingPrompt(true);
+    try {
+      const improved = await improvePrompt(prompt, images.length);
+      setPrompt(improved);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to improve prompt";
+      setError(msg);
+    } finally {
+      setIsImprovingPrompt(false);
+    }
   };
 
   const generate = () => {
@@ -756,6 +771,15 @@ export default function App() {
                 </button>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
                 {/* Clipboard paste */}
+                {/* Improve prompt */}
+                <button
+                  onClick={handleImprovePrompt}
+                  disabled={isImprovingPrompt}
+                  className="p-2 hover:bg-[#111] transition-colors text-[#666] hover:text-[#ccc] disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Improve prompt with AI"
+                >
+                  <Wand2 size={16} className={isImprovingPrompt ? 'animate-pulse' : ''} />
+                </button>
                 <button
                   onClick={async () => {
                     try {

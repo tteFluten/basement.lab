@@ -30,6 +30,52 @@ export interface GenerateResult {
   text?: string;
 }
 
+const IMPROVE_SYSTEM =
+  "You write concise, vivid image generation prompts. Output only the prompt, no explanations, no quotes, no preamble.";
+
+const improveUserMessage = (prompt: string, imageCount: number) =>
+  `You are an expert at writing prompts for AI image generation models like Gemini.
+
+Improve the following prompt to be more vivid, specific, and effective for generating high-quality images. Keep the original intent and subject. Return ONLY the improved prompt text, nothing else.
+
+${imageCount > 0 ? `Context: the user has ${imageCount} reference image(s) attached.\n\n` : ""}Prompt to improve:
+${prompt || "(empty — suggest a creative starting prompt for an abstract or generative image)"}`;
+
+export async function improvePrompt(currentPrompt: string, imageCount: number): Promise<string> {
+  const base = getHubApiBase();
+  if (base) {
+    const res = await fetch(`${base}/api/gemini/nanobanana/improve-prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: currentPrompt, imageCount }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((data as { error?: string }).error ?? "API error");
+    return (data as { prompt: string }).prompt;
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey?.trim()) throw new Error("API_KEY_ERROR");
+
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: { parts: [{ text: improveUserMessage(currentPrompt, imageCount) }] },
+    config: { systemInstruction: IMPROVE_SYSTEM },
+  });
+
+  const r = response as unknown as Record<string, unknown>;
+  const text =
+    (r.text as string) ??
+    (
+      (r.candidates as Array<{ content: { parts: Array<{ text?: string }> } }> | undefined)?.[0]
+        ?.content?.parts?.find((p) => p.text)?.text ?? ""
+    );
+
+  if (!text) throw new Error("No improved prompt returned.");
+  return text.trim();
+}
+
 export async function generateImage(params: GenerateParams): Promise<GenerateResult> {
   const base = getHubApiBase();
   if (base) {
