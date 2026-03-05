@@ -168,18 +168,24 @@ async function apiFetch(limit: number): Promise<CachedGeneration[] | null> {
 
 async function doFetch(full: boolean): Promise<void> {
   setRefreshing(true);
+  const staleItems = [...cachedItems]; // snapshot before any mutation
   let didNotify = false;
   try {
     if (full) {
-      // Phase 1: small fetch for fast first paint
+      // Phase 1: small fetch — merge with stale cache, removing ghosts
       const phase1 = await apiFetch(PHASE1_LIMIT);
       if (phase1 && phase1.length > 0) {
-        cachedItems = phase1;
+        const phase1Ids = new Set(phase1.map((i) => i.id));
+        const minPhase1Time = phase1.reduce((m, i) => Math.min(m, i.createdAt), Infinity);
+        // Keep stale items that are older than phase1's range (weren't queried yet)
+        // Items inside phase1's range that aren't in phase1 were deleted → drop them
+        const olderStale = staleItems.filter((i) => i.createdAt < minPhase1Time && !phase1Ids.has(i.id));
+        cachedItems = [...phase1, ...olderStale];
         lastFetchTime = Date.now();
         didNotify = true;
         notify();
       }
-      // Phase 2: full fetch for complete list
+      // Phase 2: full replace
       const data = await apiFetch(FULL_LIMIT);
       if (data && data.length >= 0) {
         cachedItems = data;

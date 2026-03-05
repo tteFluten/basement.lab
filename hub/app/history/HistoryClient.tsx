@@ -781,26 +781,21 @@ export function HistoryClient() {
   const [lastUpdated, setLastUpdated] = useState(0); // server-safe; useEffect syncs on client
 
   useEffect(() => {
-    let loadingDismissed = false;
-    const dismissLoading = () => {
-      if (!loadingDismissed) { loadingDismissed = true; setApiLoading(false); }
-    };
     const sync = () => {
-      // Only called after a fresh fetch completes — no stale cache shown on mount
       setCachedItems(getCachedGenerations().map(toItem));
       setMemoryItems(getHistory());
       setLastUpdated(getLastFetchTime());
-      dismissLoading();
+      setApiLoading(false);
     };
     const onRefresh = () => { setCacheRefreshing(getCacheRefreshing()); };
-    // Show device-local items immediately (no ghost risk — these live only on this device)
-    setMemoryItems(getHistory());
+    // Show stale cache immediately for instant feel; phase 1 will clean up ghosts
+    sync();
     const unsubData = subscribeGenerations(sync);
     const unsubRefresh = subscribeRefreshing(onRefresh);
-    // Always fetch fresh — sync() above fires when phase 1 data arrives (~300ms)
+    // Always fetch fresh — phase 1 merges with stale cache removing deleted items
     fetchGenerations(true, true)
       .catch((e) => {
-        dismissLoading();
+        setApiLoading(false);
         setApiError(e instanceof Error ? e.message : "Failed to load history");
       });
     return () => { unsubData(); unsubRefresh(); };
