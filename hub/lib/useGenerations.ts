@@ -5,14 +5,18 @@ import {
   fetchGenerations,
   getCachedGenerations,
   isCacheReady,
+  isRefreshing as getIsRefreshing,
+  getLastFetchTime,
   subscribeGenerations,
+  subscribeRefreshing,
   invalidateGenerationsCache,
   type CachedGeneration,
 } from "./generationsCache";
 
 /**
  * Returns cached generations instantly if available, triggers background refresh.
- * Never shows a spinner if data was already loaded once in the session.
+ * Never shows a loading spinner if data was already loaded once in the session.
+ * Returns `refreshing` flag so UI can show a subtle indicator during background updates.
  */
 export function useGenerations(limit?: number) {
   const hasCache = isCacheReady();
@@ -26,34 +30,45 @@ export function useGenerations(limit?: number) {
 
   const [items, setItems] = useState<CachedGeneration[]>(() => hasCache ? slice() : []);
   const [loading, setLoading] = useState(!hasCache);
+  const [refreshing, setRefreshing] = useState(getIsRefreshing());
+  const [lastUpdated, setLastUpdated] = useState(getLastFetchTime());
 
   useEffect(() => {
-    const refresh = () => setItems(slice());
-    const unsub = subscribeGenerations(refresh);
+    const onData = () => {
+      setItems(slice());
+      setLastUpdated(getLastFetchTime());
+    };
+    const onRefresh = () => {
+      setRefreshing(getIsRefreshing());
+    };
+
+    const unsubData = subscribeGenerations(onData);
+    const unsubRefresh = subscribeRefreshing(onRefresh);
 
     if (isCacheReady()) {
-      refresh();
+      onData();
       setLoading(false);
+      // Trigger background refresh if stale (non-blocking)
       fetchGenerations();
     } else {
       setLoading(true);
       fetchGenerations().then(() => {
-        refresh();
+        onData();
         setLoading(false);
       });
     }
 
-    return unsub;
+    return () => { unsubData(); unsubRefresh(); };
   }, [limit, slice]);
 
   const forceRefresh = useCallback(() => {
     invalidateGenerationsCache();
-    setLoading(true);
+    // Don't set loading=true — show existing data while refreshing
     fetchGenerations(true).then(() => {
       setItems(slice());
-      setLoading(false);
+      setLastUpdated(getLastFetchTime());
     });
   }, [slice]);
 
-  return { items, loading, refresh: forceRefresh };
+  return { items, loading, refreshing, lastUpdated, refresh: forceRefresh };
 }

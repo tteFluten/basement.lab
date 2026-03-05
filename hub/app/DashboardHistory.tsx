@@ -4,9 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import { getHistory, type HistoryItem } from "@/lib/historyStore";
 import { getAppLabel } from "@/lib/appIcons";
 import { useGenerations } from "@/lib/useGenerations";
-import { subscribeGenerations } from "@/lib/generationsCache";
 import Link from "next/link";
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowRight, Download, Loader2 } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 
 function toHistoryItem(g: { id: string; appId: string; dataUrl?: string | null; blobUrl?: string; thumbUrl?: string | null; width?: number | null; height?: number | null; name?: string | null; createdAt: number; tags?: string[] }): HistoryItem {
@@ -72,16 +71,11 @@ function GalleryImage({ item }: { item: HistoryItem }) {
 }
 
 export function DashboardHistory() {
-  const { items: apiGens, loading } = useGenerations(12);
-  const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
+  const { items: apiGens, loading, refreshing } = useGenerations(12);
+  const [memoryItems, setMemoryItems] = useState<HistoryItem[]>(() => getHistory());
 
   useEffect(() => {
     setMemoryItems(getHistory());
-    const unsub = subscribeGenerations(() => setMemoryItems(getHistory()));
-    const iv = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") setMemoryItems(getHistory());
-    }, 15000);
-    return () => { clearInterval(iv); unsub(); };
   }, []);
 
   const apiItems = useMemo(() => apiGens.map(toHistoryItem), [apiGens]);
@@ -110,6 +104,12 @@ export function DashboardHistory() {
 
   return (
     <div className="relative">
+      {refreshing && (
+        <div className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2 py-1 bg-bg/80 backdrop-blur-sm text-[10px] text-fg-muted">
+          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+          Actualizando…
+        </div>
+      )}
       <div className="columns-2 sm:columns-3 md:columns-4 gap-1.5">
         {items.map((item) => (
           <div key={item.id} className="mb-1.5 break-inside-avoid">

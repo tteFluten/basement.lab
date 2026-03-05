@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
-import { getCachedGenerations, isCacheReady, subscribeGenerations, removeFromCachedGenerations, fetchGenerations, updateCachedGeneration, updateCachedGenerations } from "@/lib/generationsCache";
+import { getCachedGenerations, isCacheReady, isRefreshing as getCacheRefreshing, subscribeGenerations, subscribeRefreshing, removeFromCachedGenerations, fetchGenerations, updateCachedGeneration, updateCachedGenerations, getLastFetchTime } from "@/lib/generationsCache";
 import { useSession } from "next-auth/react";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
@@ -751,7 +751,8 @@ export function HistoryClient() {
 
   const handleRetry = useCallback(() => {
     setApiError(null);
-    setApiLoading(true);
+    // Only show full loading spinner if we have nothing to show
+    if (!isCacheReady()) setApiLoading(true);
     fetchGenerations(true, true)
       .then(() => {
         setCachedItems(getCachedGenerations().map(toItem));
@@ -776,22 +777,27 @@ export function HistoryClient() {
     return p.toString();
   }, [hasApiFilters, filterVisibility, filterProjectId, filterUserId, filterTag, filterAppId]);
 
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(getCacheRefreshing());
+  const [lastUpdated, setLastUpdated] = useState(getLastFetchTime());
 
   useEffect(() => {
     const sync = () => {
       setCachedItems(getCachedGenerations().map(toItem));
       setMemoryItems(getHistory());
+      setLastUpdated(getLastFetchTime());
     };
+    const onRefresh = () => { setRefreshing(getCacheRefreshing()); };
     sync();
-    const unsub = subscribeGenerations(sync);
+    const unsubData = subscribeGenerations(sync);
+    const unsubRefresh = subscribeRefreshing(onRefresh);
+    // Use full limit on History page; shows stale cache immediately and refreshes in background
     fetchGenerations(undefined, true)
       .then(() => { setApiLoading(false); setApiError(null); })
       .catch((e) => {
         setApiLoading(false);
         setApiError(e instanceof Error ? e.message : "Failed to load history");
       });
-    return unsub;
+    return () => { unsubData(); unsubRefresh(); };
   }, []);
 
   useEffect(() => {
@@ -815,8 +821,6 @@ export function HistoryClient() {
   useEffect(() => { fetch("/api/users").then((r) => r.json()).then((d) => { if (Array.isArray(d?.items)) { setUsers(d.items); setIsAdmin(true); } }).catch(() => {}); }, []);
   useEffect(() => {
     setMemoryItems(getHistory());
-    const iv = setInterval(() => setMemoryItems(getHistory()), 3000);
-    return () => clearInterval(iv);
   }, []);
 
   const items = useMemo(() => {
@@ -1018,10 +1022,14 @@ export function HistoryClient() {
             <h1 className="text-lg font-medium text-fg tracking-wide">History</h1>
             <p className="text-xs text-fg-muted mt-1 flex items-center gap-2">
               {items.length} generation{items.length !== 1 ? "s" : ""}
-              {refreshing && (
+              {refreshing ? (
                 <span className="inline-flex items-center gap-1 text-fg-muted">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  <span className="text-[10px]">Updating…</span>
+                  <span className="text-[10px]">Actualizando…</span>
+                </span>
+              ) : lastUpdated > 0 && (
+                <span className="text-[10px] text-fg-muted/60">
+                  · Actualizado {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               )}
             </p>
@@ -1081,11 +1089,11 @@ export function HistoryClient() {
           )}
         </div>
 
-        {/* Loading from DB indicator when we already show cache */}
-        {(apiLoading || refreshing) && items.length > 0 && (
-          <div className="mb-6 flex items-center gap-3 px-4 py-3 border border-border bg-bg-muted rounded-md">
-            <Loader2 className="w-5 h-5 text-fg-muted animate-spin shrink-0" aria-hidden />
-            <span className="text-sm text-fg-muted">Updating from database…</span>
+        {/* Loading indicator for filter-based API refreshes only */}
+        {refreshing && hasApiFilters && items.length > 0 && (
+          <div className="mb-6 flex items-center gap-3 px-4 py-3 border border-border bg-bg-muted">
+            <Loader2 className="w-4 h-4 text-fg-muted animate-spin shrink-0" aria-hidden />
+            <span className="text-sm text-fg-muted">Filtrando…</span>
           </div>
         )}
 
