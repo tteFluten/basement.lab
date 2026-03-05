@@ -370,11 +370,50 @@ export default function App() {
       {/* Timeline Carousel */}
       <div className="-mx-4 md:-mx-8 relative h-[600px] flex items-center overflow-hidden border-b border-[#282828] pb-8 mb-8">
           {history.length === 0 && !isGenerating && !error && (
-            <div className="w-full flex flex-col items-center justify-center text-[#444] gap-4">
-              <div className="w-24 h-24 border border-dashed border-[#444] flex items-center justify-center">
-                <ImageIcon size={32} />
-              </div>
-              <span className="text-[12px] uppercase tracking-[0.3em]">Ready for Generation</span>
+            <div className="w-full flex flex-col items-center justify-center gap-6">
+              <style>{`
+                @keyframes nb-idle-spin { to { transform: rotate(360deg); } }
+                @keyframes nb-idle-spin-rev { to { transform: rotate(-360deg); } }
+                @keyframes nb-idle-pulse {
+                  0%, 100% { opacity: 0.15; }
+                  50% { opacity: 0.3; }
+                }
+                @keyframes nb-idle-dash { to { stroke-dashoffset: -20; } }
+              `}</style>
+              <svg width="160" height="160" viewBox="0 0 160 160" className="overflow-visible">
+                {/* Outer dashed ring */}
+                <g style={{ transformOrigin: '80px 80px', animation: 'nb-idle-spin 30s linear infinite' }}>
+                  <circle cx="80" cy="80" r="72" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="4 6" style={{ animation: 'nb-idle-dash 3s linear infinite' }} />
+                </g>
+                {/* Middle ring */}
+                <g style={{ transformOrigin: '80px 80px', animation: 'nb-idle-spin-rev 20s linear infinite' }}>
+                  <circle cx="80" cy="80" r="55" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
+                </g>
+                {/* Inner ring */}
+                <circle cx="80" cy="80" r="38" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"
+                  style={{ animation: 'nb-idle-pulse 4s ease-in-out infinite' }} />
+                {/* Orbiting bananas */}
+                {[
+                  { angle: 0, r: 58, dur: '8s', scale: 0.45, opacity: 0.25 },
+                  { angle: 120, r: 45, dur: '12s', scale: 0.35, opacity: 0.15 },
+                  { angle: 240, r: 52, dur: '10s', scale: 0.4, opacity: 0.2 },
+                ].map((b, i) => (
+                  <g key={i} style={{ transformOrigin: '80px 80px', animation: `nb-idle-spin ${b.dur} linear infinite` }}>
+                    <g transform={`translate(${80 - 12 * b.scale},${80 - b.r - 12 * b.scale}) scale(${b.scale})`}
+                      opacity={b.opacity} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
+                      <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
+                    </g>
+                  </g>
+                ))}
+                {/* Center banana */}
+                <g transform="translate(71,71) scale(0.75)" opacity="0.2"
+                  fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
+                  <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
+                </g>
+              </svg>
+              <span className="text-[11px] uppercase tracking-[0.3em] text-white/20">Ready for Generation</span>
             </div>
           )}
 
@@ -519,7 +558,7 @@ export default function App() {
                   onClick={() => handleHistoryClick(idx)}
                   className={`relative flex-shrink-0 transition-all duration-500 cursor-pointer ${isActive ? 'w-[600px] opacity-100 scale-100' : 'w-[200px] opacity-20 scale-75 grayscale hover:opacity-40'}`}
                 >
-                  <div className="border border-[#333] bg-black p-2 relative group cursor-pointer"
+                  <div className="bg-black relative group cursor-pointer"
                     onClick={(e) => { if (isActive) { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); } }}>
                     <img src={item.image} alt={`Generation ${idx}`} className="w-full h-auto object-contain" />
                     {isActive && (
