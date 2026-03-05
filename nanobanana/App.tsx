@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen, Copy, Check, Wand2 } from 'lucide-react';
+import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen, Copy, Check, Wand2, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { generateImage, improvePrompt, isEmbedMode, getHubModel, HistoryTurn } from './services/geminiService';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
@@ -23,6 +23,7 @@ interface HistoryItem {
   status: 'generating' | 'done' | 'error';
   elapsed: number;
   error?: string;
+  aspectRatio?: string;
 }
 
 const MAX_CONCURRENT = 4;
@@ -343,6 +344,7 @@ export default function App() {
       timestamp: Date.now(),
       status: 'generating',
       elapsed: 0,
+      aspectRatio,
     };
     setHistory(prev => { const next = [...prev, newItem]; setActiveHistoryIndex(next.length - 1); return next; });
 
@@ -542,7 +544,7 @@ export default function App() {
                 >
                   {/* Generating state — inline spinner card */}
                   {item.status === 'generating' && (
-                    <div className="bg-black/50 border border-[#222] flex flex-col items-center justify-center" style={{ height: isActive ? 400 : 200, aspectRatio: isActive ? undefined : '1' }}>
+                    <div className="bg-black/50 border border-[#222] flex flex-col items-center justify-center w-full" style={{ aspectRatio: (item.aspectRatio ?? '1:1').replace(':', '/'), maxHeight: isActive ? 520 : 200, minHeight: isActive ? undefined : 80 }}>
                       <svg width="140" height="140" viewBox="0 0 140 140" className="overflow-visible">
                         <circle cx="70" cy="70" r="20" fill="white" style={{ animation: 'nb-glow-pulse 3s ease-in-out infinite' }} />
                         <g style={{ transformOrigin: '70px 70px', animation: 'nb-spin 20s linear infinite' }}>
@@ -823,10 +825,12 @@ export default function App() {
                 <button
                   onClick={handleImprovePrompt}
                   disabled={isImprovingPrompt}
-                  className="p-2 hover:bg-[#111] transition-colors text-[#666] hover:text-[#ccc] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className={`p-2 transition-colors disabled:cursor-not-allowed ${isImprovingPrompt ? 'text-[#ccc] bg-[#111]' : 'text-[#666] hover:bg-[#111] hover:text-[#ccc]'}`}
                   title="Improve prompt with AI"
                 >
-                  <Wand2 size={16} className={isImprovingPrompt ? 'animate-pulse' : ''} />
+                  {isImprovingPrompt
+                    ? <Loader2 size={16} className="animate-spin" />
+                    : <Wand2 size={16} />}
                 </button>
                 <button
                   onClick={async () => {
