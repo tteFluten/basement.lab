@@ -432,54 +432,54 @@ export default function App() {
                   <circle cx="100" cy="100" r="28" fill="white" style={{ animation: 'nb-glow-pulse 3s ease-in-out infinite' }} />
                   {/* Outer dashed ring - slow spin */}
                   <g style={{ transformOrigin: '100px 100px', animation: 'nb-spin 20s linear infinite' }}>
-                    <circle cx="100" cy="100" r="88" fill="none" stroke="#333" strokeWidth="0.5" strokeDasharray="4 6" style={{ animation: 'nb-dash 2s linear infinite' }} />
+                    <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" strokeDasharray="4 6" style={{ animation: 'nb-dash 2s linear infinite' }} />
                   </g>
                   {/* Middle ring - reverse spin */}
                   <g style={{ transformOrigin: '100px 100px', animation: 'nb-spin-rev 12s linear infinite' }}>
-                    <circle cx="100" cy="100" r="70" fill="none" stroke="#2a2a2a" strokeWidth="0.5" />
+                    <circle cx="100" cy="100" r="70" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
                     {/* Tick marks on middle ring */}
                     {[0, 90, 180, 270].map(deg => (
-                      <line key={deg} x1="100" y1="30" x2="100" y2="34" stroke="#444" strokeWidth="0.5"
+                      <line key={deg} x1="100" y1="30" x2="100" y2="34" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5"
                         transform={`rotate(${deg} 100 100)`} />
                     ))}
                   </g>
                   {/* Inner pulsing ring */}
-                  <circle cx="100" cy="100" r="50" fill="none" stroke="#444" strokeWidth="0.5"
+                  <circle cx="100" cy="100" r="50" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5"
                     style={{ animation: 'nb-pulse-ring 3s ease-in-out infinite' }} />
                   {/* Orbiting bananas (lucide Banana icon paths) */}
                   {[
-                    { anim: 'nb-orbit', dur: '6s', scale: 0.5, opacity: 0.8 },
-                    { anim: 'nb-orbit2', dur: '4.5s', scale: 0.35, opacity: 0.5 },
-                    { anim: 'nb-orbit3', dur: '8s', scale: 0.42, opacity: 0.35 },
+                    { anim: 'nb-orbit', dur: '6s', scale: 0.5, opacity: 0.7 },
+                    { anim: 'nb-orbit2', dur: '4.5s', scale: 0.35, opacity: 0.4 },
+                    { anim: 'nb-orbit3', dur: '8s', scale: 0.42, opacity: 0.3 },
                   ].map((b, i) => (
                     <g key={i} style={{ transformOrigin: '100px 100px', animation: `${b.anim} ${b.dur} linear infinite` }}>
                       <g transform={`translate(${100 - 12 * b.scale},${100 - 12 * b.scale}) scale(${b.scale})`}
-                        opacity={b.opacity} fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        opacity={b.opacity} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
                         <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
                       </g>
                     </g>
                   ))}
                   {/* Center core */}
-                  <circle cx="100" cy="100" r="26" fill="none" stroke="#555" strokeWidth="0.5"
+                  <circle cx="100" cy="100" r="26" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5"
                     style={{ animation: 'nb-core-pulse 3s ease-in-out infinite' }} />
                   <circle cx="100" cy="100" r="12" fill="url(#nb-core-grad)" />
                   {/* Center banana */}
-                  <g transform="translate(91,91) scale(0.75)" opacity="0.9"
-                    fill="none" stroke="#eee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <g transform="translate(91,91) scale(0.75)" opacity="0.85"
+                    fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
                     <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
                   </g>
                   {/* Gradient defs */}
                   <defs>
                     <radialGradient id="nb-core-grad" cx="50%" cy="50%">
-                      <stop offset="0%" stopColor="#666" />
-                      <stop offset="100%" stopColor="#222" />
+                      <stop offset="0%" stopColor="rgba(255,255,255,0.25)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.05)" />
                     </radialGradient>
                   </defs>
                 </svg>
                 {/* Scanning line - HTML overlay for gradient */}
-                <div className="absolute" style={{ width: 120, height: 1, background: 'linear-gradient(90deg, transparent, rgba(160,160,160,0.5), transparent)', animation: 'nb-scan 2.5s ease-in-out infinite' }} />
+                <div className="absolute" style={{ width: 120, height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)', animation: 'nb-scan 2.5s ease-in-out infinite' }} />
                 {/* Timer */}
                 <div className="mt-4 text-[18px] font-light text-white/90 tracking-[0.4em] tabular-nums">
                   {(generationTime / 1000).toFixed(1)}<span className="text-[11px] text-white/40 ml-0.5">s</span>
@@ -519,19 +519,20 @@ export default function App() {
                   onClick={() => handleHistoryClick(idx)}
                   className={`relative flex-shrink-0 transition-all duration-500 cursor-pointer ${isActive ? 'w-[600px] opacity-100 scale-100' : 'w-[200px] opacity-20 scale-75 grayscale hover:opacity-40'}`}
                 >
-                  <div className="border border-[#333] bg-black p-2 relative group">
+                  <div className="border border-[#333] bg-black p-2 relative group cursor-pointer"
+                    onClick={(e) => { if (isActive) { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); } }}>
                     <img src={item.image} alt={`Generation ${idx}`} className="w-full h-auto object-contain" />
                     {isActive && (
-                      <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
                         <button
                           onClick={(e) => { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); }}
-                          className="p-2 bg-black/80 border border-[#333] hover:text-white"
+                          className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
                         >
                           <Maximize2 size={16} />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDownload(item.image, item.prompt); }}
-                          className="p-2 bg-black/80 border border-[#333] hover:text-white"
+                          className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
                           title="Download / Save to History"
                         >
                           <Download size={16} />
