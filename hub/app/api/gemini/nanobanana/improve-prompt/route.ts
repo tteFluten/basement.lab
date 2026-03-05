@@ -6,13 +6,13 @@ export const runtime = "nodejs";
 const SYSTEM_INSTRUCTION =
   "You write concise, vivid image generation prompts. Output only the prompt, no explanations, no quotes, no preamble.";
 
-const userMessage = (prompt: string, imageCount: number) =>
+const userText = (prompt: string, hasImages: boolean) =>
   `You are an expert at writing prompts for AI image generation models like Gemini.
 
-Improve the following prompt to be more vivid, specific, and effective for generating high-quality images. Keep the original intent and subject. Return ONLY the improved prompt text, nothing else.
+${hasImages ? "Reference images are attached. Use them as visual context to make the prompt accurate and descriptive.\n\n" : ""}Improve the following prompt to be more vivid, specific, and effective. Keep the original intent. Return ONLY the improved prompt, nothing else.
 
-${imageCount > 0 ? `Context: the user has ${imageCount} reference image(s) attached.\n\n` : ""}Prompt to improve:
-${prompt || "(empty — suggest a creative starting prompt for an abstract or generative image)"}`;
+Prompt to improve:
+${prompt || "(empty — analyze the reference images if provided and write a creative prompt describing them, or suggest a vivid generative image prompt)"}`;
 
 export async function POST(request: NextRequest) {
   if (!hasGemini()) {
@@ -21,12 +21,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const prompt = (body.prompt as string) ?? "";
-    const imageCount = (body.imageCount as number) ?? 0;
+    const imageParts = (body.imageParts as Array<{ data: string; mimeType: string }>) ?? [];
+
+    type Part = { text: string } | { inlineData: { data: string; mimeType: string } };
+    const parts: Part[] = [
+      ...imageParts.map((img) => {
+        const data = img.data.includes(",") ? img.data.split(",")[1] : img.data;
+        return { inlineData: { data, mimeType: img.mimeType } };
+      }),
+      { text: userText(prompt, imageParts.length > 0) },
+    ];
 
     const ai = getGemini();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: { parts: [{ text: userMessage(prompt, imageCount) }] },
+      contents: { parts } as never,
       config: { systemInstruction: SYSTEM_INSTRUCTION },
     });
 

@@ -307,7 +307,10 @@ export default function App() {
     if (isImprovingPrompt) return;
     setIsImprovingPrompt(true);
     try {
-      const improved = await improvePrompt(prompt, images.length);
+      const refParts = await Promise.all(
+        images.map(img => prepareImagePartForApi(`data:${img.mimeType};base64,${img.data}`, img.mimeType))
+      );
+      const improved = await improvePrompt(prompt, refParts);
       setPrompt(improved);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to improve prompt";
@@ -331,8 +334,8 @@ export default function App() {
     const mentionedImages = images.filter(img => capturedPrompt.includes(`@${img.id}`));
     const dataUrls = mentionedImages.map(img => `data:${img.mimeType};base64,${img.data}`);
 
-    // Snapshot current history for conversation context (before new slot is appended)
-    const historySnapshot = history.filter(h => h.status === 'done' && h.image).slice(-4);
+    // Snapshot last 2 completed generations for conversation context (before new slot is appended)
+    const historySnapshot = history.filter(h => h.status === 'done' && h.image).slice(-2);
 
     // Add placeholder history item immediately
     const newItem: HistoryItem = {
@@ -360,7 +363,7 @@ export default function App() {
           Promise.all(dataUrls.map((dataUrl, i) => prepareImagePartForApi(dataUrl, mentionedImages[i].mimeType))),
           Promise.all(
             historySnapshot.map(async (h): Promise<HistoryTurn> => {
-              const resized = await resizeImageForApi(h.image, { maxLongEdge: 512, quality: 0.5 });
+              const resized = await resizeImageForApi(h.image, { maxLongEdge: 256, quality: 0.5 });
               const data = resized.includes(',') ? resized.split(',')[1] : resized;
               return { userPrompt: h.prompt, resultImagePart: { data, mimeType: 'image/jpeg' } };
             })

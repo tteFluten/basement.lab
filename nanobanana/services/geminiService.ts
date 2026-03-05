@@ -39,21 +39,24 @@ export interface GenerateResult {
 const IMPROVE_SYSTEM =
   "You write concise, vivid image generation prompts. Output only the prompt, no explanations, no quotes, no preamble.";
 
-const improveUserMessage = (prompt: string, imageCount: number) =>
+const improveUserText = (prompt: string, hasImages: boolean) =>
   `You are an expert at writing prompts for AI image generation models like Gemini.
 
-Improve the following prompt to be more vivid, specific, and effective for generating high-quality images. Keep the original intent and subject. Return ONLY the improved prompt text, nothing else.
+${hasImages ? "Reference images are attached. Use them as visual context to make the prompt accurate and descriptive.\n\n" : ""}Improve the following prompt to be more vivid, specific, and effective. Keep the original intent. Return ONLY the improved prompt, nothing else.
 
-${imageCount > 0 ? `Context: the user has ${imageCount} reference image(s) attached.\n\n` : ""}Prompt to improve:
-${prompt || "(empty — suggest a creative starting prompt for an abstract or generative image)"}`;
+Prompt to improve:
+${prompt || "(empty — analyze the reference images if provided and write a creative prompt describing them, or suggest a vivid generative image prompt)"}`;
 
-export async function improvePrompt(currentPrompt: string, imageCount: number): Promise<string> {
+export async function improvePrompt(
+  currentPrompt: string,
+  imageParts: Array<{ data: string; mimeType: string }>
+): Promise<string> {
   const base = getHubApiBase();
   if (base) {
     const res = await fetch(`${base}/api/gemini/nanobanana/improve-prompt`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: currentPrompt, imageCount }),
+      body: JSON.stringify({ prompt: currentPrompt, imageParts }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error((data as { error?: string }).error ?? "API error");
@@ -64,9 +67,16 @@ export async function improvePrompt(currentPrompt: string, imageCount: number): 
   if (!apiKey?.trim()) throw new Error("API_KEY_ERROR");
 
   const ai = new GoogleGenAI({ apiKey });
+
+  type Part = { text: string } | { inlineData: { data: string; mimeType: string } };
+  const parts: Part[] = [
+    ...imageParts.map((img) => ({ inlineData: img })),
+    { text: improveUserText(currentPrompt, imageParts.length > 0) },
+  ];
+
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-    contents: { parts: [{ text: improveUserMessage(currentPrompt, imageCount) }] },
+    contents: { parts } as never,
     config: { systemInstruction: IMPROVE_SYSTEM },
   });
 
