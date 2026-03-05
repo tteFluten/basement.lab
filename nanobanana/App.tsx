@@ -367,10 +367,8 @@ export default function App() {
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full gap-8">
-
-        {/* Timeline Carousel */}
-        <div className="relative h-[450px] flex items-center overflow-hidden border-b border-[#282828] pb-8">
+      {/* Timeline Carousel */}
+      <div className="-mx-4 md:-mx-8 relative h-[600px] flex items-center overflow-hidden border-b border-[#282828] pb-8 mb-8">
           {history.length === 0 && !isGenerating && !error && (
             <div className="w-full flex flex-col items-center justify-center text-[#444] gap-4">
               <div className="w-24 h-24 border border-dashed border-[#444] flex items-center justify-center">
@@ -416,7 +414,7 @@ export default function App() {
 
           <div
             className="flex items-center gap-8 px-12 transition-transform duration-500 ease-out"
-            style={{ transform: `translateX(calc(50% - ${(activeHistoryIndex === -1 ? 0 : activeHistoryIndex) * 400 + 200}px))` }}
+            style={{ transform: `translateX(calc(50vw - ${48 + (activeHistoryIndex === -1 ? 0 : activeHistoryIndex) * 232 + 300}px))` }}
           >
             {history.map((item, idx) => {
               const isActive = idx === activeHistoryIndex;
@@ -424,7 +422,7 @@ export default function App() {
                 <div
                   key={item.id}
                   onClick={() => handleHistoryClick(idx)}
-                  className={`relative flex-shrink-0 transition-all duration-500 cursor-pointer ${isActive ? 'w-[400px] opacity-100 scale-100' : 'w-[200px] opacity-20 scale-75 grayscale hover:opacity-40'}`}
+                  className={`relative flex-shrink-0 transition-all duration-500 cursor-pointer ${isActive ? 'w-[600px] opacity-100 scale-100' : 'w-[200px] opacity-20 scale-75 grayscale hover:opacity-40'}`}
                 >
                   <div className="border border-[#333] bg-black p-2 relative group">
                     <img src={item.image} alt={`Generation ${idx}`} className="w-full h-auto object-contain" />
@@ -460,6 +458,8 @@ export default function App() {
             })}
           </div>
         </div>
+
+      <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full gap-8">
 
         {/* Interaction Area */}
         <div className="relative">
