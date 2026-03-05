@@ -551,7 +551,7 @@ export default function App() {
                 <div
                   key={item.id}
                   onClick={() => handleHistoryClick(idx)}
-                  className={`relative flex-shrink-0 transition-all duration-500 cursor-pointer ${isActive ? 'w-[600px] opacity-100 scale-100' : 'w-[200px] opacity-20 scale-75 grayscale hover:opacity-40'}`}
+                  className={`relative flex-shrink-0 transition-all duration-500 cursor-pointer ${isActive ? 'w-[600px] opacity-100 scale-100' : 'w-[200px] opacity-50 scale-75 grayscale hover:opacity-70'}`}
                 >
                   {/* Generating state — inline spinner card */}
                   {item.status === 'generating' && (
