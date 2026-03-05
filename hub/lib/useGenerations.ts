@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
 import {
   fetchGenerations,
   getCachedGenerations,
@@ -13,62 +13,58 @@ import {
   type CachedGeneration,
 } from "./generationsCache";
 
+const EMPTY: CachedGeneration[] = [];
+
 /**
  * Returns cached generations instantly if available, triggers background refresh.
  * Never shows a loading spinner if data was already loaded once in the session.
  * Returns `refreshing` flag so UI can show a subtle indicator during background updates.
+ *
+ * Uses useSyncExternalStore so server snapshot is always [] — no hydration mismatch.
  */
 export function useGenerations(limit?: number) {
-  const hasCache = isCacheReady();
-  const limitRef = useRef(limit);
-  limitRef.current = limit;
+  const allItems = useSyncExternalStore(
+    subscribeGenerations,
+    getCachedGenerations,
+    () => EMPTY, // server snapshot — always empty, matches SSR output
+  );
 
-  const slice = useCallback(() => {
-    const all = getCachedGenerations();
-    return limitRef.current ? all.slice(0, limitRef.current) : all;
-  }, []);
+  const items = useMemo(
+    () => (limit ? allItems.slice(0, limit) : allItems),
+    [allItems, limit],
+  );
 
-  const [items, setItems] = useState<CachedGeneration[]>(() => hasCache ? slice() : []);
-  const [loading, setLoading] = useState(!hasCache);
-  const [refreshing, setRefreshing] = useState(getIsRefreshing());
-  const [lastUpdated, setLastUpdated] = useState(getLastFetchTime());
+  // Server-safe initial values (match what SSR renders)
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(0);
 
   useEffect(() => {
-    const onData = () => {
-      setItems(slice());
-      setLastUpdated(getLastFetchTime());
-    };
-    const onRefresh = () => {
-      setRefreshing(getIsRefreshing());
-    };
-
-    const unsubData = subscribeGenerations(onData);
+    const onRefresh = () => setRefreshing(getIsRefreshing());
     const unsubRefresh = subscribeRefreshing(onRefresh);
 
     if (isCacheReady()) {
-      onData();
       setLoading(false);
+      setLastUpdated(getLastFetchTime());
       // Trigger background refresh if stale (non-blocking)
       fetchGenerations();
     } else {
       setLoading(true);
       fetchGenerations().then(() => {
-        onData();
         setLoading(false);
+        setLastUpdated(getLastFetchTime());
       });
     }
 
-    return () => { unsubData(); unsubRefresh(); };
-  }, [limit, slice]);
+    return () => { unsubRefresh(); };
+  }, [limit]);
 
   const forceRefresh = useCallback(() => {
     invalidateGenerationsCache();
-    // Don't set loading=true — show existing data while refreshing
     fetchGenerations(true).then(() => {
-      setItems(slice());
       setLastUpdated(getLastFetchTime());
     });
-  }, [slice]);
+  }, []);
 
   return { items, loading, refreshing, lastUpdated, refresh: forceRefresh };
 }

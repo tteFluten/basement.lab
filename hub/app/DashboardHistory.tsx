@@ -72,7 +72,9 @@ function GalleryImage({ item }: { item: HistoryItem }) {
 
 export function DashboardHistory() {
   const { items: apiGens, loading, refreshing } = useGenerations(12);
-  const [memoryItems, setMemoryItems] = useState<HistoryItem[]>(() => getHistory());
+  // Initialize empty — useEffect below populates from localStorage on the client.
+  // Lazy initializer would cause hydration mismatch (server has no localStorage).
+  const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
 
   useEffect(() => {
     setMemoryItems(getHistory());

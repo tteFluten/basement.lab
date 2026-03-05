@@ -715,15 +715,14 @@ export function HistoryClient() {
   const { data: session } = useSession();
   const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
-  const [cachedItems, setCachedItems] = useState<HistoryItem[]>(() =>
-    isCacheReady() ? getCachedGenerations().map(toItem) : [],
-  );
+  // Start empty — useEffect below populates from cache on client to avoid hydration mismatch.
+  const [cachedItems, setCachedItems] = useState<HistoryItem[]>([]);
   const [filteredApiItems, setFilteredApiItems] = useState<HistoryItem[]>([]);
   const [memoryItems, setMemoryItems] = useState<HistoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [lightboxItem, setLightboxItem] = useState<HistoryItem | null>(null);
   const [editItem, setEditItem] = useState<HistoryItem | null>(null);
-  const [apiLoading, setApiLoading] = useState(!isCacheReady());
+  const [apiLoading, setApiLoading] = useState(true); // always true on server; useEffect sets false when cache ready
   const [apiError, setApiError] = useState<string | null>(null);
   const [projects, setProjects] = useState<Proj[]>([]);
   const [users, setUsers] = useState<Usr[]>([]);
@@ -777,8 +776,8 @@ export function HistoryClient() {
     return p.toString();
   }, [hasApiFilters, filterVisibility, filterProjectId, filterUserId, filterTag, filterAppId]);
 
-  const [refreshing, setRefreshing] = useState(getCacheRefreshing());
-  const [lastUpdated, setLastUpdated] = useState(getLastFetchTime());
+  const [refreshing, setRefreshing] = useState(false); // server-safe; useEffect syncs on client
+  const [lastUpdated, setLastUpdated] = useState(0); // server-safe; useEffect syncs on client
 
   useEffect(() => {
     const sync = () => {
@@ -788,6 +787,8 @@ export function HistoryClient() {
     };
     const onRefresh = () => { setRefreshing(getCacheRefreshing()); };
     sync();
+    // If cache is ready, dismiss loading spinner immediately (don't wait for fetchGenerations)
+    if (isCacheReady()) setApiLoading(false);
     const unsubData = subscribeGenerations(sync);
     const unsubRefresh = subscribeRefreshing(onRefresh);
     // Use full limit on History page; shows stale cache immediately and refreshes in background
