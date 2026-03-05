@@ -993,7 +993,8 @@ export function HistoryClient() {
         setMemoryItems(getHistory());
       } else {
         const res = await fetch(`/api/generations/${id}`, { method: "DELETE" });
-        if (res.ok) {
+        if (res.ok || res.status === 404) {
+          // 404 = already gone from DB (ghost from cache) — remove locally anyway
           removeFromCachedGenerations(id);
           setFilteredApiItems((prev) => prev.filter((i) => i.id !== id));
         }
