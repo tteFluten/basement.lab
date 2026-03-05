@@ -20,7 +20,12 @@ interface HistoryItem {
   stats: { time: number; images: number } | null;
   text: string | null;
   timestamp: number;
+  status: 'generating' | 'done' | 'error';
+  elapsed: number;
+  error?: string;
 }
+
+const MAX_CONCURRENT = 4;
 
 const COLORS = [
   '#FF0000', '#FF4500', '#FF8C00', '#FFA500', '#FFD700',
@@ -35,11 +40,6 @@ export default function App() {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [aspectRatio, setAspectRatio] = useState<string>("1:1");
   const [imageSize, setImageSize] = useState<string>("1K");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationTime, setGenerationTime] = useState(0);
-  const [resultImage, setResultImage] = useState<string | null>(null);
-  const [resultText, setResultText] = useState<string | null>(null);
-  const [generationStats, setGenerationStats] = useState<{ time: number; images: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<AttachedImage | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -54,6 +54,12 @@ export default function App() {
   const highlighterRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  const timerIntervalsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
+
+  const activeGenerations = history.filter(h => h.status === 'generating').length;
+  const isGenerating = activeGenerations > 0;
+  const latestResult = [...history].reverse().find(h => h.status === 'done');
+  const resultText = latestResult?.text ?? null;
 
   useEffect(() => {
     if (isEmbedMode()) {
@@ -144,8 +150,10 @@ export default function App() {
   };
 
   const resetAll = () => {
-    setPrompt(''); setImages([]); setResultImage(null); setResultText(null);
-    setGenerationStats(null); setError(null); setHistory([]); setActiveHistoryIndex(-1);
+    // Clear all running timers
+    Object.values(timerIntervalsRef.current).forEach(clearInterval);
+    timerIntervalsRef.current = {};
+    setPrompt(''); setImages([]); setError(null); setHistory([]); setActiveHistoryIndex(-1);
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -253,71 +261,89 @@ export default function App() {
     link.click();
   };
 
-  const generate = async () => {
+  const generate = () => {
     if (!prompt.trim() && images.length === 0) return;
-    setIsGenerating(true);
-    setGenerationTime(0);
+    if (activeGenerations >= MAX_CONCURRENT) return;
+
     setError(null);
-    setResultImage(null);
-    setResultText(null);
-    setGenerationStats(null);
 
+    const slotId = Date.now().toString();
+    const capturedPrompt = prompt;
     const startTime = performance.now();
-    const timerInterval = setInterval(() => { setGenerationTime(prev => prev + 100); }, 100);
 
-    try {
-      const mentionedImages = images.filter(img => prompt.includes(`@${img.id}`));
-      const dataUrls = mentionedImages.map(img => `data:${img.mimeType};base64,${img.data}`);
-      const imageParts = await Promise.all(
-        dataUrls.map((dataUrl, i) =>
-          prepareImagePartForApi(dataUrl, mentionedImages[i].mimeType)
-        )
-      );
-      const result = await generateImage({
-        prompt,
-        imageParts,
-        aspectRatio,
-        imageSize,
-      });
+    // Prepare images synchronously before launching async work
+    const mentionedImages = images.filter(img => capturedPrompt.includes(`@${img.id}`));
+    const dataUrls = mentionedImages.map(img => `data:${img.mimeType};base64,${img.data}`);
 
-      clearInterval(timerInterval);
-      const stats = { time: Math.round(performance.now() - startTime), images: mentionedImages.length };
-      setGenerationStats(stats);
+    // Add placeholder history item immediately
+    const newItem: HistoryItem = {
+      id: slotId,
+      image: '',
+      prompt: capturedPrompt,
+      stats: null,
+      text: null,
+      timestamp: Date.now(),
+      status: 'generating',
+      elapsed: 0,
+    };
+    setHistory(prev => { const next = [...prev, newItem]; setActiveHistoryIndex(next.length - 1); return next; });
 
-      if (result.text) setResultText(result.text);
+    // Start per-slot timer
+    timerIntervalsRef.current[slotId] = setInterval(() => {
+      setHistory(prev => prev.map(h => h.id === slotId && h.status === 'generating' ? { ...h, elapsed: Math.round(performance.now() - startTime) } : h));
+    }, 100);
 
-      if (result.dataUrl) {
-        setResultImage(result.dataUrl);
-        const newItem: HistoryItem = {
-          id: Date.now().toString(),
-          image: result.dataUrl,
-          prompt,
-          stats,
-          text: result.text ?? null,
-          timestamp: Date.now(),
-        };
-        setHistory(prev => { const next = [...prev, newItem]; setActiveHistoryIndex(next.length - 1); return next; });
-
-        // Auto-add generated image as next input for iterative workflow
-        const [meta, data] = result.dataUrl.split(',');
-        const mimeType = meta.split(':')[1].split(';')[0];
-        setImages(prev => {
-          const nextId = imageCounter.toString();
-          const color = COLORS[imageCounter % COLORS.length];
-          setImageCounter(c => c + 1);
-          return [...prev, { id: nextId, data, mimeType, color }];
+    // Launch async generation (non-blocking)
+    (async () => {
+      try {
+        const imageParts = await Promise.all(
+          dataUrls.map((dataUrl, i) =>
+            prepareImagePartForApi(dataUrl, mentionedImages[i].mimeType)
+          )
+        );
+        const result = await generateImage({
+          prompt: capturedPrompt,
+          imageParts,
+          aspectRatio,
+          imageSize,
         });
-      } else if (!result.text) {
-        setError("No output generated.");
+
+        clearInterval(timerIntervalsRef.current[slotId]);
+        delete timerIntervalsRef.current[slotId];
+        const stats = { time: Math.round(performance.now() - startTime), images: mentionedImages.length };
+
+        setHistory(prev => prev.map(h => h.id === slotId ? {
+          ...h,
+          status: 'done' as const,
+          image: result.dataUrl ?? '',
+          text: result.text ?? null,
+          stats,
+          elapsed: stats.time,
+        } : h));
+
+        // Auto-add generated image as next input
+        if (result.dataUrl) {
+          const [meta, data] = result.dataUrl.split(',');
+          const mimeType = meta.split(':')[1].split(';')[0];
+          setImages(prev => {
+            const nextId = imageCounter.toString();
+            const color = COLORS[imageCounter % COLORS.length];
+            setImageCounter(c => c + 1);
+            return [...prev, { id: nextId, data, mimeType, color }];
+          });
+        } else if (!result.text) {
+          setHistory(prev => prev.map(h => h.id === slotId ? { ...h, status: 'error' as const, error: 'No output generated.' } : h));
+        }
+      } catch (err: unknown) {
+        clearInterval(timerIntervalsRef.current[slotId]);
+        delete timerIntervalsRef.current[slotId];
+        const msg = err instanceof Error ? err.message : "An error occurred.";
+        if (msg === "API_KEY_ERROR") setHasKey(false);
+        else {
+          setHistory(prev => prev.map(h => h.id === slotId ? { ...h, status: 'error' as const, error: msg } : h));
+        }
       }
-    } catch (err: unknown) {
-      clearInterval(timerInterval);
-      const msg = err instanceof Error ? err.message : "An error occurred.";
-      if (msg === "API_KEY_ERROR") setHasKey(false);
-      else setError(msg);
-    } finally {
-      setIsGenerating(false);
-    }
+    })();
   };
 
   if (hasKey === false) {
@@ -417,127 +443,19 @@ export default function App() {
             </div>
           )}
 
-          {isGenerating && (
-            <>
-              <style>{`
-                @keyframes nb-spin { to { transform: rotate(360deg); } }
-                @keyframes nb-spin-rev { to { transform: rotate(-360deg); } }
-                @keyframes nb-pulse-ring {
-                  0%, 100% { r: 50; opacity: 0.25; }
-                  50% { r: 54; opacity: 0.6; }
-                }
-                @keyframes nb-scan {
-                  0%, 100% { transform: translateY(-50px); opacity: 0; }
-                  15% { opacity: 1; }
-                  85% { opacity: 1; }
-                  50% { transform: translateY(50px); }
-                }
-                @keyframes nb-orbit {
-                  0% { transform: rotate(0deg) translateX(58px) rotate(0deg); }
-                  100% { transform: rotate(360deg) translateX(58px) rotate(-360deg); }
-                }
-                @keyframes nb-orbit2 {
-                  0% { transform: rotate(120deg) translateX(42px) rotate(-120deg); }
-                  100% { transform: rotate(480deg) translateX(42px) rotate(-480deg); }
-                }
-                @keyframes nb-orbit3 {
-                  0% { transform: rotate(240deg) translateX(50px) rotate(-240deg); }
-                  100% { transform: rotate(600deg) translateX(50px) rotate(-600deg); }
-                }
-                @keyframes nb-dash {
-                  to { stroke-dashoffset: -20; }
-                }
-                @keyframes nb-core-pulse {
-                  0%, 100% { opacity: 0.6; }
-                  50% { opacity: 1; }
-                }
-                @keyframes nb-glow-pulse {
-                  0%, 100% { r: 28; opacity: 0.04; }
-                  50% { r: 34; opacity: 0.08; }
-                }
-                @keyframes nb-fade-pulse {
-                  0%, 100% { opacity: 0.4; }
-                  50% { opacity: 1; }
-                }
-                @keyframes nb-dot-wave {
-                  0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
-                  30% { transform: translateY(-4px); opacity: 1; }
-                }
-              `}</style>
-              <div className="absolute inset-0 z-20 bg-black/70 backdrop-blur-xl flex flex-col items-center justify-center overflow-hidden">
-                {/* Full SVG animation - immune to global border-radius reset */}
-                <svg width="200" height="200" viewBox="0 0 200 200" className="overflow-visible">
-                  {/* Glow backdrop */}
-                  <circle cx="100" cy="100" r="28" fill="white" style={{ animation: 'nb-glow-pulse 3s ease-in-out infinite' }} />
-                  {/* Outer dashed ring - slow spin */}
-                  <g style={{ transformOrigin: '100px 100px', animation: 'nb-spin 20s linear infinite' }}>
-                    <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" strokeDasharray="4 6" style={{ animation: 'nb-dash 2s linear infinite' }} />
-                  </g>
-                  {/* Middle ring - reverse spin */}
-                  <g style={{ transformOrigin: '100px 100px', animation: 'nb-spin-rev 12s linear infinite' }}>
-                    <circle cx="100" cy="100" r="70" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
-                    {/* Tick marks on middle ring */}
-                    {[0, 90, 180, 270].map(deg => (
-                      <line key={deg} x1="100" y1="30" x2="100" y2="34" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5"
-                        transform={`rotate(${deg} 100 100)`} />
-                    ))}
-                  </g>
-                  {/* Inner pulsing ring */}
-                  <circle cx="100" cy="100" r="50" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5"
-                    style={{ animation: 'nb-pulse-ring 3s ease-in-out infinite' }} />
-                  {/* Orbiting bananas (lucide Banana icon paths) */}
-                  {[
-                    { anim: 'nb-orbit', dur: '6s', scale: 0.5, opacity: 0.7 },
-                    { anim: 'nb-orbit2', dur: '4.5s', scale: 0.35, opacity: 0.4 },
-                    { anim: 'nb-orbit3', dur: '8s', scale: 0.42, opacity: 0.3 },
-                  ].map((b, i) => (
-                    <g key={i} style={{ transformOrigin: '100px 100px', animation: `${b.anim} ${b.dur} linear infinite` }}>
-                      <g transform={`translate(${100 - 12 * b.scale},${100 - 12 * b.scale}) scale(${b.scale})`}
-                        opacity={b.opacity} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
-                        <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
-                      </g>
-                    </g>
-                  ))}
-                  {/* Center core */}
-                  <circle cx="100" cy="100" r="26" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5"
-                    style={{ animation: 'nb-core-pulse 3s ease-in-out infinite' }} />
-                  <circle cx="100" cy="100" r="12" fill="url(#nb-core-grad)" />
-                  {/* Center banana */}
-                  <g transform="translate(91,91) scale(0.75)" opacity="0.85"
-                    fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
-                    <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
-                  </g>
-                  {/* Gradient defs */}
-                  <defs>
-                    <radialGradient id="nb-core-grad" cx="50%" cy="50%">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.25)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.05)" />
-                    </radialGradient>
-                  </defs>
-                </svg>
-                {/* Scanning line - HTML overlay for gradient */}
-                <div className="absolute" style={{ width: 120, height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)', animation: 'nb-scan 2.5s ease-in-out infinite' }} />
-                {/* Timer */}
-                <div className="mt-4 text-[18px] font-light text-white/90 tracking-[0.4em] tabular-nums">
-                  {(generationTime / 1000).toFixed(1)}<span className="text-[11px] text-white/40 ml-0.5">s</span>
-                </div>
-                {/* Status text */}
-                <div className="mt-3 flex flex-col items-center gap-2">
-                  <div className="text-[10px] uppercase tracking-[0.3em] text-white/40" style={{ animation: 'nb-fade-pulse 2s ease-in-out infinite' }}>
-                    Synthesizing Neural Patterns
-                  </div>
-                  <svg width="30" height="8" viewBox="0 0 30 8">
-                    {[0, 1, 2].map(i => (
-                      <circle key={i} cx={6 + i * 9} cy="4" r="2" fill="rgba(255,255,255,0.5)"
-                        style={{ animation: `nb-dot-wave 1.2s ease-in-out infinite`, animationDelay: `${i * 0.15}s` }} />
-                    ))}
-                  </svg>
-                </div>
-              </div>
-            </>
-          )}
+          {/* Global animation keyframes for card spinners */}
+          <style>{`
+            @keyframes nb-spin { to { transform: rotate(360deg); } }
+            @keyframes nb-spin-rev { to { transform: rotate(-360deg); } }
+            @keyframes nb-dash { to { stroke-dashoffset: -20; } }
+            @keyframes nb-core-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+            @keyframes nb-glow-pulse { 0%, 100% { r: 20; opacity: 0.03; } 50% { r: 24; opacity: 0.06; } }
+            @keyframes nb-orbit { 0% { transform: rotate(0deg) translateX(42px) rotate(0deg); } 100% { transform: rotate(360deg) translateX(42px) rotate(-360deg); } }
+            @keyframes nb-orbit2 { 0% { transform: rotate(120deg) translateX(30px) rotate(-120deg); } 100% { transform: rotate(480deg) translateX(30px) rotate(-480deg); } }
+            @keyframes nb-orbit3 { 0% { transform: rotate(240deg) translateX(36px) rotate(-240deg); } 100% { transform: rotate(600deg) translateX(36px) rotate(-600deg); } }
+            @keyframes nb-fade-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+            @keyframes nb-dot-wave { 0%, 60%, 100% { transform: translateY(0); opacity: 0.3; } 30% { transform: translateY(-3px); opacity: 1; } }
+          `}</style>
 
           {error && (
             <div className="w-full flex flex-col items-center justify-center text-red-900 gap-4 p-8">
@@ -558,28 +476,96 @@ export default function App() {
                   onClick={() => handleHistoryClick(idx)}
                   className={`relative flex-shrink-0 transition-all duration-500 cursor-pointer ${isActive ? 'w-[600px] opacity-100 scale-100' : 'w-[200px] opacity-20 scale-75 grayscale hover:opacity-40'}`}
                 >
-                  <div className="bg-black relative group cursor-pointer"
-                    onClick={(e) => { if (isActive) { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); } }}>
-                    <img src={item.image} alt={`Generation ${idx}`} className="w-full h-auto object-contain" />
-                    {isActive && (
-                      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); }}
-                          className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
-                        >
-                          <Maximize2 size={16} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDownload(item.image, item.prompt); }}
-                          className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
-                          title="Download / Save to History"
-                        >
-                          <Download size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  {isActive && (
+                  {/* Generating state — inline spinner card */}
+                  {item.status === 'generating' && (
+                    <div className="bg-black/50 border border-[#222] flex flex-col items-center justify-center" style={{ height: isActive ? 400 : 200, aspectRatio: isActive ? undefined : '1' }}>
+                      <svg width="140" height="140" viewBox="0 0 140 140" className="overflow-visible">
+                        <circle cx="70" cy="70" r="20" fill="white" style={{ animation: 'nb-glow-pulse 3s ease-in-out infinite' }} />
+                        <g style={{ transformOrigin: '70px 70px', animation: 'nb-spin 20s linear infinite' }}>
+                          <circle cx="70" cy="70" r="62" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" strokeDasharray="4 6" style={{ animation: 'nb-dash 2s linear infinite' }} />
+                        </g>
+                        <g style={{ transformOrigin: '70px 70px', animation: 'nb-spin-rev 12s linear infinite' }}>
+                          <circle cx="70" cy="70" r="48" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
+                        </g>
+                        {[
+                          { anim: 'nb-orbit', dur: '6s', scale: 0.4, opacity: 0.6 },
+                          { anim: 'nb-orbit2', dur: '4.5s', scale: 0.3, opacity: 0.35 },
+                          { anim: 'nb-orbit3', dur: '8s', scale: 0.35, opacity: 0.25 },
+                        ].map((b, i) => (
+                          <g key={i} style={{ transformOrigin: '70px 70px', animation: `${b.anim} ${b.dur} linear infinite` }}>
+                            <g transform={`translate(${70 - 12 * b.scale},${70 - 12 * b.scale}) scale(${b.scale})`}
+                              opacity={b.opacity} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
+                              <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
+                            </g>
+                          </g>
+                        ))}
+                        <circle cx="70" cy="70" r="18" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5" style={{ animation: 'nb-core-pulse 3s ease-in-out infinite' }} />
+                        <g transform="translate(62,62) scale(0.65)" opacity="0.8" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
+                          <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
+                        </g>
+                      </svg>
+                      {isActive && (
+                        <div className="flex flex-col items-center gap-1 mt-2">
+                          <div className="text-[16px] font-light text-white/80 tracking-[0.4em] tabular-nums">
+                            {(item.elapsed / 1000).toFixed(1)}<span className="text-[10px] text-white/30 ml-0.5">s</span>
+                          </div>
+                          <div className="text-[9px] uppercase tracking-[0.25em] text-white/30" style={{ animation: 'nb-fade-pulse 2s ease-in-out infinite' }}>
+                            Generating
+                          </div>
+                          <svg width="24" height="6" viewBox="0 0 24 6">
+                            {[0, 1, 2].map(i => (
+                              <circle key={i} cx={4 + i * 8} cy="3" r="1.5" fill="rgba(255,255,255,0.4)"
+                                style={{ animation: 'nb-dot-wave 1.2s ease-in-out infinite', animationDelay: `${i * 0.15}s` }} />
+                            ))}
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Error state */}
+                  {item.status === 'error' && (
+                    <div className="bg-black/50 border border-red-900/30 flex flex-col items-center justify-center gap-3 p-6" style={{ height: isActive ? 300 : 200 }}>
+                      <X size={24} className="text-red-900/60" />
+                      {isActive && (
+                        <>
+                          <span className="text-[10px] uppercase tracking-widest text-red-900/80 text-center">{item.error || 'Generation failed'}</span>
+                          <button onClick={(e) => { e.stopPropagation(); setHistory(prev => prev.filter(h => h.id !== item.id)); }}
+                            className="text-[9px] border border-red-900/30 px-3 py-1 hover:bg-red-900/10 text-red-900/60">Dismiss</button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Done state — show image */}
+                  {item.status === 'done' && (
+                    <div className="bg-black relative group cursor-pointer"
+                      onClick={(e) => { if (isActive && item.image) { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); } }}>
+                      <img src={item.image} alt={`Generation ${idx}`} className="w-full object-contain" style={{ maxHeight: 520 }} />
+                      {isActive && (
+                        <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); }}
+                            className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
+                          >
+                            <Maximize2 size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDownload(item.image, item.prompt); }}
+                            className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
+                            title="Download / Save to History"
+                          >
+                            <Download size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Card metadata */}
+                  {isActive && item.status !== 'generating' && (
                     <div className="mt-4 flex flex-col gap-2">
                       <div className="flex justify-between items-center text-[11px] uppercase tracking-widest text-[#777]">
                         <span>Step {idx + 1}</span>
@@ -778,10 +764,10 @@ export default function App() {
 
               <button
                 onClick={generate}
-                disabled={isGenerating || (!prompt.trim() && images.length === 0)}
+                disabled={activeGenerations >= MAX_CONCURRENT || (!prompt.trim() && images.length === 0)}
                 className="flex items-center gap-2 px-6 py-2 bg-[#a0a0a0] text-black text-[12px] font-bold uppercase tracking-widest hover:bg-white disabled:bg-[#222] disabled:text-[#444] transition-all"
               >
-                {isGenerating ? 'Generating...' : 'Execute'}
+                {activeGenerations > 0 ? `Execute (${activeGenerations}/${MAX_CONCURRENT})` : 'Execute'}
                 <Send size={12} />
               </button>
             </div>
