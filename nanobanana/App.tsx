@@ -24,6 +24,8 @@ interface HistoryItem {
   elapsed: number;
   error?: string;
   aspectRatio?: string;
+  inputId?: string;
+  inputColor?: string;
 }
 
 const MAX_CONCURRENT = 4;
@@ -402,6 +404,7 @@ export default function App() {
             const nextId = c.toString();
             const color = COLORS[c % COLORS.length];
             setImages(prev => [...prev, { id: nextId, data, mimeType, color }]);
+            setHistory(prev => prev.map(h => h.id === slotId ? { ...h, inputId: nextId, inputColor: color } : h));
             return c + 1;
           });
         } else if (!result.text) {
@@ -621,12 +624,12 @@ export default function App() {
                   {/* Done state — show image */}
                   {item.status === 'done' && (
                     <div className="bg-black relative group cursor-pointer"
-                      onClick={(e) => { if (isActive && item.image) { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); } }}>
+                      onClick={(e) => { if (isActive && item.image) { e.stopPropagation(); setViewingImage({ id: item.inputId ?? 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: item.inputColor ?? '#fff' }); } }}>
                       <img src={item.image} alt={`Generation ${idx}`} className="w-full object-contain" style={{ maxHeight: 520 }} />
                       {isActive && (
                         <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
                           <button
-                            onClick={(e) => { e.stopPropagation(); setViewingImage({ id: 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: '#fff' }); }}
+                            onClick={(e) => { e.stopPropagation(); setViewingImage({ id: item.inputId ?? 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: item.inputColor ?? '#fff' }); }}
                             className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
                           >
                             <Maximize2 size={16} />
