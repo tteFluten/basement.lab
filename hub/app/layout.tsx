@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { SessionProvider } from "@/components/SessionProvider";
 import { AppTabsProvider } from "@/lib/appTabsContext";
 import { ContentWithTabs } from "@/components/ContentWithTabs";
+import { BackgroundSync } from "@/components/BackgroundSync";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className="font-mono antialiased min-h-screen flex flex-col">
         <SessionProvider>
           <AppTabsProvider>
+            <BackgroundSync />
             <Toolbar />
             <ContentWithTabs>{children}</ContentWithTabs>
             <Footer />

@@ -245,6 +245,22 @@ export async function fetchGenerations(force = false, full = false): Promise<Cac
   return cachedItems;
 }
 
+/** Start a background polling loop that keeps the cache fresh.
+ *  Pauses when the tab is hidden. Returns a cleanup function.
+ *  Safe to call multiple times — subsequent calls are no-ops until the previous one is stopped. */
+let _bgTimer: ReturnType<typeof setTimeout> | null = null;
+export function startBackgroundSync(intervalMs = 60_000): () => void {
+  if (typeof window === "undefined" || _bgTimer !== null) return () => {};
+  const tick = () => {
+    if (!document.hidden) fetchGenerations(true, false).catch(() => {});
+    _bgTimer = setTimeout(tick, intervalMs);
+  };
+  _bgTimer = setTimeout(tick, intervalMs);
+  return () => {
+    if (_bgTimer) { clearTimeout(_bgTimer); _bgTimer = null; }
+  };
+}
+
 export function invalidateGenerationsCache(): void {
   lastFetchTime = 0;
 }
