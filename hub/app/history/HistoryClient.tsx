@@ -700,6 +700,31 @@ function RenderItems({
   );
 }
 
+const EMPTY_MESSAGES = [
+  "No generations yet.",
+  "Nothing here yet — go make something.",
+  "Blank slate. The best kind.",
+  "Your future work will live here.",
+  "Ready when you are.",
+];
+
+function EmptyState({ hasItems }: { hasItems: boolean }) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (hasItems) return;
+    const iv = setInterval(() => setIdx((p) => (p + 1) % EMPTY_MESSAGES.length), 3000);
+    return () => clearInterval(iv);
+  }, [hasItems]);
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-fg-muted">
+      <Layers className="w-12 h-12 mb-4 opacity-20" />
+      <p className="text-sm transition-opacity duration-500 animate-pulse">
+        {hasItems ? "No items match your filters." : EMPTY_MESSAGES[idx]}
+      </p>
+    </div>
+  );
+}
+
 function ToolBtn({ active, onClick, children, title }: { active: boolean; onClick: () => void; children: React.ReactNode; title: string }) {
   return (
     <button type="button" onClick={onClick} title={title}
@@ -1115,10 +1140,7 @@ export function HistoryClient() {
             <button type="button" onClick={handleRetry} className="px-4 py-2.5 border border-amber-600 text-amber-400 text-sm hover:bg-amber-600/20 transition-colors">Retry</button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-fg-muted">
-            <Layers className="w-12 h-12 mb-4 opacity-20" />
-            <p className="text-sm">{items.length === 0 ? "No generations yet." : "No items match your filters."}</p>
-          </div>
+          <EmptyState hasItems={items.length > 0} />
         ) : (
           <div className="space-y-8">
             {groups.map((g, gi) => (
