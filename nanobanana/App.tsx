@@ -261,7 +261,20 @@ export default function App() {
 
   const handleHistoryClick = (idx: number) => { setActiveHistoryIndex(idx); };
 
-  const removeImage = (id: string) => { setImages(prev => prev.filter(img => img.id !== id)); };
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const pendingRemoveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const removeImage = (id: string) => {
+    if (pendingRemoveId === id) {
+      if (pendingRemoveTimer.current) clearTimeout(pendingRemoveTimer.current);
+      setPendingRemoveId(null);
+      setImages(prev => prev.filter(img => img.id !== id));
+    } else {
+      if (pendingRemoveTimer.current) clearTimeout(pendingRemoveTimer.current);
+      setPendingRemoveId(id);
+      pendingRemoveTimer.current = setTimeout(() => setPendingRemoveId(null), 2000);
+    }
+  };
 
   const insertId = (id: string) => {
     const textarea = promptRef.current;
@@ -756,8 +769,12 @@ export default function App() {
                   <button onClick={(e) => { e.stopPropagation(); setViewingImage(img); }} className="p-1 hover:text-white" title="View">
                     <Maximize2 size={14} />
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); removeImage(img.id); }} className="p-1 hover:text-red-500" title="Remove">
-                    <X size={14} />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeImage(img.id); }}
+                    className={`p-1 transition-colors ${pendingRemoveId === img.id ? 'text-red-500' : 'hover:text-red-500'}`}
+                    title={pendingRemoveId === img.id ? 'Confirm remove' : 'Remove'}
+                  >
+                    {pendingRemoveId === img.id ? <Check size={14} /> : <X size={14} />}
                   </button>
                 </div>
               </div>
