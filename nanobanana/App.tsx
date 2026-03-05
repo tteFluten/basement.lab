@@ -781,10 +781,12 @@ export default function App() {
           </div>
         )}
 
-        <footer className="mt-auto pt-8 flex justify-between items-end text-[10px] uppercase tracking-[0.3em] text-[#555]">
-          <div>Model: {isEmbedMode() ? getHubModel().split('-').slice(-3).join('-') : 'Gemini 3.1 Flash Image'}</div>
-          <div>Status: Operational // {new Date().toLocaleTimeString()}</div>
-        </footer>
+        {!isEmbedMode() && (
+          <footer className="mt-auto pt-8 flex justify-between items-end text-[10px] uppercase tracking-[0.3em] text-[#555]">
+            <div>Model: Gemini 3.1 Flash Image</div>
+            <div>Status: Operational // {new Date().toLocaleTimeString()}</div>
+          </footer>
+        )}
       </main>
 
       {/* Image Viewer Modal */}
