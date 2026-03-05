@@ -112,11 +112,11 @@ export default function App() {
       const base64 = e.target?.result as string;
       const data = base64.split(',')[1];
       const mimeType = file.type;
-      setImages(prev => {
-        const nextId = imageCounter.toString();
-        const color = COLORS[imageCounter % COLORS.length];
-        setImageCounter(prevCount => prevCount + 1);
-        return [...prev, { id: nextId, data, mimeType, color }];
+      setImageCounter(c => {
+        const nextId = c.toString();
+        const color = COLORS[c % COLORS.length];
+        setImages(prev => [...prev, { id: nextId, data, mimeType, color }]);
+        return c + 1;
       });
     };
     reader.readAsDataURL(file);
@@ -235,11 +235,11 @@ export default function App() {
       if (!dataUrl) return;
       const [meta, data] = dataUrl.split(',');
       const mimeType = meta.split(':')[1].split(';')[0];
-      setImages(prev => {
-        const nextId = imageCounter.toString();
-        const color = COLORS[imageCounter % COLORS.length];
-        setImageCounter(c => c + 1);
-        return [...prev, { id: nextId, data, mimeType, color }];
+      setImageCounter(c => {
+        const nextId = c.toString();
+        const color = COLORS[c % COLORS.length];
+        setImages(prev => [...prev, { id: nextId, data, mimeType, color }]);
+        return c + 1;
       });
     } catch (e) {
       console.warn("Hub reference picker failed", e);
@@ -325,11 +325,11 @@ export default function App() {
         if (result.dataUrl) {
           const [meta, data] = result.dataUrl.split(',');
           const mimeType = meta.split(':')[1].split(';')[0];
-          setImages(prev => {
-            const nextId = imageCounter.toString();
-            const color = COLORS[imageCounter % COLORS.length];
-            setImageCounter(c => c + 1);
-            return [...prev, { id: nextId, data, mimeType, color }];
+          setImageCounter(c => {
+            const nextId = c.toString();
+            const color = COLORS[c % COLORS.length];
+            setImages(prev => [...prev, { id: nextId, data, mimeType, color }]);
+            return c + 1;
           });
         } else if (!result.text) {
           setHistory(prev => prev.map(h => h.id === slotId ? { ...h, status: 'error' as const, error: 'No output generated.' } : h));
