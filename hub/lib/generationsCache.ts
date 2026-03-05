@@ -32,6 +32,7 @@ type Listener = () => void;
 const LS_KEY = "bl_gen_cache";
 const LS_TS_KEY = "bl_gen_cache_ts";
 const STALE_MS = 120_000;
+const PHASE1_LIMIT = 20;
 const FAST_LIMIT = 50;
 const FULL_LIMIT = 150;
 
@@ -168,14 +169,30 @@ async function apiFetch(limit: number): Promise<CachedGeneration[] | null> {
 async function doFetch(full: boolean): Promise<void> {
   setRefreshing(true);
   try {
-    // Single fetch: use the appropriate limit directly to avoid 2 sequential API calls
-    const limit = full ? FULL_LIMIT : FAST_LIMIT;
-    const data = await apiFetch(limit);
-    if (data && data.length >= 0) {
-      cachedItems = data;
-      lastFetchTime = Date.now();
-      persistToStorage();
-      notify();
+    if (full) {
+      // Phase 1: small fetch for fast first paint
+      const phase1 = await apiFetch(PHASE1_LIMIT);
+      if (phase1 && phase1.length > 0) {
+        cachedItems = phase1;
+        lastFetchTime = Date.now();
+        notify();
+      }
+      // Phase 2: full fetch for complete list
+      const data = await apiFetch(FULL_LIMIT);
+      if (data && data.length >= 0) {
+        cachedItems = data;
+        lastFetchTime = Date.now();
+        persistToStorage();
+        notify();
+      }
+    } else {
+      const data = await apiFetch(FAST_LIMIT);
+      if (data && data.length >= 0) {
+        cachedItems = data;
+        lastFetchTime = Date.now();
+        persistToStorage();
+        notify();
+      }
     }
   } catch {
     // Keep existing cache on failure; don't clear

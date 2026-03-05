@@ -776,7 +776,9 @@ export function HistoryClient() {
     return p.toString();
   }, [hasApiFilters, filterVisibility, filterProjectId, filterUserId, filterTag, filterAppId]);
 
-  const [refreshing, setRefreshing] = useState(false); // server-safe; useEffect syncs on client
+  const [cacheRefreshing, setCacheRefreshing] = useState(false); // background cache refresh
+  const [filterRefreshing, setFilterRefreshing] = useState(false); // filter-based API call
+  const refreshing = cacheRefreshing || filterRefreshing;
   const [lastUpdated, setLastUpdated] = useState(0); // server-safe; useEffect syncs on client
 
   useEffect(() => {
@@ -785,7 +787,7 @@ export function HistoryClient() {
       setMemoryItems(getHistory());
       setLastUpdated(getLastFetchTime());
     };
-    const onRefresh = () => { setRefreshing(getCacheRefreshing()); };
+    const onRefresh = () => { setCacheRefreshing(getCacheRefreshing()); };
     sync();
     // If cache is ready, dismiss loading spinner immediately (don't wait for fetchGenerations)
     if (isCacheReady()) setApiLoading(false);
@@ -802,9 +804,9 @@ export function HistoryClient() {
   }, []);
 
   useEffect(() => {
-    if (!hasApiFilters) { setFilteredApiItems([]); setRefreshing(false); return; }
+    if (!hasApiFilters) { setFilteredApiItems([]); setFilterRefreshing(false); return; }
     let cancelled = false;
-    setRefreshing(true);
+    setFilterRefreshing(true);
     setApiError(null);
     fetch(`/api/generations?${filterQs}`)
       .then((r) => r.json().then((j) => ({ ok: r.ok, json: j })))
@@ -814,7 +816,7 @@ export function HistoryClient() {
         setFilteredApiItems((json.items ?? []).map(toItem));
       })
       .catch((e) => { if (!cancelled) setApiError(e instanceof Error ? e.message : "Network error"); })
-      .finally(() => { if (!cancelled) setRefreshing(false); });
+      .finally(() => { if (!cancelled) setFilterRefreshing(false); });
     return () => { cancelled = true; };
   }, [hasApiFilters, filterQs]);
 
@@ -1097,7 +1099,7 @@ export function HistoryClient() {
         </div>
 
         {/* Loading indicator for filter-based API refreshes only */}
-        {refreshing && hasApiFilters && items.length > 0 && (
+        {filterRefreshing && hasApiFilters && items.length > 0 && (
           <div className="mb-6 flex items-center gap-3 px-4 py-3 border border-border bg-bg-muted">
             <Loader2 className="w-4 h-4 text-fg-muted animate-spin shrink-0" aria-hidden />
             <span className="text-sm text-fg-muted">Filtering…</span>
