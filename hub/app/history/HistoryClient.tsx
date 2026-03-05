@@ -790,6 +790,7 @@ export function HistoryClient() {
     const onRefresh = () => { setCacheRefreshing(getCacheRefreshing()); };
     // Show stale cache immediately for instant feel; phase 1 will clean up ghosts
     sync();
+    setCacheRefreshing(getCacheRefreshing()); // sync current refresh state (may already be running)
     const unsubData = subscribeGenerations(sync);
     const unsubRefresh = subscribeRefreshing(onRefresh);
     // Always fetch fresh — phase 1 merges with stale cache removing deleted items
