@@ -495,18 +495,18 @@ export default function App() {
               {[
                 {
                   index: '01',
-                  title: 'Reference + Prompt',
-                  body: 'Upload images via drag & drop, clipboard, or the Hub library. Tag them in the prompt with @ID. Use the wand to improve or expand your prompt with AI before generating.',
+                  title: 'References & Prompt',
+                  body: 'Attach images via drag & drop, clipboard paste, or pick from Hub history. Reference them inline using @1, @2, etc. Hit the wand to let the AI rewrite and enrich your prompt based on what it sees in your references.',
                 },
                 {
                   index: '02',
-                  title: 'Iterate in Session',
-                  body: 'Every result is automatically added as a new reference. The model retains the last two generations as context, so follow-up instructions like "darker" or "remove the sky" work naturally.',
+                  title: 'Iterative Generation',
+                  body: 'The last two results are kept as conversation history. Type follow-ups like "same scene but at night" or "remove the figure on the left" — the model knows what it just made. Every output is auto-added as a new reference for the next round.',
                 },
                 {
                   index: '03',
-                  title: 'Batch & History',
-                  body: 'Use ×2–×4 to generate multiple variations in parallel. Results persist across reloads. Click any card in the carousel to review, download, or copy the prompt that produced it.',
+                  title: 'Batch & Persistence',
+                  body: 'Select ×2 to ×4 to run parallel variations of the same prompt simultaneously. Your session — history, references, and prompt — survives page reloads. Open any carousel card to download, copy its prompt, or reference it in the next generation.',
                 },
               ].map(({ index, title, body }) => (
                 <div key={index} className="flex flex-col gap-3 max-w-[220px]">
