@@ -168,6 +168,7 @@ async function apiFetch(limit: number): Promise<CachedGeneration[] | null> {
 
 async function doFetch(full: boolean): Promise<void> {
   setRefreshing(true);
+  let didNotify = false;
   try {
     if (full) {
       // Phase 1: small fetch for fast first paint
@@ -175,6 +176,7 @@ async function doFetch(full: boolean): Promise<void> {
       if (phase1 && phase1.length > 0) {
         cachedItems = phase1;
         lastFetchTime = Date.now();
+        didNotify = true;
         notify();
       }
       // Phase 2: full fetch for complete list
@@ -183,6 +185,7 @@ async function doFetch(full: boolean): Promise<void> {
         cachedItems = data;
         lastFetchTime = Date.now();
         persistToStorage();
+        didNotify = true;
         notify();
       }
     } else {
@@ -191,12 +194,15 @@ async function doFetch(full: boolean): Promise<void> {
         cachedItems = data;
         lastFetchTime = Date.now();
         persistToStorage();
+        didNotify = true;
         notify();
       }
     }
   } catch {
     // Keep existing cache on failure; don't clear
   } finally {
+    // Always notify so subscribers can dismiss their loading state even on failure
+    if (!didNotify) notify();
     setRefreshing(false);
   }
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getHistory, removeFromHistory, type HistoryItem, SMALL_RESOLUTION_THRESHOLD } from "@/lib/historyStore";
 import { getAppIcon, getAppLabel, getAppIds } from "@/lib/appIcons";
-import { getCachedGenerations, isCacheReady, isRefreshing as getCacheRefreshing, subscribeGenerations, subscribeRefreshing, removeFromCachedGenerations, fetchGenerations, updateCachedGeneration, updateCachedGenerations, getLastFetchTime } from "@/lib/generationsCache";
+import { getCachedGenerations, isRefreshing as getCacheRefreshing, subscribeGenerations, subscribeRefreshing, removeFromCachedGenerations, fetchGenerations, updateCachedGeneration, updateCachedGenerations, getLastFetchTime } from "@/lib/generationsCache";
 import { useSession } from "next-auth/react";
 import {
   Download, Maximize2, ZoomIn, X, Trash2, Tag, FolderOpen as FolderIcon, Pencil, Check, Plus,
@@ -782,22 +782,26 @@ export function HistoryClient() {
   const [lastUpdated, setLastUpdated] = useState(0); // server-safe; useEffect syncs on client
 
   useEffect(() => {
+    let loadingDismissed = false;
+    const dismissLoading = () => {
+      if (!loadingDismissed) { loadingDismissed = true; setApiLoading(false); }
+    };
     const sync = () => {
+      // Only called after a fresh fetch completes — no stale cache shown on mount
       setCachedItems(getCachedGenerations().map(toItem));
       setMemoryItems(getHistory());
       setLastUpdated(getLastFetchTime());
+      dismissLoading();
     };
     const onRefresh = () => { setCacheRefreshing(getCacheRefreshing()); };
-    sync();
-    // If cache is ready, dismiss loading spinner immediately (don't wait for fetchGenerations)
-    if (isCacheReady()) setApiLoading(false);
+    // Show device-local items immediately (no ghost risk — these live only on this device)
+    setMemoryItems(getHistory());
     const unsubData = subscribeGenerations(sync);
     const unsubRefresh = subscribeRefreshing(onRefresh);
-    // Always force a background refresh on History page so deleted items are cleaned up
+    // Always fetch fresh — sync() above fires when phase 1 data arrives (~300ms)
     fetchGenerations(true, true)
-      .then(() => { setApiLoading(false); setApiError(null); })
       .catch((e) => {
-        setApiLoading(false);
+        dismissLoading();
         setApiError(e instanceof Error ? e.message : "Failed to load history");
       });
     return () => { unsubData(); unsubRefresh(); };
