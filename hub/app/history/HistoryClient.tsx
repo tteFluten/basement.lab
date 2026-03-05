@@ -775,7 +775,8 @@ export function HistoryClient() {
 
   const handleRetry = useCallback(() => {
     setApiError(null);
-    setApiLoading(true);
+    // Only show full loading spinner if we have nothing to show
+    if (!isCacheReady()) setApiLoading(true);
     fetchGenerations(true, true)
       .then(() => {
         setCachedItems(getCachedGenerations().map(toItem));
