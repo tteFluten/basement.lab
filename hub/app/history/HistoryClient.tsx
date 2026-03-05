@@ -732,7 +732,7 @@ export function HistoryClient() {
   const [filterUserId, setFilterUserId] = useState("");
   const [filterTag, setFilterTag] = useState("");
   const [filterAppId, setFilterAppId] = useState("");
-  const [filterVisibility, setFilterVisibility] = useState<"all" | "public" | "mine">("all");
+  const [filterVisibility, setFilterVisibility] = useState<"all" | "public" | "mine">("mine");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("large");
   const [group, setGroup] = useState<GroupMode>("none");
