@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen } from 'lucide-react';
+import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { generateImage, isEmbedMode, getHubModel } from './services/geminiService';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
@@ -45,6 +45,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeHistoryIndex, setActiveHistoryIndex] = useState<number>(-1);
   const [imageCounter, setImageCounter] = useState(1);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [mentionMenu, setMentionMenu] = useState<{
     isOpen: boolean; x: number; y: number;
     selectedIndex: number; filter: string; cursorPosition: number;
@@ -571,7 +572,21 @@ export default function App() {
                         <span>Step {idx + 1}</span>
                         <span>{item.stats ? `${(item.stats.time / 1000).toFixed(2)}s` : ''}</span>
                       </div>
-                      <div className="text-[12px] text-[#888] line-clamp-2 italic">"{item.prompt}"</div>
+                      <div className="flex items-start gap-2 group/prompt">
+                        <div className="text-[12px] text-[#888] line-clamp-2 italic flex-1">"{item.prompt}"</div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(item.prompt);
+                            setCopiedId(item.id);
+                            setTimeout(() => setCopiedId(null), 1500);
+                          }}
+                          className="shrink-0 p-1 text-[#555] hover:text-[#ccc] transition-colors opacity-0 group-hover/prompt:opacity-100"
+                          title="Copy prompt"
+                        >
+                          {copiedId === item.id ? <Check size={13} /> : <Copy size={13} />}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
