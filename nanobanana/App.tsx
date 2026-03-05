@@ -56,11 +56,14 @@ export default function App() {
     selectedIndex: number; filter: string; cursorPosition: number;
   }>({ isOpen: false, x: 0, y: 0, selectedIndex: 0, filter: '', cursorPosition: 0 });
 
+  const [batchSize, setBatchSize] = useState(1);
+
   const MAX_IMAGES = 20;
   const highlighterRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const timerIntervalsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
+  const activeGenerationsRef = useRef(0);
 
   const activeGenerations = history.filter(h => h.status === 'generating').length;
   const isGenerating = activeGenerations > 0;
@@ -320,13 +323,14 @@ export default function App() {
     }
   };
 
-  const generate = () => {
+  const generate = (slotSuffix = 0) => {
     if (!prompt.trim() && images.length === 0) return;
-    if (activeGenerations >= MAX_CONCURRENT) return;
+    if (activeGenerationsRef.current >= MAX_CONCURRENT) return;
+    activeGenerationsRef.current++;
 
     setError(null);
 
-    const slotId = Date.now().toString();
+    const slotId = (Date.now() + slotSuffix).toString();
     const capturedPrompt = prompt;
     const startTime = performance.now();
 
@@ -411,8 +415,14 @@ export default function App() {
         else {
           setHistory(prev => prev.map(h => h.id === slotId ? { ...h, status: 'error' as const, error: msg } : h));
         }
+      } finally {
+        activeGenerationsRef.current--;
       }
     })();
+  };
+
+  const handleExecute = () => {
+    for (let i = 0; i < batchSize; i++) generate(i);
   };
 
   if (hasKey === false) {
@@ -697,6 +707,20 @@ export default function App() {
                 ))}
               </div>
             </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-[11px] uppercase tracking-widest text-[#777]">Batch</span>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setBatchSize(n)}
+                    className={`text-[12px] px-2 py-1 border ${batchSize === n ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[#333] text-[#777] hover:border-[#666]'}`}
+                  >
+                    ×{n}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Attached Images */}
@@ -860,11 +884,13 @@ export default function App() {
               </div>
 
               <button
-                onClick={generate}
-                disabled={activeGenerations >= MAX_CONCURRENT || (!prompt.trim() && images.length === 0)}
+                onClick={handleExecute}
+                disabled={activeGenerations + batchSize > MAX_CONCURRENT || (!prompt.trim() && images.length === 0)}
                 className="flex items-center gap-2 px-6 py-2 bg-[#a0a0a0] text-black text-[12px] font-bold uppercase tracking-widest hover:bg-white disabled:bg-[#222] disabled:text-[#444] transition-all"
               >
-                {activeGenerations > 0 ? `Execute (${activeGenerations}/${MAX_CONCURRENT})` : 'Execute'}
+                {activeGenerations > 0
+                  ? `Execute ×${batchSize} (${activeGenerations}/${MAX_CONCURRENT})`
+                  : `Execute${batchSize > 1 ? ` ×${batchSize}` : ''}`}
                 <Send size={12} />
               </button>
             </div>
