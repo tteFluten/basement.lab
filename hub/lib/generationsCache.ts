@@ -142,6 +142,8 @@ async function doFetch(full: boolean): Promise<void> {
     if (fast && fast.length >= 0) {
       cachedItems = fast;
       lastFetchTime = Date.now();
+      // Persist fast results too so cache survives reloads even when full fetch is skipped.
+      persistToStorage();
       notify();
     }
     if (full) {
