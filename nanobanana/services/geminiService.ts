@@ -18,11 +18,17 @@ export function isEmbedMode(): boolean {
   return getHubApiBase() !== null;
 }
 
+export interface HistoryTurn {
+  userPrompt: string;
+  resultImagePart: { data: string; mimeType: string };
+}
+
 export interface GenerateParams {
   prompt: string;
   imageParts: Array<{ data: string; mimeType: string }>;
   aspectRatio?: string;
   imageSize?: string;
+  history?: HistoryTurn[];
 }
 
 export interface GenerateResult {
@@ -83,7 +89,7 @@ export async function generateImage(params: GenerateParams): Promise<GenerateRes
     const res = await fetch(`${base}/api/gemini/nanobanana/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...params, model }),
+      body: JSON.stringify({ ...params, model, history: params.history ?? [] }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -99,11 +105,6 @@ export async function generateImage(params: GenerateParams): Promise<GenerateRes
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
-    { text: params.prompt },
-    ...params.imageParts.map((img) => ({ inlineData: { data: img.data, mimeType: img.mimeType } })),
-  ];
-
   const config: Record<string, unknown> = {
     systemInstruction:
       "You are a professional image generation engine. Strictly follow the user's text prompt. If the user references images using @ID (e.g., @1, @2), use those specific images as visual references for style, composition, or subject as requested. If an image is provided but NOT explicitly mentioned in the prompt with its @ID, ignore it entirely. Always prioritize the text prompt instructions.",
@@ -115,9 +116,25 @@ export async function generateImage(params: GenerateParams): Promise<GenerateRes
     config.imageConfig = imgCfg;
   }
 
+  type Part = { text: string } | { inlineData: { data: string; mimeType: string } };
+  type Turn = { role: string; parts: Part[] };
+
+  const contents: Turn[] = [];
+  for (const turn of params.history ?? []) {
+    contents.push({ role: "user", parts: [{ text: turn.userPrompt }] });
+    contents.push({ role: "model", parts: [{ inlineData: turn.resultImagePart }] });
+  }
+  contents.push({
+    role: "user",
+    parts: [
+      { text: params.prompt },
+      ...params.imageParts.map((img) => ({ inlineData: { data: img.data, mimeType: img.mimeType } })),
+    ],
+  });
+
   const response = await ai.models.generateContent({
     model: DEFAULT_MODEL,
-    contents: { parts },
+    contents: contents as never,
     config,
   });
 

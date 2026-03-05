@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
     const rawModel = (body.model as string) ?? "gemini-3.1-flash-image-preview";
     const aspectRatio = body.aspectRatio as string | undefined;
     const imageSize = body.imageSize as string | undefined;
+    const history = (body.history as Array<{ userPrompt: string; resultImagePart: { data: string; mimeType: string } }>) ?? [];
 
     const MODEL_MAP: Record<string, string> = {
       "gemini-2.0-flash-exp": "gemini-2.5-flash",
@@ -30,15 +31,6 @@ export async function POST(request: NextRequest) {
       model = "gemini-3.1-flash-image-preview";
     }
 
-    const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [];
-
-    // Attached images first
-    for (const img of imageParts) {
-      const data = img.data.includes(",") ? img.data.split(",")[1] : img.data;
-      parts.push({ inlineData: { data, mimeType: img.mimeType } });
-    }
-    parts.push({ text: prompt });
-
     const config: Record<string, unknown> = {
       systemInstruction:
         "You are a professional image generation engine. Strictly follow the user's text prompt. If the user references images using @ID (e.g., @1, @2), use those specific images as visual references for style, composition, or subject as requested. If an image is provided but NOT explicitly mentioned in the prompt with its @ID, ignore it entirely. Always prioritize the text prompt instructions.",
@@ -50,10 +42,29 @@ export async function POST(request: NextRequest) {
       config.imageConfig = imgCfg;
     }
 
+    type Part = { text: string } | { inlineData: { data: string; mimeType: string } };
+    type Turn = { role: string; parts: Part[] };
+
+    const contents: Turn[] = [];
+    for (const turn of history) {
+      const imgData = turn.resultImagePart.data.includes(",")
+        ? turn.resultImagePart.data.split(",")[1]
+        : turn.resultImagePart.data;
+      contents.push({ role: "user", parts: [{ text: turn.userPrompt }] });
+      contents.push({ role: "model", parts: [{ inlineData: { data: imgData, mimeType: turn.resultImagePart.mimeType } }] });
+    }
+    const currentParts: Part[] = [];
+    for (const img of imageParts) {
+      const data = img.data.includes(",") ? img.data.split(",")[1] : img.data;
+      currentParts.push({ inlineData: { data, mimeType: img.mimeType } });
+    }
+    currentParts.push({ text: prompt });
+    contents.push({ role: "user", parts: currentParts });
+
     const ai = getGemini();
     const response = await ai.models.generateContent({
       model,
-      contents: { parts },
+      contents: contents as never,
       config: Object.keys(config).length > 0 ? config : undefined,
     });
 

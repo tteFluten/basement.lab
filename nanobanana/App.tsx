@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen, Copy, Check, Wand2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { generateImage, improvePrompt, isEmbedMode, getHubModel } from './services/geminiService';
+import { generateImage, improvePrompt, isEmbedMode, getHubModel, HistoryTurn } from './services/geminiService';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
-import { prepareImagePartForApi } from './lib/imageResize';
+import { prepareImagePartForApi, resizeImageForApi } from './lib/imageResize';
 
 // --- Types ---
 interface AttachedImage {
@@ -291,6 +291,9 @@ export default function App() {
     const mentionedImages = images.filter(img => capturedPrompt.includes(`@${img.id}`));
     const dataUrls = mentionedImages.map(img => `data:${img.mimeType};base64,${img.data}`);
 
+    // Snapshot current history for conversation context (before new slot is appended)
+    const historySnapshot = history.filter(h => h.status === 'done' && h.image).slice(-4);
+
     // Add placeholder history item immediately
     const newItem: HistoryItem = {
       id: slotId,
@@ -312,16 +315,22 @@ export default function App() {
     // Launch async generation (non-blocking)
     (async () => {
       try {
-        const imageParts = await Promise.all(
-          dataUrls.map((dataUrl, i) =>
-            prepareImagePartForApi(dataUrl, mentionedImages[i].mimeType)
-          )
-        );
+        const [imageParts, conversationHistory] = await Promise.all([
+          Promise.all(dataUrls.map((dataUrl, i) => prepareImagePartForApi(dataUrl, mentionedImages[i].mimeType))),
+          Promise.all(
+            historySnapshot.map(async (h): Promise<HistoryTurn> => {
+              const resized = await resizeImageForApi(h.image, { maxLongEdge: 512, quality: 0.5 });
+              const data = resized.includes(',') ? resized.split(',')[1] : resized;
+              return { userPrompt: h.prompt, resultImagePart: { data, mimeType: 'image/jpeg' } };
+            })
+          ),
+        ]);
         const result = await generateImage({
           prompt: capturedPrompt,
           imageParts,
           aspectRatio,
           imageSize,
+          history: conversationHistory,
         });
 
         clearInterval(timerIntervalsRef.current[slotId]);
