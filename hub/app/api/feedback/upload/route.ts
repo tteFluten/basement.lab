@@ -1,44 +1,45 @@
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { put } from "@vercel/blob";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-/** POST: upload a video file to Vercel Blob. Returns { url }. Auth required. */
-export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500 MB
 
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) {
-    return NextResponse.json({ error: "Blob storage not configured" }, { status: 503 });
-  }
+/**
+ * Client-side upload handler for Vercel Blob.
+ * The video goes directly from the browser to Blob storage — never through this server.
+ * This endpoint only generates/validates the upload token.
+ */
+export async function POST(request: NextRequest) {
+  const body = (await request.json()) as HandleUploadBody;
 
   try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) throw new Error("Unauthorized");
 
-    const allowed = ["video/mp4", "video/webm", "video/quicktime"];
-    if (!allowed.includes(file.type)) {
-      return NextResponse.json({ error: "Only MP4, WebM and MOV videos are allowed" }, { status: 400 });
-    }
+        return {
+          allowedContentTypes: ["video/mp4", "video/webm", "video/quicktime"],
+          maximumSizeInBytes: MAX_VIDEO_SIZE,
+          addRandomSuffix: true,
+        };
+      },
+      onUploadCompleted: async ({ blob }) => {
+        // Session creation is handled separately by the client after upload.
+        console.log("Feedback video uploaded:", blob.url);
+      },
+    });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const pathname = `feedback/${session.user.id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-    const blob = await put(pathname, buffer, { access: "public", addRandomSuffix: true });
-
-    return NextResponse.json({ url: blob.url });
+    return NextResponse.json(jsonResponse);
   } catch (e) {
-    console.error("POST /api/feedback/upload:", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Upload failed" },
-      { status: 500 }
+      { status: 400 }
     );
   }
 }

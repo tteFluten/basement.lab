@@ -4,7 +4,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Plus, Video, ArrowLeft, ArrowRight, Loader2, MessageSquare } from "lucide-react";
+import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
+
+const MAX_VIDEO_MB = 500;
+const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 
 export default function ProjectPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
@@ -36,6 +40,11 @@ export default function ProjectPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newTitle.trim()) return;
+    if (selectedFile && selectedFile.size > MAX_VIDEO_BYTES) {
+      setUploadProgress(`El video no puede superar ${MAX_VIDEO_MB}MB`);
+      return;
+    }
+
     setUploading(true);
     setUploadProgress("Uploading video…");
 
@@ -44,15 +53,12 @@ export default function ProjectPage() {
       let durationS: number | null = null;
 
       if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        const uploadRes = await fetch("/api/feedback/upload", { method: "POST", body: formData });
-        if (!uploadRes.ok) {
-          setUploadProgress("Upload failed");
-          return;
-        }
-        const uploadData = await uploadRes.json();
-        videoUrl = uploadData.url;
+        // Direct browser → Vercel Blob upload (bypasses server payload limits)
+        const blob = await upload(selectedFile.name, selectedFile, {
+          access: "public",
+          handleUploadUrl: "/api/feedback/upload",
+        });
+        videoUrl = blob.url;
 
         // Get duration via a temporary video element
         try {
@@ -134,7 +140,7 @@ export default function ProjectPage() {
           />
           <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-border text-xs font-mono text-fg-muted hover:text-fg hover:border-fg-muted cursor-pointer transition-colors">
             <Video size={14} />
-            {selectedFile ? selectedFile.name : "Choose video (MP4, WebM, MOV)"}
+            {selectedFile ? `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB)` : `Choose video — MP4, WebM, MOV · max ${MAX_VIDEO_MB}MB`}
             <input
               ref={fileRef}
               type="file"
