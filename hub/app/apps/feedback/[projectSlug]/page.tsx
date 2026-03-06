@@ -1,14 +1,33 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Plus, Video, ArrowLeft, ArrowRight, Loader2, MessageSquare } from "lucide-react";
+import { Plus, Video, ArrowLeft, ArrowRight, Loader2, MessageSquare, Search, ChevronDown } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
 
 const MAX_VIDEO_MB = 500;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
+
+type SortKey = "newest" | "oldest" | "name-az" | "most-comments";
+const SORT_LABELS: Record<SortKey, string> = {
+  newest: "Newest",
+  oldest: "Oldest",
+  "name-az": "Name A–Z",
+  "most-comments": "Most comments",
+};
+
+function sortSessions(sessions: FeedbackSession[], sort: SortKey): FeedbackSession[] {
+  return [...sessions].sort((a, b) => {
+    switch (sort) {
+      case "newest":        return b.createdAt - a.createdAt;
+      case "oldest":        return a.createdAt - b.createdAt;
+      case "name-az":       return a.title.localeCompare(b.title);
+      case "most-comments": return (b.commentCount ?? 0) - (a.commentCount ?? 0);
+    }
+  });
+}
 
 export default function ProjectPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
@@ -21,6 +40,8 @@ export default function ProjectPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortKey>("newest");
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +112,15 @@ export default function ProjectPage() {
       setUploadProgress(null);
     }
   }
+
+  const filtered = useMemo(() => {
+    let list = sessions;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((s) => s.title.toLowerCase().includes(q));
+    }
+    return sortSessions(list, sort);
+  }, [sessions, search, sort]);
 
   function formatDuration(s: number | null) {
     if (!s) return null;
@@ -171,34 +201,67 @@ export default function ProjectPage() {
         </form>
       )}
 
+      {sessions.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="relative flex-1 min-w-[160px]">
+            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search sessions…"
+              className="w-full bg-bg-muted border border-border pl-8 pr-3 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted"
+            />
+          </div>
+          <div className="relative">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="appearance-none bg-bg-muted border border-border pl-3 pr-7 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted cursor-pointer"
+            >
+              {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                <option key={k} value={k}>{SORT_LABELS[k]}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
+          </div>
+          {search && (
+            <button onClick={() => setSearch("")} className="text-xs font-mono text-fg-muted hover:text-fg transition-colors">Clear</button>
+          )}
+        </div>
+      )}
+
       {sessions.length === 0 ? (
         <div className="border border-dashed border-border p-12 text-center">
           <Video size={32} strokeWidth={1} className="mx-auto mb-3 text-fg-muted opacity-40" />
           <p className="text-xs font-mono text-fg-muted uppercase tracking-widest">No sessions yet</p>
           <p className="text-xs text-fg-muted mt-1">Add a video to start collecting feedback</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-12 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {sessions.map((s) => (
+        <div className="flex flex-col gap-px border border-border">
+          {filtered.map((s) => (
             <Link
               key={s.id}
               href={`/apps/feedback/${projectSlug}/${s.id}`}
-              className="group flex items-center justify-between px-4 py-3 border border-border hover:border-fg-muted bg-bg-muted hover:bg-bg transition-all"
+              className="group flex items-center justify-between px-4 py-3 bg-bg-muted hover:bg-bg border-b border-border last:border-b-0 transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <Video size={16} strokeWidth={1.5} className="text-fg-muted shrink-0" />
-                <div>
-                  <p className="text-sm font-mono text-fg">{s.title}</p>
+              <div className="flex items-center gap-3 min-w-0">
+                <Video size={15} strokeWidth={1.5} className="text-fg-muted shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-mono text-fg truncate">{s.title}</p>
                   <div className="flex items-center gap-3 text-xs text-fg-muted mt-0.5">
-                    {s.durationS != null && <span>{formatDuration(s.durationS)}</span>}
-                    <span className="flex items-center gap-1">
+                    {s.durationS != null && <span className="shrink-0">{formatDuration(s.durationS)}</span>}
+                    <span className="flex items-center gap-1 shrink-0">
                       <MessageSquare size={10} />
                       {s.commentCount ?? 0}
                     </span>
+                    <span className="shrink-0">{new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                   </div>
                 </div>
               </div>
-              <ArrowRight size={14} className="text-fg-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ArrowRight size={14} className="text-fg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3" />
             </Link>
           ))}
         </div>

@@ -94,7 +94,7 @@ export function HomeAppsSection() {
                   </span>
                   <span className="text-sm font-medium text-white drop-shadow-sm">{label}</span>
                 </div>
-                <p className="text-xs text-white/60 group-hover:text-white/80 transition-colors leading-relaxed drop-shadow-sm">{desc}</p>
+                <p className="text-xs text-white/60 group-hover:text-white/80 transition-colors leading-relaxed drop-shadow-sm pr-6">{desc}</p>
               </div>
               <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                 <ArrowRight className="w-4 h-4 text-white/60" />
@@ -133,7 +133,7 @@ export function HomeAppsSection() {
                   </span>
                   <span className="text-sm font-medium text-white drop-shadow-sm">{label}</span>
                 </div>
-                <p className="text-xs text-white/60 group-hover:text-white/80 transition-colors leading-relaxed drop-shadow-sm">{desc}</p>
+                <p className="text-xs text-white/60 group-hover:text-white/80 transition-colors leading-relaxed drop-shadow-sm pr-6">{desc}</p>
               </div>
               <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                 <ArrowRight className="w-4 h-4 text-white/60" />

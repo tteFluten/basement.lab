@@ -6,6 +6,7 @@ export interface FeedbackProject {
   slug: string;
   name: string;
   ownerId: string | null;
+  ownerName: string | null;
   createdAt: number;
   sessionCount?: number;
 }
