@@ -29,21 +29,31 @@ export async function POST() {
     responseChecksumValidation: "WHEN_REQUIRED",
   });
 
-  await client.send(new PutBucketCorsCommand({
-    Bucket: bucket,
-    CORSConfiguration: {
-      CORSRules: [
-        {
-          AllowedOrigins: ["*"],
-          AllowedMethods: ["PUT", "GET", "HEAD"],
-          AllowedHeaders: ["*"],
-          ExposeHeaders: ["ETag"],
-          MaxAgeSeconds: 3600,
-        },
-      ],
-    },
-  }));
+  try {
+    await client.send(new PutBucketCorsCommand({
+      Bucket: bucket,
+      CORSConfiguration: {
+        CORSRules: [
+          {
+            AllowedOrigins: ["*"],
+            AllowedMethods: ["PUT", "GET", "HEAD"],
+            AllowedHeaders: ["*"],
+            ExposeHeaders: ["ETag"],
+            MaxAgeSeconds: 3600,
+          },
+        ],
+      },
+    }));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("PutBucketCors failed:", msg);
+    return NextResponse.json({ error: "PutBucketCors failed", detail: msg }, { status: 500 });
+  }
 
-  const result = await client.send(new GetBucketCorsCommand({ Bucket: bucket }));
-  return NextResponse.json({ ok: true, rules: result.CORSRules });
+  try {
+    const result = await client.send(new GetBucketCorsCommand({ Bucket: bucket }));
+    return NextResponse.json({ ok: true, rules: result.CORSRules });
+  } catch (e) {
+    return NextResponse.json({ ok: true, note: "Set but could not verify", error: String(e) });
+  }
 }
