@@ -2,54 +2,47 @@
 
 import Link from "next/link";
 import { Film, Clock, Shirt, UserCircle, ImagePlus, Layers, ArrowRight, Plus, Banana } from "lucide-react";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { SubmittedAppsSection } from "@/components/SubmittedAppsSection";
 import { AddSubmittedAppModal } from "@/components/AddSubmittedAppModal";
 
 const APPS = [
-  { slug: "nanobanana", label: "NanoBanana", desc: "Iterative image generation with @mention references", Icon: Banana, span: "col-span-2 row-span-2", cover: "/app-covers/nanobanana.jpg" },
+  { slug: "nanobanana", label: "NanoBanana", desc: "Iterative image generation with @mention references", Icon: Banana, span: "col-span-2 row-span-2", cover: "/app-covers/cineprompt.jpg" },
   { slug: "render", label: "Render", desc: "4K render from viewport previews and prompts", Icon: ImagePlus, span: "col-span-1 row-span-2", cover: "/app-covers/render.jpg" },
   { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock, span: "col-span-1 row-span-1", cover: "/app-covers/chronos.jpg" },
   { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt, span: "col-span-1 row-span-1", cover: "/app-covers/swag.jpg" },
   { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization", Icon: UserCircle, span: "col-span-1 row-span-1", cover: "/app-covers/avatar.jpg" },
-  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-1 row-span-1", cover: "/app-covers/frame-variator.jpg" },
+  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-1 row-span-1", cover: "/app-covers/avatar.jpg" },
   { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film, span: "col-span-1 row-span-1", cover: "/app-covers/cineprompt.jpg" },
 ];
 
+const BANANA_COLS = [
+  { left: '4%',  dur: '6s',   delay: '0s',    opacity: 0.07, size: 12 },
+  { left: '11%', dur: '8s',   delay: '-2.1s', opacity: 0.05, size: 10 },
+  { left: '18%', dur: '5.5s', delay: '-4.8s', opacity: 0.08, size: 13 },
+  { left: '25%', dur: '7s',   delay: '-1.3s', opacity: 0.06, size: 11 },
+  { left: '32%', dur: '9s',   delay: '-6.2s', opacity: 0.07, size: 12 },
+  { left: '39%', dur: '6.5s', delay: '-3.5s', opacity: 0.05, size: 10 },
+  { left: '46%', dur: '7.5s', delay: '-0.7s', opacity: 0.08, size: 13 },
+  { left: '53%', dur: '5s',   delay: '-5.1s', opacity: 0.06, size: 11 },
+  { left: '60%', dur: '8.5s', delay: '-2.9s', opacity: 0.07, size: 12 },
+  { left: '67%', dur: '6s',   delay: '-4.4s', opacity: 0.05, size: 10 },
+  { left: '74%', dur: '7s',   delay: '-1.8s', opacity: 0.08, size: 13 },
+  { left: '81%', dur: '9.5s', delay: '-7s',   opacity: 0.06, size: 11 },
+  { left: '88%', dur: '5.5s', delay: '-3.3s', opacity: 0.07, size: 12 },
+];
+
 function BananaRain() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    const W = parent?.offsetWidth || 400;
-    const H = parent?.offsetHeight || 400;
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const size = 14;
-    const cols = Math.max(1, Math.floor(W / (size + 4)));
-    const drops = Array.from({ length: cols }, () => Math.random() * H);
-    const speeds = Array.from({ length: cols }, () => 0.25 + Math.random() * 0.5);
-    let raf: number;
-    let tick = 0;
-    const draw = () => {
-      raf = requestAnimationFrame(draw);
-      if (++tick % 4 !== 0) return;
-      ctx.clearRect(0, 0, W, H);
-      ctx.font = `${size}px serif`;
-      for (let i = 0; i < cols; i++) {
-        ctx.globalAlpha = 0.04 + Math.random() * 0.07;
-        ctx.fillText('🍌', i * (size + 4), drops[i]);
-        drops[i] += speeds[i];
-        if (drops[i] > H + size) drops[i] = -size * 3 * Math.random();
-      }
-    };
-    draw();
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <style>{`@keyframes nb-fall { from { transform: translateY(-24px); } to { transform: translateY(420px); } }`}</style>
+      {BANANA_COLS.map((b, i) => (
+        <div key={i} className="absolute top-0" style={{ left: b.left, opacity: b.opacity, animation: `nb-fall ${b.dur} ${b.delay} linear infinite` }}>
+          <Banana size={b.size} strokeWidth={1.5} color="white" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function AppCoverImage({ cover, Icon, alt }: { cover: string; Icon: React.ComponentType<{ size?: string | number; strokeWidth?: string | number; className?: string }>; alt: string }) {
