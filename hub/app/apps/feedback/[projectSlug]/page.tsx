@@ -222,8 +222,28 @@ export default function ProjectPage() {
   }[uploadStage];
 
   if (loading) return (
-    <div className="flex justify-center items-center min-h-full">
-      <Loader2 size={20} className="animate-spin text-fg-muted" />
+    <div className="min-h-full p-6 max-w-3xl mx-auto">
+      <style>{`
+        @keyframes fb-fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .fb-card { animation: fb-fade-in 0.25s ease-out both; }
+        @keyframes fb-shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+        .fb-shimmer::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); animation:fb-shimmer 1.4s infinite; }
+      `}</style>
+      <div className="flex items-center gap-3 mb-8">
+        <div className="relative fb-shimmer w-4 h-4 bg-bg-muted rounded" />
+        <div className="relative fb-shimmer h-3 w-32 bg-bg-muted rounded" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="border border-border overflow-hidden">
+            <div className="relative fb-shimmer h-40 bg-bg-muted" />
+            <div className="p-4 space-y-2">
+              <div className="relative fb-shimmer h-3 w-3/4 bg-bg-muted rounded" />
+              <div className="relative fb-shimmer h-2.5 w-1/3 bg-bg-muted rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -232,7 +252,7 @@ export default function ProjectPage() {
   );
 
   return (
-    <div className="min-h-full p-6 max-w-3xl mx-auto">
+    <div className="min-h-full p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/apps/feedback" className="text-fg-muted hover:text-fg transition-colors">
@@ -423,38 +443,54 @@ export default function ProjectPage() {
         </div>
       )}
 
+      <style>{`
+        @keyframes fb-fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .fb-card { animation: fb-fade-in 0.25s ease-out both; }
+        @keyframes fb-shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+        .fb-shimmer::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); animation:fb-shimmer 1.4s infinite; }
+      `}</style>
+
       {/* Session list */}
       {sessions.length === 0 ? (
-        <div className="border border-dashed border-border p-12 text-center">
-          <Video size={32} strokeWidth={1} className="mx-auto mb-3 text-fg-muted opacity-40" />
+        <div className="border border-dashed border-border p-16 text-center">
+          <Video size={36} strokeWidth={1} className="mx-auto mb-4 text-fg-muted opacity-30" />
           <p className="text-xs font-mono text-fg-muted uppercase tracking-widest">No sessions yet</p>
-          <p className="text-xs text-fg-muted mt-1">Add a video to start collecting feedback</p>
+          <p className="text-xs text-fg-muted mt-2">Add a video to start collecting feedback</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-12 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
+        <div className="py-16 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
       ) : (
-        <div className="flex flex-col gap-px border border-border">
-          {filtered.map((s) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {filtered.map((s, index) => (
             <Link
               key={s.id}
               href={`/apps/feedback/${projectSlug}/${s.id}`}
-              className="group flex items-center justify-between px-4 py-3 bg-bg-muted hover:bg-bg border-b border-border last:border-b-0 transition-colors"
+              className="fb-card group border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted"
+              style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <Video size={15} strokeWidth={1.5} className="text-fg-muted shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-mono text-fg truncate">{s.title}</p>
-                  <div className="flex items-center gap-3 text-xs text-fg-muted mt-0.5">
-                    {s.durationS != null && <span className="shrink-0">{formatDuration(s.durationS)}</span>}
-                    <span className="flex items-center gap-1 shrink-0">
-                      <MessageSquare size={10} />
-                      {s.commentCount ?? 0}
-                    </span>
-                    <span className="shrink-0">{new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+              {/* Cover */}
+              <div className="relative h-40 bg-[#0d0d0d] flex items-center justify-center overflow-hidden">
+                <Video size={36} strokeWidth={1} className="text-white/10 group-hover:text-white/20 transition-colors" />
+                {s.durationS != null && (
+                  <div className="absolute bottom-3 right-3 bg-black/70 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-white/60 tabular-nums">
+                    {formatDuration(s.durationS)}
                   </div>
-                </div>
+                )}
+                {(s.commentCount ?? 0) > 0 && (
+                  <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/70 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-white/60">
+                    <MessageSquare size={10} />
+                    {s.commentCount}
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <ArrowRight size={14} className="text-fg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3" />
+              {/* Info */}
+              <div className="p-4">
+                <p className="text-sm font-mono text-fg truncate mb-1">{s.title}</p>
+                <p className="text-xs text-fg-muted tabular-nums">
+                  {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </p>
+              </div>
             </Link>
           ))}
         </div>

@@ -100,7 +100,7 @@ export default function FeedbackPage() {
     new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   return (
-    <div className="min-h-full p-6 max-w-3xl mx-auto">
+    <div className="min-h-full p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -220,42 +220,64 @@ export default function FeedbackPage() {
         </div>
       )}
 
+      <style>{`
+        @keyframes fb-fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .fb-card { animation: fb-fade-in 0.25s ease-out both; }
+        @keyframes fb-shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+        .fb-shimmer::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); animation:fb-shimmer 1.4s infinite; }
+      `}</style>
+
       {/* Content */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 size={20} className="animate-spin text-fg-muted" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="border border-border overflow-hidden">
+              <div className="relative fb-shimmer h-36 bg-bg-muted" />
+              <div className="p-4 space-y-2">
+                <div className="relative fb-shimmer h-3 w-3/4 bg-bg-muted rounded" />
+                <div className="relative fb-shimmer h-2.5 w-1/2 bg-bg-muted rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : projects.length === 0 ? (
-        <div className="border border-dashed border-border p-12 text-center">
-          <FolderOpen size={32} strokeWidth={1} className="mx-auto mb-3 text-fg-muted opacity-40" />
+        <div className="border border-dashed border-border p-16 text-center">
+          <FolderOpen size={36} strokeWidth={1} className="mx-auto mb-4 text-fg-muted opacity-30" />
           <p className="text-xs font-mono text-fg-muted uppercase tracking-widest">No projects yet</p>
-          <p className="text-xs text-fg-muted mt-1">Create a project to start collecting video feedback</p>
+          <p className="text-xs text-fg-muted mt-2">Create a project to start collecting video feedback</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-12 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
+        <div className="py-16 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
       ) : (
-        <div className="flex flex-col gap-px border border-border">
-          {filtered.map((p) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((p, index) => (
             <Link
               key={p.id}
               href={`/apps/feedback/${p.slug}`}
-              className="group flex items-center justify-between px-4 py-3 bg-bg-muted hover:bg-bg border-b border-border last:border-b-0 transition-colors"
+              className="fb-card group border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted"
+              style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <FolderOpen size={15} strokeWidth={1.5} className="text-fg-muted shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-mono text-fg truncate">{p.name}</p>
-                  <div className="flex items-center gap-3 text-xs text-fg-muted mt-0.5">
-                    {p.ownerName && <span className="truncate max-w-[120px]">{p.ownerName}</span>}
-                    <span className="flex items-center gap-1 shrink-0">
-                      <Video size={10} />
-                      {p.sessionCount ?? 0}
-                    </span>
-                    <span className="shrink-0">{formatDate(p.createdAt)}</span>
+              {/* Cover */}
+              <div className="relative h-36 bg-[#0d0d0d] flex items-center justify-center overflow-hidden">
+                <FolderOpen size={40} strokeWidth={1} className="text-white/10 group-hover:text-white/20 transition-colors" />
+                {(p.sessionCount ?? 0) > 0 && (
+                  <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 py-1 text-[11px] font-mono text-white/60">
+                    <Video size={10} />
+                    {p.sessionCount}
                   </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              {/* Info */}
+              <div className="p-4">
+                <p className="text-sm font-mono text-fg truncate mb-1">{p.name}</p>
+                <div className="flex items-center justify-between text-xs text-fg-muted">
+                  {p.ownerName
+                    ? <span className="truncate max-w-[140px]">{p.ownerName}</span>
+                    : <span />}
+                  <span className="shrink-0 tabular-nums">{formatDate(p.createdAt)}</span>
                 </div>
               </div>
-              <ArrowRight size={14} className="text-fg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3" />
             </Link>
           ))}
         </div>
