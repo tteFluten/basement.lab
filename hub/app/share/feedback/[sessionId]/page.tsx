@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { ArrowLeft, Loader2, Film, MessageSquare, Share2, Check } from "lucide-react";
+import { Loader2, Film } from "lucide-react";
 import { VideoPlayer } from "@/components/feedback/VideoPlayer";
 import { CommentList } from "@/components/feedback/CommentList";
 import type { FeedbackSession, FeedbackComment, DrawingPath } from "@/lib/feedback/types";
@@ -27,41 +25,40 @@ function getOrPromptAnonName(): string {
   return trimmed;
 }
 
-export default function SessionPage() {
-  const { projectSlug, sessionId } = useParams<{ projectSlug: string; sessionId: string }>();
-  const { data: authSession } = useSession();
+export default function ShareFeedbackPage() {
+  const { sessionId } = useParams<{ sessionId: string }>();
   const [fbSession, setFbSession] = useState<FeedbackSession | null>(null);
   const [comments, setComments] = useState<FeedbackComment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [seekTo, setSeekTo] = useState<number | null>(null);
   const [anonToken, setAnonToken] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(true);
   const [fps, setFps] = useState<number | null>(null);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [overlayDrawing, setOverlayDrawing] = useState<DrawingPath[] | null>(null);
-  const [copied, setCopied] = useState(false);
 
-  const currentUserId = authSession?.user?.id ?? null;
-  const authorName = currentUserId
-    ? (authSession?.user?.name || authSession?.user?.email || "User")
-    : (typeof localStorage !== "undefined" ? localStorage.getItem(ANON_NAME_KEY) ?? "Anonymous" : "Anonymous");
+  const authorName =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem(ANON_NAME_KEY) ?? "Anonymous"
+      : "Anonymous";
 
   useEffect(() => { setAnonToken(getAnonToken()); }, []);
 
-  const loadSession = useCallback(async () => {
-    const [sessionRes, commentsRes] = await Promise.all([
+  useEffect(() => {
+    Promise.all([
       fetch(`/api/feedback/sessions/${sessionId}`),
       fetch(`/api/feedback/sessions/${sessionId}/comments`),
-    ]);
-    if (sessionRes.ok) setFbSession(await sessionRes.json());
-    if (commentsRes.ok) {
-      const data = await commentsRes.json();
-      setComments(data.comments ?? []);
-    }
-    setLoading(false);
+    ]).then(async ([sessionRes, commentsRes]) => {
+      if (!sessionRes.ok) { setNotFound(true); setLoading(false); return; }
+      setFbSession(await sessionRes.json());
+      if (commentsRes.ok) {
+        const data = await commentsRes.json();
+        setComments(data.comments ?? []);
+      }
+      setLoading(false);
+    });
   }, [sessionId]);
-
-  useEffect(() => { loadSession(); }, [loadSession]);
 
   const handleAddComment = useCallback(async (data: {
     timestampS: number;
@@ -69,7 +66,7 @@ export default function SessionPage() {
     drawing?: DrawingPath[];
     authorName: string;
   }) => {
-    const resolvedName = currentUserId ? data.authorName : getOrPromptAnonName();
+    const resolvedName = getOrPromptAnonName();
     const res = await fetch(`/api/feedback/sessions/${sessionId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -87,7 +84,7 @@ export default function SessionPage() {
     setSelectedCommentId(null);
     const token = getAnonToken();
     if (token && !anonToken) setAnonToken(token);
-  }, [sessionId, currentUserId, anonToken]);
+  }, [sessionId, anonToken]);
 
   const handleEdit = useCallback(async (id: string, text: string) => {
     const res = await fetch(`/api/feedback/comments/${id}`, {
@@ -114,52 +111,29 @@ export default function SessionPage() {
   }, []);
 
   if (loading) return (
-    <div className="flex justify-center items-center h-full">
+    <div className="flex items-center justify-center h-[80vh]">
       <Loader2 size={20} className="animate-spin text-fg-muted" />
     </div>
   );
 
-  if (!fbSession) return (
-    <div className="p-6 text-fg-muted text-sm font-mono">Session not found.</div>
+  if (notFound || !fbSession) return (
+    <div className="flex flex-col items-center justify-center h-[80vh] gap-3 text-fg-muted">
+      <Film size={36} strokeWidth={1} className="opacity-40" />
+      <p className="text-sm font-mono">This session doesn&apos;t exist or has been removed.</p>
+    </div>
   );
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-border bg-bg-muted">
-        <Link href={`/apps/feedback/${projectSlug}`} className="text-fg-muted hover:text-fg transition-colors shrink-0">
-          <ArrowLeft size={15} />
-        </Link>
         <h1 className="text-sm font-mono text-fg flex-1 truncate">{fbSession.title}</h1>
-        <button
-          onClick={async () => {
-            const url = `${window.location.origin}/share/feedback/${sessionId}`;
-            await navigator.clipboard.writeText(url);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
-          title="Copy share link"
-        >
-          {copied ? <Check size={12} className="text-green-400" /> : <Share2 size={12} />}
-          {copied ? "Copied" : "Share"}
-        </button>
-        <button
-          onClick={() => setShowComments((v) => !v)}
-          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase border transition-colors ${
-            showComments ? "border-border text-fg-muted hover:text-fg" : "border-fg-muted text-fg"
-          }`}
-          title="Toggle feedback panel"
-        >
-          <MessageSquare size={12} />
-          {comments.length}
-        </button>
+        <span className="text-xs font-mono text-fg-muted/50 shrink-0">feedback</span>
       </div>
 
-      {/* ── Body ── */}
+      {/* Body */}
       {fbSession.videoUrl ? (
         <div className="flex-1 flex overflow-hidden min-h-0">
-          {/* Video column */}
           <div className="flex-1 overflow-y-auto bg-[#0d0d0d] flex flex-col justify-start">
             <div className="p-4 max-w-5xl mx-auto w-full">
               <VideoPlayer
@@ -173,12 +147,10 @@ export default function SessionPage() {
               />
             </div>
           </div>
-
-          {/* Comments panel */}
           {showComments && (
             <CommentList
               comments={comments}
-              currentUserId={currentUserId}
+              currentUserId={null}
               anonToken={anonToken}
               fps={fps}
               selectedCommentId={selectedCommentId}
