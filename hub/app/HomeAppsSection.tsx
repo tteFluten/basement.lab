@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Film, Clock, Shirt, UserCircle, ImagePlus, Layers, ArrowRight, Plus, Banana } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { SubmittedAppsSection } from "@/components/SubmittedAppsSection";
 import { AddSubmittedAppModal } from "@/components/AddSubmittedAppModal";
 
@@ -15,6 +15,42 @@ const APPS = [
   { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-1 row-span-1", cover: "/app-covers/frame-variator.jpg" },
   { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film, span: "col-span-1 row-span-1", cover: "/app-covers/cineprompt.jpg" },
 ];
+
+function BananaRain() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    const W = parent?.offsetWidth || 400;
+    const H = parent?.offsetHeight || 400;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const size = 14;
+    const cols = Math.max(1, Math.floor(W / (size + 4)));
+    const drops = Array.from({ length: cols }, () => Math.random() * H);
+    const speeds = Array.from({ length: cols }, () => 0.25 + Math.random() * 0.5);
+    let raf: number;
+    let tick = 0;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      if (++tick % 4 !== 0) return;
+      ctx.clearRect(0, 0, W, H);
+      ctx.font = `${size}px serif`;
+      for (let i = 0; i < cols; i++) {
+        ctx.globalAlpha = 0.04 + Math.random() * 0.07;
+        ctx.fillText('🍌', i * (size + 4), drops[i]);
+        drops[i] += speeds[i];
+        if (drops[i] > H + size) drops[i] = -size * 3 * Math.random();
+      }
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
+}
 
 function AppCoverImage({ cover, Icon, alt }: { cover: string; Icon: React.ComponentType<{ size?: string | number; strokeWidth?: string | number; className?: string }>; alt: string }) {
   const [failed, setFailed] = useState(false);
@@ -52,6 +88,7 @@ export function HomeAppsSection() {
               className={`${span} group relative overflow-hidden border border-border hover:border-fg-muted transition-all duration-300 flex flex-col justify-end p-5 bg-black`}
             >
               <AppCoverImage cover={cover} Icon={Icon} alt={label} />
+              {slug === 'nanobanana' && <BananaRain />}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-1">

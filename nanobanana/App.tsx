@@ -39,6 +39,66 @@ const COLORS = [
   '#BF00FF', '#FF00FF', '#FF00BF', '#FF0080', '#FF0040',
 ];
 
+function IllustrationRefs() {
+  return (
+    <svg width="90" height="52" viewBox="0 0 90 52" fill="none">
+      <rect x="2" y="2" width="26" height="20" stroke="white" strokeWidth="0.8" strokeOpacity="0.3"/>
+      <path d="M2 17 L8 11 L14 16 L21 9 L28 13" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <circle cx="7" cy="7" r="2.5" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <rect x="32" y="7" width="18" height="10" rx="1" stroke="white" strokeWidth="0.6" strokeOpacity="0.35"/>
+      <text x="35" y="14.5" fill="white" fillOpacity="0.4" fontSize="7" fontFamily="monospace">@1</text>
+      <rect x="2" y="32" width="60" height="10" stroke="white" strokeWidth="0.7" strokeOpacity="0.28"/>
+      <line x1="9" y1="35" x2="9" y2="41" stroke="white" strokeWidth="1.2" strokeOpacity="0.35"/>
+      <rect x="66" y="32" width="18" height="10" stroke="white" strokeWidth="0.7" strokeOpacity="0.28"/>
+      <path d="M71 37 L79 37 M76 34.5 L79 37 L76 39.5" stroke="white" strokeWidth="0.8" strokeOpacity="0.35" strokeLinecap="round" fill="none"/>
+    </svg>
+  );
+}
+
+function IllustrationIterative() {
+  return (
+    <svg width="90" height="52" viewBox="0 0 90 52" fill="none">
+      <rect x="2" y="6" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.35"/>
+      <path d="M2 18 L7 12 L12 17 L17 11 L24 14" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <line x1="26" y1="14" x2="36" y2="14" stroke="white" strokeWidth="0.7" strokeOpacity="0.22"/>
+      <path d="M33 11.5 L36 14 L33 16.5" stroke="white" strokeWidth="0.7" strokeOpacity="0.22" fill="none"/>
+      <rect x="38" y="6" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.28"/>
+      <path d="M38 18 L44 11 L50 17 L56 10 L60 13" stroke="white" strokeWidth="0.6" strokeOpacity="0.15"/>
+      <line x1="62" y1="14" x2="70" y2="14" stroke="white" strokeWidth="0.7" strokeOpacity="0.18"/>
+      <circle cx="74" cy="14" r="1.5" fill="white" fillOpacity="0.2"/>
+      <circle cx="79" cy="14" r="1.5" fill="white" fillOpacity="0.15"/>
+      <path d="M60 26 C68 38 16 40 6 26" stroke="white" strokeWidth="0.7" strokeOpacity="0.2" fill="none"/>
+      <path d="M3.5 23.5 L6 26 L8.5 24" stroke="white" strokeWidth="0.7" strokeOpacity="0.2" fill="none"/>
+      <rect x="2" y="42" width="48" height="8" stroke="white" strokeWidth="0.6" strokeOpacity="0.22"/>
+      <line x1="8" y1="45" x2="8" y2="49" stroke="white" strokeWidth="1" strokeOpacity="0.28"/>
+    </svg>
+  );
+}
+
+function IllustrationBatch() {
+  return (
+    <svg width="90" height="52" viewBox="0 0 90 52" fill="none">
+      <rect x="2" y="2" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.4"/>
+      <path d="M2 14 L6 9 L11 13 L17 8 L24 11" stroke="white" strokeWidth="0.6" strokeOpacity="0.2"/>
+      <rect x="34" y="2" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.3"/>
+      <path d="M34 14 L40 8 L46 13 L52 7 L56 10" stroke="white" strokeWidth="0.6" strokeOpacity="0.15"/>
+      <rect x="66" y="2" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.2"/>
+      <path d="M66 14 L72 9 L77 13 L82 8 L88 11" stroke="white" strokeWidth="0.6" strokeOpacity="0.1"/>
+      <line x1="13" y1="20" x2="13" y2="30" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <line x1="45" y1="20" x2="45" y2="26" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <line x1="77" y1="20" x2="77" y2="30" stroke="white" strokeWidth="0.6" strokeOpacity="0.15"/>
+      <line x1="13" y1="30" x2="77" y2="30" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <line x1="45" y1="30" x2="45" y2="38" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <rect x="34" y="38" width="22" height="10" rx="1" stroke="white" strokeWidth="0.7" strokeOpacity="0.3"/>
+      <line x1="37" y1="38" x2="37" y2="48" stroke="white" strokeWidth="0.5" strokeOpacity="0.18"/>
+      <line x1="53" y1="38" x2="53" y2="48" stroke="white" strokeWidth="0.5" strokeOpacity="0.18"/>
+      <rect x="38" y="40" width="12" height="5" stroke="white" strokeWidth="0.5" strokeOpacity="0.22"/>
+    </svg>
+  );
+}
+
+const STEP_ILLUSTRATIONS = [IllustrationRefs, IllustrationIterative, IllustrationBatch];
+
 export default function App() {
   const [prompt, setPrompt] = useState('');
   const [images, setImages] = useState<AttachedImage[]>([]);
@@ -508,15 +568,21 @@ export default function App() {
                   title: 'Batch & Persistence',
                   body: 'Select ×2 to ×4 to run parallel variations of the same prompt simultaneously. Your session — history, references, and prompt — survives page reloads. Open any carousel card to download, copy its prompt, or reference it in the next generation.',
                 },
-              ].map(({ index, title, body }) => (
+              ].map(({ index, title, body }, i) => {
+                const Illus = STEP_ILLUSTRATIONS[i];
+                return (
                 <div key={index} className="flex flex-col gap-3 max-w-[220px]">
+                  <div className="mb-1 opacity-75">
+                    <Illus />
+                  </div>
                   <div className="flex items-baseline gap-3">
                     <span className="text-[10px] text-white/20 font-mono tracking-widest">{index}</span>
                     <span className="text-[11px] uppercase tracking-[0.15em] text-white/40 font-bold">{title}</span>
                   </div>
                   <p className="text-[11px] text-white/20 leading-relaxed">{body}</p>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
