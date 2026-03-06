@@ -43,15 +43,15 @@ const COLORS = [
 function IllustrationRefs() {
   return (
     <svg width="90" height="52" viewBox="0 0 90 52" fill="none">
-      <rect x="2" y="2" width="26" height="20" stroke="white" strokeWidth="0.8" strokeOpacity="0.3"/>
-      <path d="M2 17 L8 11 L14 16 L21 9 L28 13" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
-      <circle cx="7" cy="7" r="2.5" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
-      <rect x="32" y="7" width="18" height="10" rx="1" stroke="white" strokeWidth="0.6" strokeOpacity="0.35"/>
-      <text x="35" y="14.5" fill="white" fillOpacity="0.4" fontSize="7" fontFamily="monospace">@1</text>
-      <rect x="2" y="32" width="60" height="10" stroke="white" strokeWidth="0.7" strokeOpacity="0.28"/>
-      <line x1="9" y1="35" x2="9" y2="41" stroke="white" strokeWidth="1.2" strokeOpacity="0.35"/>
-      <rect x="66" y="32" width="18" height="10" stroke="white" strokeWidth="0.7" strokeOpacity="0.28"/>
-      <path d="M71 37 L79 37 M76 34.5 L79 37 L76 39.5" stroke="white" strokeWidth="0.8" strokeOpacity="0.35" strokeLinecap="round" fill="none"/>
+      <rect x="2" y="2" width="26" height="20" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.3"/>
+      <path d="M2 17 L8 11 L14 16 L21 9 L28 13" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <rect x="32" y="7" width="18" height="10" rx="1" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.35"/>
+      <text x="35" y="14.5" fill="currentColor" fillOpacity="0.4" fontSize="7" fontFamily="monospace">@1</text>
+      <rect x="2" y="32" width="60" height="10" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.28"/>
+      <line x1="9" y1="35" x2="9" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.35"/>
+      <rect x="66" y="32" width="18" height="10" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.28"/>
+      <path d="M71 37 L79 37 M76 34.5 L79 37 L76 39.5" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.35" strokeLinecap="round" fill="none"/>
     </svg>
   );
 }
@@ -59,19 +59,19 @@ function IllustrationRefs() {
 function IllustrationIterative() {
   return (
     <svg width="90" height="52" viewBox="0 0 90 52" fill="none">
-      <rect x="2" y="6" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.35"/>
-      <path d="M2 18 L7 12 L12 17 L17 11 L24 14" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
-      <line x1="26" y1="14" x2="36" y2="14" stroke="white" strokeWidth="0.7" strokeOpacity="0.22"/>
-      <path d="M33 11.5 L36 14 L33 16.5" stroke="white" strokeWidth="0.7" strokeOpacity="0.22" fill="none"/>
-      <rect x="38" y="6" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.28"/>
-      <path d="M38 18 L44 11 L50 17 L56 10 L60 13" stroke="white" strokeWidth="0.6" strokeOpacity="0.15"/>
-      <line x1="62" y1="14" x2="70" y2="14" stroke="white" strokeWidth="0.7" strokeOpacity="0.18"/>
-      <circle cx="74" cy="14" r="1.5" fill="white" fillOpacity="0.2"/>
-      <circle cx="79" cy="14" r="1.5" fill="white" fillOpacity="0.15"/>
-      <path d="M60 26 C68 38 16 40 6 26" stroke="white" strokeWidth="0.7" strokeOpacity="0.2" fill="none"/>
-      <path d="M3.5 23.5 L6 26 L8.5 24" stroke="white" strokeWidth="0.7" strokeOpacity="0.2" fill="none"/>
-      <rect x="2" y="42" width="48" height="8" stroke="white" strokeWidth="0.6" strokeOpacity="0.22"/>
-      <line x1="8" y1="45" x2="8" y2="49" stroke="white" strokeWidth="1" strokeOpacity="0.28"/>
+      <rect x="2" y="6" width="22" height="16" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.35"/>
+      <path d="M2 18 L7 12 L12 17 L17 11 L24 14" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <line x1="26" y1="14" x2="36" y2="14" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.22"/>
+      <path d="M33 11.5 L36 14 L33 16.5" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.22" fill="none"/>
+      <rect x="38" y="6" width="22" height="16" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.28"/>
+      <path d="M38 18 L44 11 L50 17 L56 10 L60 13" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.15"/>
+      <line x1="62" y1="14" x2="70" y2="14" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.18"/>
+      <circle cx="74" cy="14" r="1.5" fill="currentColor" fillOpacity="0.2"/>
+      <circle cx="79" cy="14" r="1.5" fill="currentColor" fillOpacity="0.15"/>
+      <path d="M60 26 C68 38 16 40 6 26" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.2" fill="none"/>
+      <path d="M3.5 23.5 L6 26 L8.5 24" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.2" fill="none"/>
+      <rect x="2" y="42" width="48" height="8" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.22"/>
+      <line x1="8" y1="45" x2="8" y2="49" stroke="currentColor" strokeWidth="1" strokeOpacity="0.28"/>
     </svg>
   );
 }
@@ -79,21 +79,21 @@ function IllustrationIterative() {
 function IllustrationBatch() {
   return (
     <svg width="90" height="52" viewBox="0 0 90 52" fill="none">
-      <rect x="2" y="2" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.4"/>
-      <path d="M2 14 L6 9 L11 13 L17 8 L24 11" stroke="white" strokeWidth="0.6" strokeOpacity="0.2"/>
-      <rect x="34" y="2" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.3"/>
-      <path d="M34 14 L40 8 L46 13 L52 7 L56 10" stroke="white" strokeWidth="0.6" strokeOpacity="0.15"/>
-      <rect x="66" y="2" width="22" height="16" stroke="white" strokeWidth="0.8" strokeOpacity="0.2"/>
-      <path d="M66 14 L72 9 L77 13 L82 8 L88 11" stroke="white" strokeWidth="0.6" strokeOpacity="0.1"/>
-      <line x1="13" y1="20" x2="13" y2="30" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
-      <line x1="45" y1="20" x2="45" y2="26" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
-      <line x1="77" y1="20" x2="77" y2="30" stroke="white" strokeWidth="0.6" strokeOpacity="0.15"/>
-      <line x1="13" y1="30" x2="77" y2="30" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
-      <line x1="45" y1="30" x2="45" y2="38" stroke="white" strokeWidth="0.6" strokeOpacity="0.18"/>
-      <rect x="34" y="38" width="22" height="10" rx="1" stroke="white" strokeWidth="0.7" strokeOpacity="0.3"/>
-      <line x1="37" y1="38" x2="37" y2="48" stroke="white" strokeWidth="0.5" strokeOpacity="0.18"/>
-      <line x1="53" y1="38" x2="53" y2="48" stroke="white" strokeWidth="0.5" strokeOpacity="0.18"/>
-      <rect x="38" y="40" width="12" height="5" stroke="white" strokeWidth="0.5" strokeOpacity="0.22"/>
+      <rect x="2" y="2" width="22" height="16" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.4"/>
+      <path d="M2 14 L6 9 L11 13 L17 8 L24 11" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.2"/>
+      <rect x="34" y="2" width="22" height="16" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.3"/>
+      <path d="M34 14 L40 8 L46 13 L52 7 L56 10" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.15"/>
+      <rect x="66" y="2" width="22" height="16" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2"/>
+      <path d="M66 14 L72 9 L77 13 L82 8 L88 11" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.1"/>
+      <line x1="13" y1="20" x2="13" y2="30" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <line x1="45" y1="20" x2="45" y2="26" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <line x1="77" y1="20" x2="77" y2="30" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.15"/>
+      <line x1="13" y1="30" x2="77" y2="30" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <line x1="45" y1="30" x2="45" y2="38" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.18"/>
+      <rect x="34" y="38" width="22" height="10" rx="1" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.3"/>
+      <line x1="37" y1="38" x2="37" y2="48" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.18"/>
+      <line x1="53" y1="38" x2="53" y2="48" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.18"/>
+      <rect x="38" y="40" width="12" height="5" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.22"/>
     </svg>
   );
 }
@@ -507,7 +507,7 @@ export default function App() {
       <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center p-6 font-mono">
         <div className="max-w-md w-full bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-8 flex flex-col items-center text-center gap-6">
           <div className="w-16 h-16 bg-[#a0a0a0]/10 border border-[var(--app-border)] flex items-center justify-center">
-            <Key className="text-[#a0a0a0]" size={32} />
+            <Key className="text-[var(--app-text-muted)]" size={32} />
           </div>
           <div className="space-y-4">
             <h1 className="text-sm uppercase tracking-[0.3em] font-bold text-[var(--app-text)]">Access Restricted</h1>
@@ -530,7 +530,7 @@ export default function App() {
 
   return (
     <div
-      className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)] flex flex-col p-4 md:p-8 selection:bg-[#444] selection:text-[var(--app-text)] font-mono"
+      className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)] flex flex-col p-4 md:p-8 selection:bg-[var(--app-border)] selection:text-[var(--app-text)] font-mono"
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
@@ -550,7 +550,7 @@ export default function App() {
       </header>
 
       {/* Timeline Carousel */}
-      <div className="-mx-4 md:-mx-8 relative h-[600px] flex items-center overflow-hidden border-t border-[#282828] pt-8 mt-8 order-2">
+      <div className="-mx-4 md:-mx-8 relative h-[600px] flex items-center overflow-hidden border-t border-[var(--app-border)] pt-8 mt-8 order-2">
           {history.length === 0 && !isGenerating && !error && (
             <div className="w-full flex items-start justify-center gap-16 px-12">
               {[
@@ -622,9 +622,9 @@ export default function App() {
                 >
                   {/* Generating state — inline spinner card */}
                   {item.status === 'generating' && (
-                    <div className="bg-[var(--app-bg)]/50 border border-[#222] flex flex-col items-center justify-center w-full" style={{ aspectRatio: (item.aspectRatio ?? '1:1').replace(':', '/'), maxHeight: isActive ? 520 : 200, minHeight: isActive ? undefined : 80 }}>
+                    <div className="bg-[var(--app-bg)]/50 border border-[var(--app-border)] flex flex-col items-center justify-center w-full" style={{ aspectRatio: (item.aspectRatio ?? '1:1').replace(':', '/'), maxHeight: isActive ? 520 : 200, minHeight: isActive ? undefined : 80 }}>
                       <svg width="140" height="140" viewBox="0 0 140 140" className="overflow-visible">
-                        <circle cx="70" cy="70" r="20" fill="white" style={{ animation: 'nb-glow-pulse 3s ease-in-out infinite' }} />
+                        <circle cx="70" cy="70" r="20" fill="currentColor" style={{ animation: 'nb-glow-pulse 3s ease-in-out infinite' }} />
                         <g style={{ transformOrigin: '70px 70px', animation: 'nb-spin 20s linear infinite' }}>
                           <circle cx="70" cy="70" r="62" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" strokeDasharray="4 6" style={{ animation: 'nb-dash 2s linear infinite' }} />
                         </g>
@@ -638,14 +638,14 @@ export default function App() {
                         ].map((b, i) => (
                           <g key={i} style={{ transformOrigin: '70px 70px', animation: `${b.anim} ${b.dur} linear infinite` }}>
                             <g transform={`translate(${70 - 12 * b.scale},${70 - 12 * b.scale}) scale(${b.scale})`}
-                              opacity={b.opacity} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              opacity={b.opacity} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
                               <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
                             </g>
                           </g>
                         ))}
                         <circle cx="70" cy="70" r="18" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5" style={{ animation: 'nb-core-pulse 3s ease-in-out infinite' }} />
-                        <g transform="translate(62,62) scale(0.65)" opacity="0.8" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <g transform="translate(62,62) scale(0.65)" opacity="0.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5" />
                           <path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z" />
                         </g>
@@ -716,7 +716,7 @@ export default function App() {
                         <span>{item.stats ? `${(item.stats.time / 1000).toFixed(2)}s` : ''}</span>
                       </div>
                       <div className="flex items-start gap-2 group/prompt">
-                        <div className="text-[12px] text-[#888] line-clamp-2 italic flex-1">"{item.prompt}"</div>
+                        <div className="text-[12px] text-[var(--app-text-muted)] line-clamp-2 italic flex-1">"{item.prompt}"</div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -724,7 +724,7 @@ export default function App() {
                             setCopiedId(item.id);
                             setTimeout(() => setCopiedId(null), 1500);
                           }}
-                          className="shrink-0 p-1 text-[#555] hover:text-[var(--app-text)] transition-colors opacity-0 group-hover/prompt:opacity-100"
+                          className="shrink-0 p-1 text-[var(--app-text-muted)] hover:text-[var(--app-text)] transition-colors opacity-0 group-hover/prompt:opacity-100"
                           title="Copy prompt"
                         >
                           {copiedId === item.id ? <Check size={13} /> : <Copy size={13} />}
@@ -743,7 +743,7 @@ export default function App() {
         {/* Interaction Area */}
         <div className="relative">
           {/* Settings Bar */}
-          <div className="flex flex-wrap gap-8 mb-6 border-b border-[#282828] pb-4">
+          <div className="flex flex-wrap gap-8 mb-6 border-b border-[var(--app-border)] pb-4">
             <div className="flex flex-col gap-2">
               <span className="text-[11px] uppercase tracking-widest text-[var(--app-text-muted)]">Aspect Ratio</span>
               <div className="flex flex-wrap gap-2">
@@ -834,7 +834,7 @@ export default function App() {
           </div>
 
           {/* Prompt Input */}
-          <div className="border border-[var(--app-border)] bg-[#080808] focus-within:border-[#444] transition-colors relative">
+          <div className="border border-[var(--app-border)] bg-[var(--app-bg)] focus-within:border-[var(--app-text-muted)] transition-colors relative">
             {/* Textarea + highlight overlay scoped together */}
             <div className="relative">
               {/* Syntax highlight overlay */}
@@ -848,7 +848,7 @@ export default function App() {
                     const img = images.find(img => img.id === part.substring(1));
                     if (img) return <span key={i} style={{ color: img.color }}>{part}</span>;
                   }
-                  return <span key={i} className="text-[#a0a0a0]">{part}</span>;
+                  return <span key={i} className="text-[var(--app-text-muted)]">{part}</span>;
                 })}
                 {prompt.endsWith('\n') ? ' ' : ''}
               </div>
@@ -861,7 +861,7 @@ export default function App() {
                 onScroll={syncScroll}
                 onPaste={handlePaste}
                 placeholder="Enter prompt... Use @ID to reference images. Ctrl+Enter to generate."
-                className="w-full h-32 p-4 bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:text-[#555] relative z-10 caret-[#a0a0a0] text-transparent selection:bg-[#333] selection:text-[var(--app-text)]"
+                className="w-full h-32 p-4 bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:text-[var(--app-text-muted)] relative z-10 caret-[var(--app-text-muted)] text-transparent selection:bg-[var(--app-border)] selection:text-[var(--app-text)]"
                 style={{ WebkitTextFillColor: 'transparent' }}
               />
             </div>
@@ -869,17 +869,17 @@ export default function App() {
             {/* Mention menu */}
             {mentionMenu.isOpen && (
               <div
-                className="absolute z-30 bg-[#0a0a0a] border border-[var(--app-border)] w-48 max-h-48 overflow-auto shadow-2xl"
+                className="absolute z-30 bg-[var(--app-bg)] border border-[var(--app-border)] w-48 max-h-48 overflow-auto shadow-2xl"
                 style={{ left: mentionMenu.x, top: mentionMenu.y }}
               >
-                <div className="p-2 border-b border-[#282828] text-[10px] uppercase tracking-widest text-[var(--app-text-muted)] flex justify-between">
+                <div className="p-2 border-b border-[var(--app-border)] text-[10px] uppercase tracking-widest text-[var(--app-text-muted)] flex justify-between">
                   <span>Select Reference</span>
                   <span>{images.filter(img => img.id.startsWith(mentionMenu.filter)).length} found</span>
                 </div>
                 {images.filter(img => img.id.startsWith(mentionMenu.filter)).map((img, index) => (
                   <div
                     key={img.id}
-                    className={`flex items-center gap-3 p-2 cursor-pointer transition-colors ${index === mentionMenu.selectedIndex ? 'bg-[var(--app-bg-elevated)] text-[var(--app-text)]' : 'hover:bg-[#050505]'}`}
+                    className={`flex items-center gap-3 p-2 cursor-pointer transition-colors ${index === mentionMenu.selectedIndex ? 'bg-[var(--app-bg-elevated)] text-[var(--app-text)]' : 'hover:bg-[var(--app-bg)]'}`}
                     onClick={() => selectMention(img.id)}
                     onMouseEnter={() => setMentionMenu(prev => ({ ...prev, selectedIndex: index }))}
                   >
@@ -893,12 +893,12 @@ export default function App() {
                   </div>
                 ))}
                 {images.filter(img => img.id.startsWith(mentionMenu.filter)).length === 0 && (
-                  <div className="p-4 text-[10px] text-[#555] uppercase text-center">No matches</div>
+                  <div className="p-4 text-[10px] text-[var(--app-text-muted)] uppercase text-center">No matches</div>
                 )}
               </div>
             )}
 
-            <div className="flex justify-between items-center p-2 border-t border-[#282828] relative z-20">
+            <div className="flex justify-between items-center p-2 border-t border-[var(--app-border)] relative z-20">
               <div className="flex gap-2">
                 {/* Hub upload (from history/library) */}
                 {isHubEnv() && (
@@ -954,7 +954,7 @@ export default function App() {
               <button
                 onClick={handleExecute}
                 disabled={activeGenerations + batchSize > MAX_CONCURRENT || (!prompt.trim() && images.length === 0)}
-                className="flex items-center gap-2 px-6 py-2 bg-[#a0a0a0] text-black text-[12px] font-bold uppercase tracking-widest hover:bg-white disabled:bg-[#222] disabled:text-[#444] transition-all"
+                className="flex items-center gap-2 px-6 py-2 bg-[#a0a0a0] text-black text-[12px] font-bold uppercase tracking-widest hover:bg-white disabled:bg-[#222] disabled:text-[var(--app-text-muted)] transition-all"
               >
                 {activeGenerations > 0
                   ? `Execute ×${batchSize} (${activeGenerations}/${MAX_CONCURRENT})`
@@ -973,7 +973,7 @@ export default function App() {
         )}
 
         {!isEmbedMode() && (
-          <footer className="mt-auto pt-8 flex justify-between items-end text-[10px] uppercase tracking-[0.3em] text-[#555]">
+          <footer className="mt-auto pt-8 flex justify-between items-end text-[10px] uppercase tracking-[0.3em] text-[var(--app-text-muted)]">
             <div>Model: Gemini 3.1 Flash Image</div>
             <div>Status: Operational // {new Date().toLocaleTimeString()}</div>
           </footer>
@@ -987,7 +987,7 @@ export default function App() {
           onClick={() => setViewingImage(null)}
         >
           <div className="relative max-w-5xl w-full max-h-full flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
-            <button className="absolute -top-8 right-0 text-[#444] hover:text-[var(--app-text)] transition-colors" onClick={() => setViewingImage(null)}>
+            <button className="absolute -top-8 right-0 text-[var(--app-text-muted)] hover:text-[var(--app-text)] transition-colors" onClick={() => setViewingImage(null)}>
               <X size={24} />
             </button>
             <div className="p-1 bg-[var(--app-bg)] border" style={{ borderColor: viewingImage.color }}>
