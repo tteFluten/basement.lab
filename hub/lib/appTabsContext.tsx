@@ -71,7 +71,9 @@ export function AppTabsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const activeSlug =
-    pathname?.startsWith("/apps/") ? (pathname.split("/")[2] ?? null) : null;
+    pathname?.startsWith("/apps/") && !pathname.startsWith("/apps/feedback")
+      ? (pathname.split("/")[2] ?? null)
+      : null;
 
   const openTab = useCallback(
     (slug: string, label: string, url: string) => {

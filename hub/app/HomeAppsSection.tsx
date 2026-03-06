@@ -17,7 +17,7 @@ const IMAGE_APPS = [
 ];
 
 const TOOL_APPS = [
-  { slug: "feedback", label: "MonoFeedback", desc: "Video annotation and timestamped feedback", Icon: Video, span: "col-span-1 row-span-1", cover: null },
+  { slug: "feedback", label: "MonoFeedback", desc: "Video annotation and timestamped feedback", Icon: Video, span: "col-span-2 row-span-1", cover: null },
 ];
 
 const BANANA_COLS = [
@@ -101,10 +101,23 @@ export function HomeAppsSection() {
               </div>
             </Link>
           ))}
-          <div className="col-span-full flex items-center gap-3 py-1">
-            <span className="text-xs font-bold text-fg-muted uppercase tracking-[0.2em]">Tools</span>
-            <span className="flex-1 h-px bg-border" />
-          </div>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="col-span-1 row-span-1 flex flex-col items-center justify-center gap-2 border border-dashed border-border hover:border-fg-muted hover:bg-bg-muted/30 transition-all duration-300 text-fg-muted hover:text-fg"
+            aria-label="Add application"
+          >
+            <Plus className="w-8 h-8" strokeWidth={1.5} />
+            <span className="text-xs font-medium">Add app</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 mt-4 mb-3">
+          <span className="text-xs font-bold text-fg-muted uppercase tracking-[0.2em]">Tools</span>
+          <span className="flex-1 h-px bg-border" />
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 auto-rows-[140px] sm:auto-rows-[160px] md:auto-rows-[180px] gap-3">
           {TOOL_APPS.map(({ slug, label, desc, Icon, span, cover }) => (
             <Link
               key={slug}
@@ -129,12 +142,12 @@ export function HomeAppsSection() {
           ))}
           <button
             type="button"
-            onClick={() => setModalOpen(true)}
-            className="col-span-1 row-span-1 flex flex-col items-center justify-center gap-2 border border-dashed border-border hover:border-fg-muted hover:bg-bg-muted/30 transition-all duration-300 text-fg-muted hover:text-fg"
-            aria-label="Add application"
+            disabled
+            className="col-span-1 row-span-1 flex flex-col items-center justify-center gap-2 border border-dashed border-border opacity-30 cursor-not-allowed text-fg-muted"
+            aria-label="Add tool"
           >
             <Plus className="w-8 h-8" strokeWidth={1.5} />
-            <span className="text-xs font-medium">Add app</span>
+            <span className="text-xs font-medium">Add tool</span>
           </button>
         </div>
       </section>

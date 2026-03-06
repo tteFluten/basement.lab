@@ -486,14 +486,14 @@ export function Toolbar() {
         <Link
           href="/apps/feedback"
           title="MonoFeedback"
-          className={`p-1.5 shrink-0 ${pathname === "/apps/feedback" ? "text-fg border-b border-fg" : "text-fg-muted hover:text-fg"}`}
+          className={`p-1.5 shrink-0 transition-colors ${pathname?.startsWith("/apps/feedback") ? "text-fg bg-bg border border-border" : "text-fg-muted hover:text-fg"}`}
         >
           <Video size={iconSize} strokeWidth={1.5} />
         </Link>
         <Link
           href="/history"
           title="History"
-          className="p-1.5 text-fg-muted hover:text-fg shrink-0"
+          className={`p-1.5 shrink-0 transition-colors ${pathname === "/history" ? "text-fg bg-bg border border-border" : "text-fg-muted hover:text-fg"}`}
         >
           <History size={iconSize} strokeWidth={1.5} />
         </Link>
@@ -502,7 +502,7 @@ export function Toolbar() {
           <Link
             href="/admin"
             title="Admin"
-            className="p-1.5 text-fg-muted hover:text-fg shrink-0"
+            className={`p-1.5 shrink-0 transition-colors ${pathname?.startsWith("/admin") ? "text-fg bg-bg border border-border" : "text-fg-muted hover:text-fg"}`}
           >
             <Shield size={iconSize} strokeWidth={1.5} />
           </Link>
