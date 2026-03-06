@@ -1,8 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Clock, Edit2, Trash2, Check, X, PenTool, MessageSquare } from "lucide-react";
-import type { FeedbackComment } from "@/lib/feedback/types";
+import type { FeedbackComment, DrawingPath } from "@/lib/feedback/types";
+
+function DrawingThumb({ paths }: { paths: DrawingPath[] }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || paths.length === 0) return;
+
+    // Find bounding box of all points
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const path of paths) {
+      for (const pt of path.points) {
+        if (pt.x < minX) minX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y > maxY) maxY = pt.y;
+      }
+    }
+
+    const pad = 8;
+    const srcW = maxX - minX || 1;
+    const srcH = maxY - minY || 1;
+    const scale = Math.min((canvas.width - pad * 2) / srcW, (canvas.height - pad * 2) / srcH);
+    const offX = pad + (canvas.width - pad * 2 - srcW * scale) / 2 - minX * scale;
+    const offY = pad + (canvas.height - pad * 2 - srcH * scale) / 2 - minY * scale;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const path of paths) {
+      if (path.points.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(path.points[0].x * scale + offX, path.points[0].y * scale + offY);
+      for (let i = 1; i < path.points.length; i++) {
+        ctx.lineTo(path.points[i].x * scale + offX, path.points[i].y * scale + offY);
+      }
+      ctx.strokeStyle = path.color;
+      ctx.lineWidth = Math.max(1.5, path.width * scale);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    }
+  }, [paths]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={220}
+      height={100}
+      className="w-full border border-border bg-black/40"
+      style={{ maxHeight: 100 }}
+    />
+  );
+}
 
 interface CommentListProps {
   comments: FeedbackComment[];
@@ -85,11 +138,6 @@ export function CommentList({ comments, currentUserId, anonToken, onCommentClick
                       <span className="tabular-nums">{formatTime(c.timestampS)}</span>
                     </button>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {c.drawing && (
-                        <span title="Has annotation" className="p-1 text-fg-muted/60">
-                          <PenTool size={11} />
-                        </span>
-                      )}
                       {owner && !isEditing && (
                         <>
                           <button
@@ -144,6 +192,13 @@ export function CommentList({ comments, currentUserId, anonToken, onCommentClick
                         <p className="text-[13px] text-fg-muted font-mono italic mb-2.5">Annotation only</p>
                       )}
                     </>
+                  )}
+
+                  {/* Drawing thumbnail */}
+                  {c.drawing && Array.isArray(c.drawing) && c.drawing.length > 0 && (
+                    <div className="mb-2.5">
+                      <DrawingThumb paths={c.drawing} />
+                    </div>
                   )}
 
                   {/* Author */}
