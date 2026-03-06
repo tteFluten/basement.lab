@@ -234,63 +234,94 @@ export default function ProjectPage() {
 
       {/* Upload form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 border border-border bg-bg-muted">
-          <div className="flex flex-col gap-3 p-4">
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Session title"
-              autoFocus
-              disabled={uploading}
-              className="bg-bg border border-border px-3 py-2 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50"
-            />
+        <form onSubmit={handleCreate} className="mb-8 border border-border">
+          {/* Fields */}
+          <div className="flex flex-col gap-4 p-6">
+            {/* Title */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Session title</label>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="e.g. Homepage review — March"
+                autoFocus
+                disabled={uploading}
+                className="bg-bg border border-border px-4 py-3 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/50"
+              />
+            </div>
 
             {/* File picker */}
             {!uploading && (
-              <label className={`flex items-center gap-2 px-3 py-2 border border-dashed text-xs font-mono transition-colors cursor-pointer ${
-                selectedFile ? "border-fg-muted text-fg" : "border-border text-fg-muted hover:text-fg hover:border-fg-muted"
-              }`}>
-                <Video size={14} className="shrink-0" />
-                <span className="truncate flex-1">
-                  {selectedFile
-                    ? `${selectedFile.name} — ${formatSize(selectedFile.size)}`
-                    : `Choose video — MP4, WebM, MOV · max ${MAX_VIDEO_MB}MB`}
-                </span>
-                {selectedFile && (
-                  <span
-                    role="button"
-                    onClick={(e) => { e.preventDefault(); setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}
-                    className="text-fg-muted hover:text-fg shrink-0"
-                  >
-                    <X size={12} />
-                  </span>
-                )}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="video/mp4,video/webm,video/quicktime"
-                  onChange={(e) => { setSelectedFile(e.target.files?.[0] ?? null); setUploadError(null); }}
-                  className="hidden"
-                />
-              </label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Video file</label>
+                <label className={`relative flex flex-col items-center justify-center gap-3 py-8 border border-dashed transition-colors cursor-pointer ${
+                  selectedFile
+                    ? "border-fg-muted bg-bg-muted"
+                    : "border-border hover:border-fg-muted hover:bg-bg-muted/50"
+                }`}>
+                  {selectedFile ? (
+                    <>
+                      <Video size={28} strokeWidth={1.5} className="text-fg" />
+                      <div className="text-center">
+                        <p className="text-sm font-mono text-fg truncate max-w-xs px-4">{selectedFile.name}</p>
+                        <p className="text-xs font-mono text-fg-muted mt-1">{formatSize(selectedFile.size)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+                        className="absolute top-3 right-3 p-1 text-fg-muted hover:text-fg transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Video size={28} strokeWidth={1} className="text-fg-muted opacity-60" />
+                      <div className="text-center">
+                        <p className="text-sm font-mono text-fg-muted">Choose a video file</p>
+                        <p className="text-xs text-fg-muted/60 mt-1">MP4, WebM or MOV · max {MAX_VIDEO_MB} MB</p>
+                      </div>
+                    </>
+                  )}
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    onChange={(e) => { setSelectedFile(e.target.files?.[0] ?? null); setUploadError(null); }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             )}
 
-            {/* Progress bar */}
+            {/* Progress */}
             {uploading && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-fg-muted">{stageLabel}</span>
-                  <div className="flex items-center gap-3 text-fg-muted">
-                    {uploadSpeed && uploadStage === "uploading" && <span>{uploadSpeed}</span>}
-                    {selectedFile && <span>{formatSize(selectedFile.size)}</span>}
+              <div className="flex flex-col gap-4 py-2">
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-3xl font-mono font-bold text-fg tabular-nums leading-none">
+                      {uploadStage === "preparing" ? "—"
+                        : uploadStage === "saving" ? "100"
+                        : uploadPercent}
+                      {uploadStage !== "preparing" && <span className="text-lg text-fg-muted ml-0.5">%</span>}
+                    </p>
+                    <p className="text-xs font-mono text-fg-muted mt-1">{stageLabel}</p>
+                  </div>
+                  <div className="text-right">
+                    {uploadSpeed && uploadStage === "uploading" && (
+                      <p className="text-sm font-mono text-fg">{uploadSpeed}</p>
+                    )}
+                    {selectedFile && (
+                      <p className="text-xs font-mono text-fg-muted mt-0.5">{formatSize(selectedFile.size)}</p>
+                    )}
                   </div>
                 </div>
-                <div className="h-0.5 bg-border overflow-hidden">
+                <div className="h-1.5 bg-border overflow-hidden rounded-full">
                   <div
-                    className="h-full bg-fg transition-all duration-200 ease-out"
+                    className="h-full bg-fg transition-all duration-300 ease-out rounded-full"
                     style={{
-                      width: uploadStage === "preparing" ? "4%" :
+                      width: uploadStage === "preparing" ? "3%" :
                              uploadStage === "saving"    ? "100%" :
                              `${uploadPercent}%`,
                     }}
@@ -300,27 +331,30 @@ export default function ProjectPage() {
             )}
 
             {uploadError && (
-              <p className="text-xs font-mono text-red-400">{uploadError}</p>
+              <p className="text-sm font-mono text-red-400 flex items-center gap-2">
+                <X size={14} className="shrink-0" />
+                {uploadError}
+              </p>
             )}
           </div>
 
           {/* Actions */}
-          <div className="flex gap-0 border-t border-border">
+          <div className="flex border-t border-border">
             <button
               type="button"
               onClick={() => { setShowForm(false); resetForm(); }}
               disabled={uploading}
-              className="flex-1 py-2 text-xs font-mono uppercase text-fg-muted hover:text-fg hover:bg-bg border-r border-border transition-colors disabled:opacity-40"
+              className="flex-1 py-3 text-xs font-mono uppercase text-fg-muted hover:text-fg hover:bg-bg-muted border-r border-border transition-colors disabled:opacity-40"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={uploading || !newTitle.trim()}
-              className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
+              className="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
             >
               {uploading
-                ? <><Loader2 size={12} className="animate-spin" /> {stageLabel}</>
+                ? <><Loader2 size={13} className="animate-spin" /> {stageLabel}</>
                 : "Create session"}
             </button>
           </div>
