@@ -12,30 +12,30 @@ const APPS = [
   { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock, span: "col-span-1 row-span-1", cover: "/app-covers/chronos.jpg" },
   { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt, span: "col-span-1 row-span-1", cover: "/app-covers/swag.jpg" },
   { slug: "avatar", label: "Avatar", desc: "Corporate avatar standardization", Icon: UserCircle, span: "col-span-1 row-span-1", cover: "/app-covers/avatar.jpg" },
-  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-1 row-span-1", cover: "/app-covers/avatar.jpg" },
+  { slug: "frame-variator", label: "Frame Variator", desc: "Camera and narrative frame variations", Icon: Layers, span: "col-span-1 row-span-1", cover: "/app-covers/chronos.jpg" },
   { slug: "cineprompt", label: "CinePrompt", desc: "Create images with a concrete style", Icon: Film, span: "col-span-1 row-span-1", cover: "/app-covers/cineprompt.jpg" },
 ];
 
 const BANANA_COLS = [
-  { left: '4%',  dur: '6s',   delay: '0s',    opacity: 0.07, size: 12 },
-  { left: '11%', dur: '8s',   delay: '-2.1s', opacity: 0.05, size: 10 },
-  { left: '18%', dur: '5.5s', delay: '-4.8s', opacity: 0.08, size: 13 },
-  { left: '25%', dur: '7s',   delay: '-1.3s', opacity: 0.06, size: 11 },
-  { left: '32%', dur: '9s',   delay: '-6.2s', opacity: 0.07, size: 12 },
-  { left: '39%', dur: '6.5s', delay: '-3.5s', opacity: 0.05, size: 10 },
-  { left: '46%', dur: '7.5s', delay: '-0.7s', opacity: 0.08, size: 13 },
-  { left: '53%', dur: '5s',   delay: '-5.1s', opacity: 0.06, size: 11 },
-  { left: '60%', dur: '8.5s', delay: '-2.9s', opacity: 0.07, size: 12 },
-  { left: '67%', dur: '6s',   delay: '-4.4s', opacity: 0.05, size: 10 },
-  { left: '74%', dur: '7s',   delay: '-1.8s', opacity: 0.08, size: 13 },
-  { left: '81%', dur: '9.5s', delay: '-7s',   opacity: 0.06, size: 11 },
-  { left: '88%', dur: '5.5s', delay: '-3.3s', opacity: 0.07, size: 12 },
+  { left: '4%',  dur: '6s',   delay: '0s',    opacity: 0.07, size: 60 },
+  { left: '11%', dur: '8s',   delay: '-2.1s', opacity: 0.05, size: 50 },
+  { left: '18%', dur: '5.5s', delay: '-4.8s', opacity: 0.08, size: 65 },
+  { left: '25%', dur: '7s',   delay: '-1.3s', opacity: 0.06, size: 55 },
+  { left: '32%', dur: '9s',   delay: '-6.2s', opacity: 0.07, size: 60 },
+  { left: '39%', dur: '6.5s', delay: '-3.5s', opacity: 0.05, size: 50 },
+  { left: '46%', dur: '7.5s', delay: '-0.7s', opacity: 0.08, size: 65 },
+  { left: '53%', dur: '5s',   delay: '-5.1s', opacity: 0.06, size: 55 },
+  { left: '60%', dur: '8.5s', delay: '-2.9s', opacity: 0.07, size: 60 },
+  { left: '67%', dur: '6s',   delay: '-4.4s', opacity: 0.05, size: 50 },
+  { left: '74%', dur: '7s',   delay: '-1.8s', opacity: 0.08, size: 65 },
+  { left: '81%', dur: '9.5s', delay: '-7s',   opacity: 0.06, size: 55 },
+  { left: '88%', dur: '5.5s', delay: '-3.3s', opacity: 0.07, size: 60 },
 ];
 
 function BananaRain() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <style>{`@keyframes nb-fall { from { transform: translateY(-24px); } to { transform: translateY(420px); } }`}</style>
+      <style>{`@keyframes nb-fall { from { transform: translateY(-80px); } to { transform: translateY(500px); } }`}</style>
       {BANANA_COLS.map((b, i) => (
         <div key={i} className="absolute top-0" style={{ left: b.left, opacity: b.opacity, animation: `nb-fall ${b.dur} ${b.delay} linear infinite` }}>
           <Banana size={b.size} strokeWidth={1.5} color="white" />
