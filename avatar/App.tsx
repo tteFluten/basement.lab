@@ -182,16 +182,16 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-400 flex flex-col tracking-tighter text-xs">
+    <div className="min-h-screen bg-[var(--app-bg)] text-zinc-400 flex flex-col tracking-tighter text-xs">
       {/* HEADER */}
-      <header className="border-b border-[#333] px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-[var(--app-border)] px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Terminal size={18} className="text-white" />
-          <h1 className="text-lg font-bold text-white tracking-widest">AVATARFLOW // B_02</h1>
+          <Terminal size={18} className="text-[var(--app-text)]" />
+          <h1 className="text-lg font-bold text-[var(--app-text)] tracking-widest">AVATARFLOW // B_02</h1>
         </div>
 
         <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2 border border-[#333] px-3 py-1">
+          <div className="flex items-center space-x-2 border border-[var(--app-border)] px-3 py-1">
             <ShieldCheck size={12} className={processing.isProcessing ? "text-amber-500" : "text-zinc-500"} />
             <span className="font-bold">{processing.isProcessing ? 'LOCKED' : 'READY'}</span>
           </div>
@@ -202,7 +202,7 @@ const App: React.FC = () => {
             className={`px-6 py-2 font-bold transition-all ${
               processing.isProcessing || !referenceImage || sourceImages.length === 0
                 ? 'bg-[#333] text-zinc-700 cursor-not-allowed'
-                : 'bg-zinc-100 text-black hover:bg-[#111] hover:text-white hover:border-[#333] active:scale-95 border border-[#333]'
+                : 'bg-zinc-100 text-black hover:bg-[var(--app-bg-elevated)] hover:text-[var(--app-text)] hover:border-[var(--app-border)] active:scale-95 border border-[var(--app-border)]'
             }`}
           >
             {processing.isProcessing ? 'EXECUTING...' : 'RUN_BULK'}
@@ -213,14 +213,14 @@ const App: React.FC = () => {
       <main className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1800px] mx-auto w-full">
         {/* SIDEBAR */}
         <div className={`lg:col-span-3 space-y-6 transition-opacity ${processing.isProcessing ? 'opacity-20 pointer-events-none' : ''}`}>
-          <section className="border border-[#333] p-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-[#333] pb-2">
+          <section className="border border-[var(--app-border)] p-4 space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--app-border)] pb-2">
               <span className="font-bold text-zinc-100">MASTER_REF</span>
               <Layout size={14} />
             </div>
             <div 
               onClick={() => !processing.isProcessing && handleReferenceClick()}
-              className={`relative border border-[#333] aspect-square flex flex-col items-center justify-center cursor-pointer hover:bg-[#1a1a1a] transition-colors ${
+              className={`relative border border-[var(--app-border)] aspect-square flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--app-bg-elevated)] transition-colors ${
                 referenceImage ? 'border-zinc-500' : ''
               }`}
             >
@@ -232,15 +232,15 @@ const App: React.FC = () => {
               <input type="file" ref={referenceInputRef} onChange={handleReferenceUpload} className="hidden" accept="image/*" />
             </div>
             {styleManifest && (
-              <div className="bg-[#181818] p-2 border border-[#333]">
+              <div className="bg-[var(--app-bg-elevated)] p-2 border border-[var(--app-border)]">
                 <p className="text-[9px] text-zinc-500 leading-none">DNA_MANIFEST:</p>
                 <p className="text-[9px] mt-1 italic">{styleManifest}</p>
               </div>
             )}
           </section>
 
-          <section className="border border-[#333] p-4 space-y-6">
-            <div className="flex items-center justify-between border-b border-[#333] pb-2">
+          <section className="border border-[var(--app-border)] p-4 space-y-6">
+            <div className="flex items-center justify-between border-b border-[var(--app-border)] pb-2">
               <span className="font-bold text-zinc-100">CONFIGURATION</span>
               <Settings2 size={14} />
             </div>
@@ -248,7 +248,7 @@ const App: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="text-[9px] font-bold text-zinc-600 block mb-1">ASPECT_RATIO</label>
-                <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="w-full bg-[#111] border border-[#333] p-2 outline-none focus:border-zinc-500">
+                <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="w-full bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-2 outline-none focus:border-zinc-500">
                   <option value="1:1">1:1 SQ</option>
                   <option value="4:3">4:3 PT</option>
                   <option value="16:9">16:9 LS</option>
@@ -256,7 +256,7 @@ const App: React.FC = () => {
               </div>
               <div>
                 <label className="text-[9px] font-bold text-zinc-600 block mb-1">ENGINE_RES</label>
-                <select value={quality} onChange={(e) => setQuality(e.target.value as QualityLevel)} className="w-full bg-[#111] border border-[#333] p-2 outline-none focus:border-zinc-500">
+                <select value={quality} onChange={(e) => setQuality(e.target.value as QualityLevel)} className="w-full bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-2 outline-none focus:border-zinc-500">
                   <option value="high">PRO_4K</option>
                   <option value="standard">STD_HD</option>
                 </select>
@@ -265,7 +265,7 @@ const App: React.FC = () => {
                 <label className="text-[9px] font-bold text-zinc-600 block mb-1">GLOBAL_PROMPT</label>
                 <textarea 
                   value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                  className="w-full h-20 bg-[#111] border border-[#333] p-2 outline-none focus:border-zinc-500 resize-none"
+                  className="w-full h-20 bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-2 outline-none focus:border-zinc-500 resize-none"
                 />
               </div>
 
@@ -280,7 +280,7 @@ const App: React.FC = () => {
                   { key: 'matchGraphicDetails', label: 'GRAPHIC_DEETS' },
                 ].map((item) => (
                   <label key={item.key} className="flex items-center justify-between group cursor-pointer">
-                    <span className="text-[10px] group-hover:text-white transition-colors">{item.label}</span>
+                    <span className="text-[10px] group-hover:text-[var(--app-text)] transition-colors">{item.label}</span>
                     <input 
                       type="checkbox" 
                       className="appearance-none w-3 h-3 border border-zinc-700 checked:bg-white transition-all cursor-pointer" 
@@ -296,14 +296,14 @@ const App: React.FC = () => {
 
         {/* WORKSPACE */}
         <div className="lg:col-span-9 flex flex-col relative">
-          <div className="border border-[#333] flex-1 flex flex-col bg-[#111] overflow-hidden relative">
+          <div className="border border-[var(--app-border)] flex-1 flex flex-col bg-[var(--app-bg-elevated)] overflow-hidden relative">
             
             {/* BUSY OVERLAY */}
             {processing.isProcessing && (
-              <div className="absolute inset-0 z-50 bg-[#111]/95 flex flex-col items-center justify-center p-10 border border-[#333]">
-                <div className="max-w-md w-full border border-[#333] p-8 flex flex-col items-center">
-                  <Loader2 className="animate-spin text-white mb-6" size={32} />
-                  <p className="text-white font-bold tracking-[0.4em] mb-4">SYSTEM_BUSY</p>
+              <div className="absolute inset-0 z-50 bg-[var(--app-bg-elevated)]/95 flex flex-col items-center justify-center p-10 border border-[var(--app-border)]">
+                <div className="max-w-md w-full border border-[var(--app-border)] p-8 flex flex-col items-center">
+                  <Loader2 className="animate-spin text-[var(--app-text)] mb-6" size={32} />
+                  <p className="text-[var(--app-text)] font-bold tracking-[0.4em] mb-4">SYSTEM_BUSY</p>
                   <p className="text-[10px] text-zinc-500 mb-8">PROCESSING_LANE: {processing.currentIndex + 1} // {processing.total}</p>
                   <div className="w-full bg-[#333] h-1 overflow-hidden">
                     <div 
@@ -315,23 +315,23 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <div className="px-6 py-4 border-b border-[#333] flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[var(--app-border)] flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <Layers size={16} />
                 <span className="font-bold text-zinc-100">PRODUCTION_QUEUE</span>
-                <span className="text-[9px] bg-[#333] text-zinc-400 px-2 border border-[#333]">[{sourceImages.length}]</span>
+                <span className="text-[9px] bg-[#333] text-zinc-400 px-2 border border-[var(--app-border)]">[{sourceImages.length}]</span>
               </div>
               
               <div className={`flex items-center space-x-3 transition-opacity ${processing.isProcessing ? 'opacity-0' : ''}`}>
-                <button onClick={() => setSourceImages([])} className="hover:text-white p-1" title="PURGE">
+                <button onClick={() => setSourceImages([])} className="hover:text-[var(--app-text)] p-1" title="PURGE">
                   <Trash2 size={16} />
                 </button>
-                <button onClick={downloadAll} className="hover:text-white p-1" title="EXPORT_ALL">
+                <button onClick={downloadAll} className="hover:text-[var(--app-text)] p-1" title="EXPORT_ALL">
                   <Download size={16} />
                 </button>
                 <button 
                   onClick={() => sourceInputRef.current?.click()} 
-                  className="border border-[#333] px-4 py-1 hover:bg-[#333] text-white font-bold"
+                  className="border border-[var(--app-border)] px-4 py-1 hover:bg-[#333] text-[var(--app-text)] font-bold"
                 >
                   IMPORT_BULK
                 </button>
@@ -348,7 +348,7 @@ const App: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
                   {sourceImages.map((img, idx) => (
-                    <div key={img.id} className={`group relative border border-[#333] aspect-[3/4] transition-all duration-300 ${
+                    <div key={img.id} className={`group relative border border-[var(--app-border)] aspect-[3/4] transition-all duration-300 ${
                       img.status === 'processing' ? 'border-white opacity-50' : 
                       img.status === 'error' ? 'border-red-900' : 'hover:border-zinc-500'
                     }`}>
@@ -358,28 +358,28 @@ const App: React.FC = () => {
                         alt="Avatar" 
                       />
                       
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-[#111]/90 border-t border-[#333]">
+                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-[var(--app-bg-elevated)]/90 border-t border-[var(--app-border)]">
                         <div className="flex items-center justify-between">
                           <span className="text-[8px] font-bold text-zinc-500">I_{idx + 1}</span>
-                          {img.status === 'completed' && <span className="text-[8px] text-white">DONE</span>}
+                          {img.status === 'completed' && <span className="text-[8px] text-[var(--app-text)]">DONE</span>}
                         </div>
                       </div>
 
                       {img.status === 'processing' && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-[#111]/60">
-                          <Loader2 className="animate-spin text-white" size={20} />
+                        <div className="absolute inset-0 flex items-center justify-center bg-[var(--app-bg-elevated)]/60">
+                          <Loader2 className="animate-spin text-[var(--app-text)]" size={20} />
                         </div>
                       )}
 
                       {img.status === 'error' && (
                         <div className="absolute inset-0 bg-red-950/90 flex flex-col items-center justify-center p-4 text-center">
-                          <XCircle size={16} className="text-white mb-2" />
-                          <p className="text-[8px] font-bold text-white uppercase">{img.error || 'FAIL'}</p>
+                          <XCircle size={16} className="text-[var(--app-text)] mb-2" />
+                          <p className="text-[8px] font-bold text-[var(--app-text)] uppercase">{img.error || 'FAIL'}</p>
                         </div>
                       )}
 
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center bg-[#111]/80 transition-opacity">
-                        <button onClick={() => setSourceImages(prev => prev.filter(i => i.id !== img.id))} className="p-2 bg-[#333] hover:bg-red-900 text-white">
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center bg-[var(--app-bg-elevated)]/80 transition-opacity">
+                        <button onClick={() => setSourceImages(prev => prev.filter(i => i.id !== img.id))} className="p-2 bg-[#333] hover:bg-red-900 text-[var(--app-text)]">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -401,7 +401,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <footer className="border-t border-[#333] px-6 py-2 flex justify-between items-center text-[9px] text-zinc-600 font-bold">
+      <footer className="border-t border-[var(--app-border)] px-6 py-2 flex justify-between items-center text-[9px] text-zinc-600 font-bold">
         <span>DEVICE: GEMINI_AI_SESSION // 001</span>
         <span>STATUS: SYSTEM_OPTIMIZED</span>
       </footer>

@@ -25,7 +25,7 @@ import {
 const TaskStatus: React.FC<{ active: boolean; stage: string }> = ({ active, stage }) => {
   if (!active) return null;
   return (
-    <div className="fixed bottom-6 right-6 z-[200] bg-black border border-[#333] p-4 w-72 shadow-[0_0_30px_rgba(0,0,0,0.8)] animate-in slide-in-from-right-10 duration-500">
+    <div className="fixed bottom-6 right-6 z-[200] bg-[var(--app-bg)] border border-[var(--app-border)] p-4 w-72 shadow-[0_0_30px_rgba(0,0,0,0.8)] animate-in slide-in-from-right-10 duration-500">
       <div className="flex justify-between items-center text-[9px] tracking-[0.4em] text-zinc-600 mb-3 font-bold">
         <span>ENGINE_STATUS</span>
         <div className="flex gap-1">
@@ -37,7 +37,7 @@ const TaskStatus: React.FC<{ active: boolean; stage: string }> = ({ active, stag
       
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 bg-zinc-900 border border-[#333]">
+          <div className="p-1.5 bg-zinc-900 border border-[var(--app-border)]">
             <Cpu className="w-3 h-3 text-zinc-400 animate-spin" style={{ animationDuration: '3s' }} />
           </div>
           <div className="flex-1 overflow-hidden">
@@ -249,16 +249,16 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-400 flex flex-col font-mono text-[11px] overflow-hidden">
+    <div className="min-h-screen bg-[var(--app-bg)] text-zinc-400 flex flex-col font-mono text-[11px] overflow-hidden">
       <TaskStatus active={loading} stage={loadingStage} />
 
-      <header className="border-b border-[#333] p-4 flex justify-between items-center bg-[#0a0a0a] z-50">
+      <header className="border-b border-[var(--app-border)] p-4 flex justify-between items-center bg-[var(--app-bg)] z-50">
         <div className="flex items-center gap-4">
           <Film className="w-5 h-5 text-zinc-500" />
           <h1 className="font-bold tracking-[0.4em] text-zinc-100 uppercase">Frame_Variator // V2.5_PRO</h1>
         </div>
         <div className="flex gap-4 items-center">
-          <div className="flex border border-[#333] bg-[#111]">
+          <div className="flex border border-[var(--app-border)] bg-[var(--app-bg-elevated)]">
             <button 
               disabled={loading}
               onClick={() => setMode('camera')}
@@ -278,17 +278,17 @@ const App: React.FC = () => {
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-80 border-r border-[#333] p-6 space-y-8 flex flex-col overflow-y-auto bg-[#0a0a0a]">
+        <aside className="w-80 border-r border-[var(--app-border)] p-6 space-y-8 flex flex-col overflow-y-auto bg-[var(--app-bg)]">
           <section>
             <label className="text-[9px] uppercase tracking-widest text-zinc-600 block mb-3">01 // SOURCE_PLATE</label>
-            <div className="aspect-video bg-[#111] border border-[#333] flex items-center justify-center relative group">
+            <div className="aspect-video bg-[var(--app-bg-elevated)] border border-[var(--app-border)] flex items-center justify-center relative group">
               {originalImage ? (
                 <>
                   <img src={originalImage} className="w-full h-full object-cover opacity-50 transition-opacity group-hover:opacity-70" />
                   <button 
                     disabled={loading}
                     onClick={() => setOriginalImage(null)} 
-                    className="absolute top-2 right-2 p-1 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden"
+                    className="absolute top-2 right-2 p-1 bg-[var(--app-bg)]/60 opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -314,11 +314,11 @@ const App: React.FC = () => {
                   value={topic}
                   onChange={e => setTopic(e.target.value)}
                   disabled={loading}
-                  className="w-full bg-black border border-[#333] p-3 text-[10px] outline-none focus:border-zinc-500 transition-colors text-zinc-200 disabled:opacity-50"
+                  className="w-full bg-[var(--app-bg)] border border-[var(--app-border)] p-3 text-[10px] outline-none focus:border-zinc-500 transition-colors text-zinc-200 disabled:opacity-50"
                 />
               </div>
             )}
-            <div className="p-3 border border-[#333] bg-[#111]/50 space-y-2">
+            <div className="p-3 border border-[var(--app-border)] bg-[var(--app-bg-elevated)]/50 space-y-2">
               <span className="text-[9px] text-zinc-500 block uppercase italic">Active_Preset</span>
               <p className="text-[10px] text-zinc-300 flex items-center gap-2">
                 {mode === 'camera' ? <Target className="w-3 h-3 text-zinc-500" /> : <Zap className="w-3 h-3 text-zinc-500" />}
@@ -336,11 +336,11 @@ const App: React.FC = () => {
           </button>
 
           {analysis && (
-            <div className="flex-1 overflow-y-auto pt-6 border-t border-[#333] space-y-4 opacity-50 hover:opacity-100 transition-opacity">
+            <div className="flex-1 overflow-y-auto pt-6 border-t border-[var(--app-border)] space-y-4 opacity-50 hover:opacity-100 transition-opacity">
               <label className="text-[9px] uppercase tracking-widest text-zinc-600 block">DNA_METADATA</label>
               <div className="text-[10px] leading-relaxed space-y-4 font-light text-zinc-500">
                 <div><span className="text-zinc-400 uppercase font-bold block mb-1">LIKENESS:</span> {analysis.actor.substring(0, 150)}...</div>
-                <div className="p-2 bg-zinc-900/40 border border-[#333]">
+                <div className="p-2 bg-zinc-900/40 border border-[var(--app-border)]">
                   <span className="text-zinc-200 uppercase font-bold block mb-1 flex items-center gap-2">
                     <CheckCircle2 className="w-3 h-3" />
                     LUT_LOCKED_TO_SOURCE
@@ -358,7 +358,7 @@ const App: React.FC = () => {
           )}
         </aside>
 
-        <main className="flex-1 p-8 bg-[#0a0a0a] flex flex-col relative overflow-y-auto">
+        <main className="flex-1 p-8 bg-[var(--app-bg)] flex flex-col relative overflow-y-auto">
           {currentGrid.imageUrl ? (
             <div className="max-w-4xl mx-auto w-full space-y-10">
               <div className="animate-in fade-in duration-700">
@@ -367,13 +367,13 @@ const App: React.FC = () => {
                   <button 
                     onClick={downloadGrid}
                     disabled={loading}
-                    className="flex items-center gap-2 text-[9px] text-zinc-400 hover:text-white border border-[#333] px-3 py-1 transition-colors uppercase font-bold disabled:opacity-30"
+                    className="flex items-center gap-2 text-[9px] text-zinc-400 hover:text-[var(--app-text)] border border-[var(--app-border)] px-3 py-1 transition-colors uppercase font-bold disabled:opacity-30"
                   >
                     <Download className="w-3 h-3" />
                     EXPORT_FULL_GRID
                   </button>
                 </div>
-                <div className="relative aspect-square border border-[#333] bg-black shadow-[0_0_50px_rgba(0,0,0,1)]">
+                <div className="relative aspect-square border border-[var(--app-border)] bg-[var(--app-bg)] shadow-[0_0_50px_rgba(0,0,0,1)]">
                   <img src={currentGrid.imageUrl} className="w-full h-full object-contain" alt="Grid" />
                   
                   <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
@@ -387,11 +387,11 @@ const App: React.FC = () => {
                         `}
                       >
                         <div className="flex justify-between items-end w-full">
-                          <span className={`text-[9px] font-bold ${currentGrid.selectedIndex === i ? 'text-white' : 'text-zinc-800'}`}>FRM_0{i+1}</span>
+                          <span className={`text-[9px] font-bold ${currentGrid.selectedIndex === i ? 'text-[var(--app-text)]' : 'text-zinc-800'}`}>FRM_0{i+1}</span>
                         </div>
                         {currentGrid.selectedIndex === i && (
                           <div className="absolute inset-0 flex items-center justify-center bg-white/5 backdrop-blur-[1px]">
-                            <Target className="w-6 h-6 text-white/50" />
+                            <Target className="w-6 h-6 text-[var(--app-text)]/50" />
                           </div>
                         )}
                       </div>
@@ -401,7 +401,7 @@ const App: React.FC = () => {
               </div>
 
               {currentGrid.selectedIndex !== null && (
-                <div className="border border-[#333] p-8 flex flex-col md:flex-row gap-10 bg-[#111]/30 animate-in fade-in slide-in-from-bottom-6 duration-700 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+                <div className="border border-[var(--app-border)] p-8 flex flex-col md:flex-row gap-10 bg-[var(--app-bg-elevated)]/30 animate-in fade-in slide-in-from-bottom-6 duration-700 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
                   <div className="flex-1 space-y-6">
                     <div className="flex items-center gap-3">
                       <span className="text-[9px] px-2 py-1 bg-zinc-800 text-zinc-200 font-bold uppercase tracking-widest">SELECTED: FRAME_0{currentGrid.selectedIndex + 1}</span>
@@ -415,7 +415,7 @@ const App: React.FC = () => {
                     <button 
                       onClick={downloadSelectedPreview}
                       disabled={loading}
-                      className="w-full py-4 bg-zinc-900 border border-[#333] text-zinc-300 text-[9px] font-bold tracking-[0.2em] hover:bg-zinc-800 transition-all flex items-center justify-center gap-3 disabled:opacity-20 uppercase"
+                      className="w-full py-4 bg-zinc-900 border border-[var(--app-border)] text-zinc-300 text-[9px] font-bold tracking-[0.2em] hover:bg-zinc-800 transition-all flex items-center justify-center gap-3 disabled:opacity-20 uppercase"
                     >
                       <Scissors className="w-3 h-3" />
                       Download_Crop_Preview
@@ -456,9 +456,9 @@ const App: React.FC = () => {
       </div>
 
       {finalImage && (
-        <div className="fixed inset-0 z-[100] bg-black/98 flex items-center justify-center p-4 backdrop-blur-md">
-          <div className="max-w-[95vw] w-full bg-black border border-[#333] flex flex-col shadow-[0_0_100px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300">
-            <div className="p-4 border-b border-[#333] flex justify-between items-center bg-[#111]">
+        <div className="fixed inset-0 z-[100] bg-[var(--app-bg)]/98 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="max-w-[95vw] w-full bg-[var(--app-bg)] border border-[var(--app-border)] flex flex-col shadow-[0_0_100px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300">
+            <div className="p-4 border-b border-[var(--app-border)] flex justify-between items-center bg-[var(--app-bg-elevated)]">
               <div className="flex items-center gap-3">
                 <Maximize className="w-4 h-4 text-zinc-500" />
                 <span className="text-[10px] tracking-[0.4em] text-zinc-400 font-bold uppercase">Master_Output // RES: 4K // LUT: LOCKED</span>
@@ -486,15 +486,15 @@ const App: React.FC = () => {
                 >
                   DOWNLOAD_MASTER_PNG
                 </button>
-                <button onClick={() => setFinalImage(null)} className="text-zinc-600 hover:text-zinc-100 p-2 transition-colors border border-[#333]">
+                <button onClick={() => setFinalImage(null)} className="text-zinc-600 hover:text-zinc-100 p-2 transition-colors border border-[var(--app-border)]">
                   <X className="w-6 h-6" />
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-8 flex items-center justify-center bg-[#111] min-h-0">
-              <img src={finalImage} className="max-w-full max-h-[70vh] object-contain shadow-[0_0_120px_rgba(255,255,255,0.03)] border border-[#333]" alt="Final" />
+            <div className="flex-1 overflow-auto p-8 flex items-center justify-center bg-[var(--app-bg-elevated)] min-h-0">
+              <img src={finalImage} className="max-w-full max-h-[70vh] object-contain shadow-[0_0_120px_rgba(255,255,255,0.03)] border border-[var(--app-border)]" alt="Final" />
             </div>
-            <div className="p-4 bg-[#111]/50 border-t border-[#333] flex justify-between text-[9px] text-zinc-800 uppercase tracking-widest font-bold">
+            <div className="p-4 bg-[var(--app-bg-elevated)]/50 border-t border-[var(--app-border)] flex justify-between text-[9px] text-zinc-800 uppercase tracking-widest font-bold">
                <span className="flex items-center gap-2"><Activity className="w-3 h-3"/> TECHNICAL_PASS: COMPLETE</span>
                <span className="flex items-center gap-2"><Target className="w-3 h-3"/> STYLE_CONTINUITY: 100%_SECURED</span>
             </div>

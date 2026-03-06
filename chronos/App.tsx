@@ -202,11 +202,11 @@ const App: React.FC = () => {
   const IconSparkles = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" /></svg>;
 
   return (
-    <div className="flex flex-col h-screen bg-[#050505] text-zinc-400 font-mono overflow-hidden">
+    <div className="flex flex-col h-screen bg-[var(--app-bg)] text-zinc-400 font-mono overflow-hidden">
       {/* TOP HEADER */}
-      <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-[#333] bg-[#0a0a0a] backdrop-blur-md z-20">
+      <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-[var(--app-border)] bg-[var(--app-bg)] backdrop-blur-md z-20">
         <div className="flex items-center gap-4">
-          <h1 className="text-sm font-bold tracking-[0.3em] text-white">CHRONOS <span className="text-zinc-600 font-light">//</span> V4.6</h1>
+          <h1 className="text-sm font-bold tracking-[0.3em] text-[var(--app-text)]">CHRONOS <span className="text-zinc-600 font-light">//</span> V4.6</h1>
           <div className="h-3 w-[1px] bg-white/10"></div>
           <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{aspectRatio}_RATIO_LOCKED</span>
         </div>
@@ -215,7 +215,7 @@ const App: React.FC = () => {
           {timeline.length > 0 && (
             <button 
               onClick={reset}
-              className="text-[9px] flex items-center gap-2 hover:text-white transition-all uppercase tracking-widest border border-[#333] px-2 py-1 rounded"
+              className="text-[9px] flex items-center gap-2 hover:text-[var(--app-text)] transition-all uppercase tracking-widest border border-[var(--app-border)] px-2 py-1 rounded"
             >
               <IconTrash /> RESET_SESSION
             </button>
@@ -231,8 +231,8 @@ const App: React.FC = () => {
       <div className="flex-grow flex min-h-0 overflow-hidden">
         
         {/* TIMELINE SIDEBAR */}
-        <aside className="w-28 border-r border-[#333] flex flex-col bg-[#0a0a0a] overflow-hidden">
-          <div className="p-3 text-[9px] font-bold text-zinc-600 border-b border-[#333] uppercase tracking-widest text-center">Timeline</div>
+        <aside className="w-28 border-r border-[var(--app-border)] flex flex-col bg-[var(--app-bg)] overflow-hidden">
+          <div className="p-3 text-[9px] font-bold text-zinc-600 border-b border-[var(--app-border)] uppercase tracking-widest text-center">Timeline</div>
           <div ref={scrollRef} className="flex-grow overflow-y-auto no-scrollbar py-2">
             {timeline.map((frame, idx) => (
               <button
@@ -240,10 +240,10 @@ const App: React.FC = () => {
                 onClick={() => setSelectedIndex(idx)}
                 className={`w-full p-2 mb-2 transition-all relative group ${selectedIndex === idx ? 'opacity-100 scale-100' : 'opacity-40 hover:opacity-70 scale-95'}`}
               >
-                <div className={`aspect-square bg-black border ${selectedIndex === idx ? 'border-white/40' : 'border-white/5'} overflow-hidden rounded-sm mb-1`}>
+                <div className={`aspect-square bg-[var(--app-bg)] border ${selectedIndex === idx ? 'border-white/40' : 'border-white/5'} overflow-hidden rounded-sm mb-1`}>
                   <img src={frame.data} className="w-full h-full object-cover" alt="" />
                 </div>
-                <div className={`text-[8px] text-center uppercase tracking-tighter font-bold ${frame.step === 0 ? 'text-white' : 'text-zinc-500'}`}>
+                <div className={`text-[8px] text-center uppercase tracking-tighter font-bold ${frame.step === 0 ? 'text-[var(--app-text)]' : 'text-zinc-500'}`}>
                   {frame.timeLabel}
                 </div>
                 {selectedIndex === idx && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-8 bg-white"></div>}
@@ -258,7 +258,7 @@ const App: React.FC = () => {
         </aside>
 
         {/* WORKSPACE */}
-        <main className="flex-grow flex flex-col min-w-0 bg-[#080808] relative">
+        <main className="flex-grow flex flex-col min-w-0 bg-[var(--app-bg)] relative">
           
           {/* IMAGE PREVIEW AREA */}
           <div className="flex-grow flex items-center justify-center p-6 min-h-0 relative overflow-hidden">
@@ -283,35 +283,35 @@ const App: React.FC = () => {
                   
                   {/* Processing Overlay */}
                   {isProcessing && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-30 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-[var(--app-bg)]/60 backdrop-blur-[2px] z-30 flex items-center justify-center">
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-12 h-[1px] bg-white/20 relative overflow-hidden">
                           <div className="absolute inset-0 bg-white w-1/2 animate-slide-infinite"></div>
                         </div>
-                        <span className="text-[9px] uppercase tracking-[0.3em] text-white animate-pulse">Computing_Temporal_Flux</span>
+                        <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--app-text)] animate-pulse">Computing_Temporal_Flux</span>
                       </div>
                     </div>
                   )}
                 </div>
                 
                 <div className="absolute top-4 left-4 flex gap-2 pointer-events-none z-40">
-                  <span className="bg-black/90 text-white text-[9px] px-3 py-1.5 border border-white/10 backdrop-blur-md uppercase tracking-[0.2em] rounded-sm">
+                  <span className="bg-[var(--app-bg)]/90 text-[var(--app-text)] text-[9px] px-3 py-1.5 border border-white/10 backdrop-blur-md uppercase tracking-[0.2em] rounded-sm">
                     {currentFrame.timeLabel}
                   </span>
                   {showComparison && (
-                    <span className="bg-white/10 text-white text-[9px] px-3 py-1.5 border border-white/20 backdrop-blur-md uppercase tracking-[0.2em] rounded-sm animate-pulse">
+                    <span className="bg-white/10 text-[var(--app-text)] text-[9px] px-3 py-1.5 border border-white/20 backdrop-blur-md uppercase tracking-[0.2em] rounded-sm animate-pulse">
                       Ref_Comparison (T0)
                     </span>
                   )}
                 </div>
               </div>
             ) : (
-              <label className="group flex flex-col items-center gap-8 cursor-pointer p-20 border border-[#333] bg-[#181818] hover:bg-[#1a1a1a] transition-all" onClick={(e) => { e.preventDefault(); handleReferenceClick(); }}>
-                <div className="p-8 border border-[#333] group-hover:scale-110 group-hover:border-zinc-500 transition-all duration-500">
+              <label className="group flex flex-col items-center gap-8 cursor-pointer p-20 border border-[var(--app-border)] bg-[var(--app-bg-elevated)] hover:bg-[var(--app-bg-elevated)] transition-all" onClick={(e) => { e.preventDefault(); handleReferenceClick(); }}>
+                <div className="p-8 border border-[var(--app-border)] group-hover:scale-110 group-hover:border-zinc-500 transition-all duration-500">
                   <IconUpload />
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 group-hover:text-white transition-colors">{isHubEnv() ? 'Upload_Or_From_History' : 'Select_Reference_Frame'}</p>
+                  <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 group-hover:text-[var(--app-text)] transition-colors">{isHubEnv() ? 'Upload_Or_From_History' : 'Select_Reference_Frame'}</p>
                   <p className="text-[8px] text-zinc-600 mt-3 uppercase tracking-widest">Initial_Injection</p>
                 </div>
                 <input id="chronos-file-input" type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
@@ -326,7 +326,7 @@ const App: React.FC = () => {
           </div>
 
           {/* CONTROL CONSOLE */}
-          <div className="flex-shrink-0 border-t border-[#333] bg-[#0a0a0a] backdrop-blur-2xl px-8 py-6">
+          <div className="flex-shrink-0 border-t border-[var(--app-border)] bg-[var(--app-bg)] backdrop-blur-2xl px-8 py-6">
             <div className="grid grid-cols-12 gap-10 max-w-7xl mx-auto">
               
               {/* Analysis Log */}
@@ -334,7 +334,7 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
                   <div className="w-1 h-1 bg-zinc-700"></div> Temporal_Causality_Analysis
                 </div>
-                <div className="h-28 border border-white/5 bg-black/40 p-3 overflow-y-auto text-[11px] leading-relaxed text-zinc-400 scrollbar-hide font-light italic">
+                <div className="h-28 border border-white/5 bg-[var(--app-bg)]/40 p-3 overflow-y-auto text-[11px] leading-relaxed text-zinc-400 scrollbar-hide font-light italic">
                   {currentFrame?.analysis || 'System Standby. Injection Required.'}
                 </div>
               </div>
@@ -349,7 +349,7 @@ const App: React.FC = () => {
                     <button 
                       onClick={refineCurrentFrame} 
                       disabled={isProcessing}
-                      className="text-[9px] bg-white/5 hover:bg-white/10 text-white px-2 py-0.5 rounded transition-all flex items-center gap-1 uppercase tracking-tighter disabled:opacity-20"
+                      className="text-[9px] bg-white/5 hover:bg-white/10 text-[var(--app-text)] px-2 py-0.5 rounded transition-all flex items-center gap-1 uppercase tracking-tighter disabled:opacity-20"
                     >
                       <IconSparkles /> REGENERATE
                     </button>
@@ -359,7 +359,7 @@ const App: React.FC = () => {
                   value={editingPrompt}
                   onChange={(e) => setEditingPrompt(e.target.value)}
                   disabled={!currentFrame || currentFrame.step === 0 || isProcessing}
-                  className="h-28 w-full border border-white/5 bg-black/40 p-3 text-[11px] text-white/60 focus:outline-none focus:border-white/20 resize-none disabled:opacity-20 scrollbar-hide transition-colors"
+                  className="h-28 w-full border border-white/5 bg-[var(--app-bg)]/40 p-3 text-[11px] text-[var(--app-text)]/60 focus:outline-none focus:border-white/20 resize-none disabled:opacity-20 scrollbar-hide transition-colors"
                   placeholder="Triangulated logic mapping will appear here."
                 />
               </div>
@@ -376,7 +376,7 @@ const App: React.FC = () => {
                     className="flex flex-col items-center justify-center border border-white/5 hover:bg-white/[0.03] hover:border-white/20 transition-all disabled:opacity-5 group rounded-sm px-1"
                   >
                     <IconBackwards />
-                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white">Reverse_5S</span>
+                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-[var(--app-text)]">Reverse_5S</span>
                   </button>
 
                   <button 
@@ -385,7 +385,7 @@ const App: React.FC = () => {
                     className="flex flex-col items-center justify-center border border-white/5 hover:bg-white/[0.03] hover:border-white/20 transition-all disabled:opacity-5 group rounded-sm px-1"
                   >
                     <IconForwards />
-                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white">Advance_5S</span>
+                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-[var(--app-text)]">Advance_5S</span>
                   </button>
                   
                   <button 
@@ -396,14 +396,14 @@ const App: React.FC = () => {
                     className="flex flex-col items-center justify-center border border-white/5 hover:bg-white/[0.03] hover:border-white/20 transition-all disabled:opacity-5 group rounded-sm px-1"
                   >
                     <IconCompare />
-                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white">Compare</span>
+                    <span className="text-[8px] mt-2 font-bold uppercase tracking-widest text-zinc-500 group-hover:text-[var(--app-text)]">Compare</span>
                   </button>
                 </div>
                 
                 <button 
                   onClick={downloadFrame}
                   disabled={!currentFrame || isProcessing}
-                  className="flex items-center justify-center gap-3 h-10 border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/30 transition-all text-white disabled:opacity-5 rounded-sm"
+                  className="flex items-center justify-center gap-3 h-10 border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/30 transition-all text-[var(--app-text)] disabled:opacity-5 rounded-sm"
                 >
                   <IconDownload />
                   <span className="text-[9px] font-bold uppercase tracking-[0.3em]">Export_Frame</span>
@@ -416,7 +416,7 @@ const App: React.FC = () => {
       </div>
 
       {/* FOOTER */}
-      <footer className="flex-shrink-0 h-8 border-t border-[#333] bg-[#0a0a0a] flex items-center justify-between px-6 text-[8px] text-zinc-700 tracking-[0.3em] uppercase z-20">
+      <footer className="flex-shrink-0 h-8 border-t border-[var(--app-border)] bg-[var(--app-bg)] flex items-center justify-between px-6 text-[8px] text-zinc-700 tracking-[0.3em] uppercase z-20">
         <div className="flex gap-8">
           <span className="flex items-center gap-2"><div className="w-1 h-1 bg-zinc-800 rounded-full"></div> Bi-Directional_Flux: Active</span>
           <span className="flex items-center gap-2"><div className="w-1 h-1 bg-zinc-800 rounded-full"></div> Frame_Buffer: {timeline.length}</span>

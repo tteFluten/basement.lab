@@ -3,6 +3,7 @@ import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, Re
 import ReactMarkdown from 'react-markdown';
 import { generateImage, improvePrompt, isEmbedMode, getHubModel, HistoryTurn } from './services/geminiService';
 import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+
 import { prepareImagePartForApi, resizeImageForApi } from './lib/imageResize';
 
 // --- Types ---
@@ -100,6 +101,7 @@ function IllustrationBatch() {
 const STEP_ILLUSTRATIONS = [IllustrationRefs, IllustrationIterative, IllustrationBatch];
 
 export default function App() {
+  useThemeSync();
   const [prompt, setPrompt] = useState('');
   const [images, setImages] = useState<AttachedImage[]>([]);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
@@ -503,14 +505,14 @@ export default function App() {
 
   if (hasKey === false) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6 font-mono">
-        <div className="max-w-md w-full bg-[#111] border border-[#333] p-8 flex flex-col items-center text-center gap-6">
-          <div className="w-16 h-16 bg-[#a0a0a0]/10 border border-[#333] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center p-6 font-mono">
+        <div className="max-w-md w-full bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-8 flex flex-col items-center text-center gap-6">
+          <div className="w-16 h-16 bg-[#a0a0a0]/10 border border-[var(--app-border)] flex items-center justify-center">
             <Key className="text-[#a0a0a0]" size={32} />
           </div>
           <div className="space-y-4">
-            <h1 className="text-sm uppercase tracking-[0.3em] font-bold text-white">Access Restricted</h1>
-            <p className="text-xs text-[#666] leading-relaxed uppercase tracking-tighter">
+            <h1 className="text-sm uppercase tracking-[0.3em] font-bold text-[var(--app-text)]">Access Restricted</h1>
+            <p className="text-xs text-[var(--app-text-muted)] leading-relaxed uppercase tracking-tighter">
               Select a paid API key to use the image generation models.
             </p>
           </div>
@@ -529,18 +531,18 @@ export default function App() {
 
   return (
     <div
-      className="min-h-screen bg-black text-[#bbb] flex flex-col p-4 md:p-8 selection:bg-[#444] selection:text-white font-mono"
+      className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)] flex flex-col p-4 md:p-8 selection:bg-[#444] selection:text-[var(--app-text)] font-mono"
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
       {/* Header */}
-      <header className="flex justify-between items-center mb-12 border-b border-[#333] pb-4">
+      <header className="flex justify-between items-center mb-12 border-b border-[var(--app-border)] pb-4">
         <div className="flex items-center gap-4">
-          <h1 className="text-sm tracking-widest uppercase font-bold text-[#ccc]">NanoBanana Studio</h1>
+          <h1 className="text-sm tracking-widest uppercase font-bold text-[var(--app-text)]">NanoBanana Studio</h1>
         </div>
         <button
           onClick={resetAll}
-          className="text-xs hover:text-white transition-colors flex items-center gap-2 uppercase tracking-tighter text-[#666]"
+          className="text-xs hover:text-[var(--app-text)] transition-colors flex items-center gap-2 uppercase tracking-tighter text-[var(--app-text-muted)]"
           title="Reset All"
         >
           <RefreshCcw size={14} />
@@ -576,10 +578,10 @@ export default function App() {
                     <Illus />
                   </div>
                   <div className="flex items-baseline gap-3">
-                    <span className="text-[10px] text-white/20 font-mono tracking-widest">{index}</span>
-                    <span className="text-[11px] uppercase tracking-[0.15em] text-white/40 font-bold">{title}</span>
+                    <span className="text-[10px] text-[var(--app-text)]/20 font-mono tracking-widest">{index}</span>
+                    <span className="text-[11px] uppercase tracking-[0.15em] text-[var(--app-text)]/40 font-bold">{title}</span>
                   </div>
-                  <p className="text-[11px] text-white/20 leading-relaxed">{body}</p>
+                  <p className="text-[11px] text-[var(--app-text)]/20 leading-relaxed">{body}</p>
                 </div>
                 );
               })}
@@ -621,7 +623,7 @@ export default function App() {
                 >
                   {/* Generating state — inline spinner card */}
                   {item.status === 'generating' && (
-                    <div className="bg-black/50 border border-[#222] flex flex-col items-center justify-center w-full" style={{ aspectRatio: (item.aspectRatio ?? '1:1').replace(':', '/'), maxHeight: isActive ? 520 : 200, minHeight: isActive ? undefined : 80 }}>
+                    <div className="bg-[var(--app-bg)]/50 border border-[#222] flex flex-col items-center justify-center w-full" style={{ aspectRatio: (item.aspectRatio ?? '1:1').replace(':', '/'), maxHeight: isActive ? 520 : 200, minHeight: isActive ? undefined : 80 }}>
                       <svg width="140" height="140" viewBox="0 0 140 140" className="overflow-visible">
                         <circle cx="70" cy="70" r="20" fill="white" style={{ animation: 'nb-glow-pulse 3s ease-in-out infinite' }} />
                         <g style={{ transformOrigin: '70px 70px', animation: 'nb-spin 20s linear infinite' }}>
@@ -651,10 +653,10 @@ export default function App() {
                       </svg>
                       {isActive && (
                         <div className="flex flex-col items-center gap-1 mt-2">
-                          <div className="text-[16px] font-light text-white/80 tracking-[0.4em] tabular-nums">
-                            {(item.elapsed / 1000).toFixed(1)}<span className="text-[10px] text-white/30 ml-0.5">s</span>
+                          <div className="text-[16px] font-light text-[var(--app-text)]/80 tracking-[0.4em] tabular-nums">
+                            {(item.elapsed / 1000).toFixed(1)}<span className="text-[10px] text-[var(--app-text)]/30 ml-0.5">s</span>
                           </div>
-                          <div className="text-[9px] uppercase tracking-[0.25em] text-white/30" style={{ animation: 'nb-fade-pulse 2s ease-in-out infinite' }}>
+                          <div className="text-[9px] uppercase tracking-[0.25em] text-[var(--app-text)]/30" style={{ animation: 'nb-fade-pulse 2s ease-in-out infinite' }}>
                             Generating
                           </div>
                           <svg width="24" height="6" viewBox="0 0 24 6">
@@ -670,7 +672,7 @@ export default function App() {
 
                   {/* Error state */}
                   {item.status === 'error' && (
-                    <div className="bg-black/50 border border-red-900/30 flex flex-col items-center justify-center gap-3 p-6" style={{ height: isActive ? 300 : 200 }}>
+                    <div className="bg-[var(--app-bg)]/50 border border-red-900/30 flex flex-col items-center justify-center gap-3 p-6" style={{ height: isActive ? 300 : 200 }}>
                       <X size={24} className="text-red-900/60" />
                       {isActive && (
                         <>
@@ -684,20 +686,20 @@ export default function App() {
 
                   {/* Done state — show image */}
                   {item.status === 'done' && (
-                    <div className="bg-black relative group cursor-pointer"
+                    <div className="bg-[var(--app-bg)] relative group cursor-pointer"
                       onClick={(e) => { if (isActive && item.image) { e.stopPropagation(); setViewingImage({ id: item.inputId ?? 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: item.inputColor ?? '#fff' }); } }}>
                       <img src={item.image} alt={`Generation ${idx}`} className="w-full object-contain" style={{ maxHeight: 520 }} />
                       {isActive && (
-                        <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                        <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--app-bg)]/40">
                           <button
                             onClick={(e) => { e.stopPropagation(); setViewingImage({ id: item.inputId ?? 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: item.inputColor ?? '#fff' }); }}
-                            className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
+                            className="p-2.5 bg-[var(--app-bg)]/80 border border-[var(--app-border)] hover:text-[var(--app-text)]"
                           >
                             <Maximize2 size={16} />
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDownload(item.image, item.prompt); }}
-                            className="p-2.5 bg-black/80 border border-[#333] hover:text-white"
+                            className="p-2.5 bg-[var(--app-bg)]/80 border border-[var(--app-border)] hover:text-[var(--app-text)]"
                             title="Download / Save to History"
                           >
                             <Download size={16} />
@@ -710,7 +712,7 @@ export default function App() {
                   {/* Card metadata */}
                   {isActive && item.status !== 'generating' && (
                     <div className="mt-4 flex flex-col gap-2">
-                      <div className="flex justify-between items-center text-[11px] uppercase tracking-widest text-[#777]">
+                      <div className="flex justify-between items-center text-[11px] uppercase tracking-widest text-[var(--app-text-muted)]">
                         <span>Step {idx + 1}</span>
                         <span>{item.stats ? `${(item.stats.time / 1000).toFixed(2)}s` : ''}</span>
                       </div>
@@ -723,7 +725,7 @@ export default function App() {
                             setCopiedId(item.id);
                             setTimeout(() => setCopiedId(null), 1500);
                           }}
-                          className="shrink-0 p-1 text-[#555] hover:text-[#ccc] transition-colors opacity-0 group-hover/prompt:opacity-100"
+                          className="shrink-0 p-1 text-[#555] hover:text-[var(--app-text)] transition-colors opacity-0 group-hover/prompt:opacity-100"
                           title="Copy prompt"
                         >
                           {copiedId === item.id ? <Check size={13} /> : <Copy size={13} />}
@@ -744,13 +746,13 @@ export default function App() {
           {/* Settings Bar */}
           <div className="flex flex-wrap gap-8 mb-6 border-b border-[#282828] pb-4">
             <div className="flex flex-col gap-2">
-              <span className="text-[11px] uppercase tracking-widest text-[#777]">Aspect Ratio</span>
+              <span className="text-[11px] uppercase tracking-widest text-[var(--app-text-muted)]">Aspect Ratio</span>
               <div className="flex flex-wrap gap-2">
                 {["1:1", "3:4", "4:3", "9:16", "16:9", "1:4", "1:8", "4:1", "8:1"].map(ratio => (
                   <button
                     key={ratio}
                     onClick={() => setAspectRatio(ratio)}
-                    className={`text-[12px] px-2 py-1 border ${aspectRatio === ratio ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[#333] text-[#777] hover:border-[#666]'}`}
+                    className={`text-[12px] px-2 py-1 border ${aspectRatio === ratio ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[var(--app-border)] text-[var(--app-text-muted)] hover:border-[#666]'}`}
                   >
                     {ratio}
                   </button>
@@ -758,13 +760,13 @@ export default function App() {
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-[11px] uppercase tracking-widest text-[#777]">Resolution</span>
+              <span className="text-[11px] uppercase tracking-widest text-[var(--app-text-muted)]">Resolution</span>
               <div className="flex gap-2">
                 {["512px", "1K", "2K", "4K"].map(size => (
                   <button
                     key={size}
                     onClick={() => setImageSize(size)}
-                    className={`text-[12px] px-2 py-1 border ${imageSize === size ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[#333] text-[#777] hover:border-[#666]'}`}
+                    className={`text-[12px] px-2 py-1 border ${imageSize === size ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[var(--app-border)] text-[var(--app-text-muted)] hover:border-[#666]'}`}
                   >
                     {size}
                   </button>
@@ -772,13 +774,13 @@ export default function App() {
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-[11px] uppercase tracking-widest text-[#777]">Batch</span>
+              <span className="text-[11px] uppercase tracking-widest text-[var(--app-text-muted)]">Batch</span>
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map(n => (
                   <button
                     key={n}
                     onClick={() => setBatchSize(n)}
-                    className={`text-[12px] px-2 py-1 border ${batchSize === n ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[#333] text-[#777] hover:border-[#666]'}`}
+                    className={`text-[12px] px-2 py-1 border ${batchSize === n ? 'bg-[#a0a0a0] text-black border-[#a0a0a0]' : 'border-[var(--app-border)] text-[var(--app-text-muted)] hover:border-[#666]'}`}
                   >
                     ×{n}
                   </button>
@@ -789,7 +791,7 @@ export default function App() {
 
           {/* Attached Images */}
           <div className="flex flex-wrap gap-3 mb-6 items-center">
-            <div className="text-[11px] uppercase tracking-widest text-[#666] mr-2">
+            <div className="text-[11px] uppercase tracking-widest text-[var(--app-text-muted)] mr-2">
               Inputs [{images.length}/{MAX_IMAGES}]
             </div>
             {images.map((img) => (
@@ -811,10 +813,10 @@ export default function App() {
                   @{img.id}
                 </div>
                 <div
-                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 cursor-pointer"
+                  className="absolute inset-0 bg-[var(--app-bg)]/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 cursor-pointer"
                   onClick={() => insertId(img.id)}
                 >
-                  <button onClick={(e) => { e.stopPropagation(); setViewingImage(img); }} className="p-1 hover:text-white" title="View">
+                  <button onClick={(e) => { e.stopPropagation(); setViewingImage(img); }} className="p-1 hover:text-[var(--app-text)]" title="View">
                     <Maximize2 size={14} />
                   </button>
                   <button
@@ -828,12 +830,12 @@ export default function App() {
               </div>
             ))}
             {images.length > 0 && (
-              <span className="text-[10px] uppercase tracking-widest text-[#666] ml-2">Click image to tag in prompt</span>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--app-text-muted)] ml-2">Click image to tag in prompt</span>
             )}
           </div>
 
           {/* Prompt Input */}
-          <div className="border border-[#333] bg-[#080808] focus-within:border-[#444] transition-colors relative">
+          <div className="border border-[var(--app-border)] bg-[#080808] focus-within:border-[#444] transition-colors relative">
             {/* Textarea + highlight overlay scoped together */}
             <div className="relative">
               {/* Syntax highlight overlay */}
@@ -860,7 +862,7 @@ export default function App() {
                 onScroll={syncScroll}
                 onPaste={handlePaste}
                 placeholder="Enter prompt... Use @ID to reference images. Ctrl+Enter to generate."
-                className="w-full h-32 p-4 bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:text-[#555] relative z-10 caret-[#a0a0a0] text-transparent selection:bg-[#333] selection:text-white"
+                className="w-full h-32 p-4 bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:text-[#555] relative z-10 caret-[#a0a0a0] text-transparent selection:bg-[#333] selection:text-[var(--app-text)]"
                 style={{ WebkitTextFillColor: 'transparent' }}
               />
             </div>
@@ -868,17 +870,17 @@ export default function App() {
             {/* Mention menu */}
             {mentionMenu.isOpen && (
               <div
-                className="absolute z-30 bg-[#0a0a0a] border border-[#333] w-48 max-h-48 overflow-auto shadow-2xl"
+                className="absolute z-30 bg-[#0a0a0a] border border-[var(--app-border)] w-48 max-h-48 overflow-auto shadow-2xl"
                 style={{ left: mentionMenu.x, top: mentionMenu.y }}
               >
-                <div className="p-2 border-b border-[#282828] text-[10px] uppercase tracking-widest text-[#666] flex justify-between">
+                <div className="p-2 border-b border-[#282828] text-[10px] uppercase tracking-widest text-[var(--app-text-muted)] flex justify-between">
                   <span>Select Reference</span>
                   <span>{images.filter(img => img.id.startsWith(mentionMenu.filter)).length} found</span>
                 </div>
                 {images.filter(img => img.id.startsWith(mentionMenu.filter)).map((img, index) => (
                   <div
                     key={img.id}
-                    className={`flex items-center gap-3 p-2 cursor-pointer transition-colors ${index === mentionMenu.selectedIndex ? 'bg-[#111] text-white' : 'hover:bg-[#050505]'}`}
+                    className={`flex items-center gap-3 p-2 cursor-pointer transition-colors ${index === mentionMenu.selectedIndex ? 'bg-[var(--app-bg-elevated)] text-[var(--app-text)]' : 'hover:bg-[#050505]'}`}
                     onClick={() => selectMention(img.id)}
                     onMouseEnter={() => setMentionMenu(prev => ({ ...prev, selectedIndex: index }))}
                   >
@@ -887,7 +889,7 @@ export default function App() {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[12px] font-bold" style={{ color: img.color }}>@{img.id}</span>
-                      <span className="text-[10px] text-[#666] uppercase">Ref Asset</span>
+                      <span className="text-[10px] text-[var(--app-text-muted)] uppercase">Ref Asset</span>
                     </div>
                   </div>
                 ))}
@@ -903,7 +905,7 @@ export default function App() {
                 {isHubEnv() && (
                   <button
                     onClick={handleHubUpload}
-                    className="p-2 hover:bg-[#111] transition-colors text-[#666] hover:text-[#ccc]"
+                    className="p-2 hover:bg-[var(--app-bg-elevated)] transition-colors text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
                     title="Pick from Hub History"
                   >
                     <FolderOpen size={16} />
@@ -912,7 +914,7 @@ export default function App() {
                 {/* Local file upload */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 hover:bg-[#111] transition-colors text-[#666] hover:text-[#ccc]"
+                  className="p-2 hover:bg-[var(--app-bg-elevated)] transition-colors text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
                   title="Upload Image"
                 >
                   <Upload size={16} />
@@ -933,7 +935,7 @@ export default function App() {
                       }
                     } catch (e) { console.error("Clipboard access denied", e); }
                   }}
-                  className="p-2 hover:bg-[#111] transition-colors text-[#666] hover:text-[#ccc]"
+                  className="p-2 hover:bg-[var(--app-bg-elevated)] transition-colors text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
                   title="Paste from Clipboard"
                 >
                   <Clipboard size={16} />
@@ -943,7 +945,7 @@ export default function App() {
               <button
                 onClick={handleImprovePrompt}
                 disabled={isImprovingPrompt}
-                className={`p-2 transition-colors disabled:cursor-not-allowed ${isImprovingPrompt ? 'text-[#ccc] bg-[#111]' : 'text-[#666] hover:bg-[#111] hover:text-[#ccc]'}`}
+                className={`p-2 transition-colors disabled:cursor-not-allowed ${isImprovingPrompt ? 'text-[var(--app-text)] bg-[var(--app-bg-elevated)]' : 'text-[var(--app-text-muted)] hover:bg-[var(--app-bg-elevated)] hover:text-[var(--app-text)]'}`}
                 title="Improve prompt with AI"
               >
                 {isImprovingPrompt
@@ -966,7 +968,7 @@ export default function App() {
 
         {/* Text result */}
         {resultText && (
-          <div className="border border-[#333] p-4 text-xs text-[#666] leading-relaxed">
+          <div className="border border-[var(--app-border)] p-4 text-xs text-[var(--app-text-muted)] leading-relaxed">
             <ReactMarkdown>{resultText}</ReactMarkdown>
           </div>
         )}
@@ -982,14 +984,14 @@ export default function App() {
       {/* Image Viewer Modal */}
       {viewingImage && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 md:p-12"
+          className="fixed inset-0 z-50 bg-[var(--app-bg)]/90 flex items-center justify-center p-4 md:p-12"
           onClick={() => setViewingImage(null)}
         >
           <div className="relative max-w-5xl w-full max-h-full flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
-            <button className="absolute -top-8 right-0 text-[#444] hover:text-white transition-colors" onClick={() => setViewingImage(null)}>
+            <button className="absolute -top-8 right-0 text-[#444] hover:text-[var(--app-text)] transition-colors" onClick={() => setViewingImage(null)}>
               <X size={24} />
             </button>
-            <div className="p-1 bg-black border" style={{ borderColor: viewingImage.color }}>
+            <div className="p-1 bg-[var(--app-bg)] border" style={{ borderColor: viewingImage.color }}>
               <img
                 src={`data:${viewingImage.mimeType};base64,${viewingImage.data}`}
                 alt={`ID ${viewingImage.id}`}

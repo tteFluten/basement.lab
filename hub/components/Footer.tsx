@@ -142,33 +142,23 @@ export function Footer() {
           <span className="text-fg-muted">Select an app to choose model</span>
         )}
       </div>
-      <div
-        className="flex h-8 border border-border"
+      <button
+        type="button"
+        onClick={toggle}
         role="switch"
         aria-checked={theme === "light"}
-        aria-label="Theme"
+        aria-label="Toggle theme"
+        title={theme === "dark" ? "Switch to light" : "Switch to dark"}
+        className="relative flex h-7 w-14 items-center border border-border bg-bg-muted px-1 transition-colors hover:border-fg-muted"
+        style={{ borderRadius: 9999 }}
       >
-        <button
-          type="button"
-          onClick={() => {
-            if (theme !== "light") toggle();
-          }}
-          title="Light"
-          className={`flex w-9 items-center justify-center border-r border-border transition-colors ${theme === "light" ? "bg-fg-muted text-bg" : "text-fg-muted hover:text-fg"}`}
-        >
-          <Sun size={18} strokeWidth={1.5} />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (theme !== "dark") toggle();
-          }}
-          title="Dark"
-          className={`flex w-9 items-center justify-center transition-colors ${theme === "dark" ? "bg-fg-muted text-bg" : "text-fg-muted hover:text-fg"}`}
-        >
-          <Moon size={18} strokeWidth={1.5} />
-        </button>
-      </div>
+        <div
+          className={`absolute top-1 h-5 w-5 bg-fg-muted transition-all duration-200`}
+          style={{ borderRadius: 9999, left: theme === "light" ? 4 : 28 }}
+        />
+        <Sun size={12} strokeWidth={1.5} className={`relative z-10 transition-colors ${theme === "light" ? "text-bg" : "text-fg-muted/50"}`} />
+        <Moon size={12} strokeWidth={1.5} className={`relative z-10 ml-auto transition-colors ${theme === "dark" ? "text-bg" : "text-fg-muted/50"}`} />
+      </button>
     </footer>
   );
 }

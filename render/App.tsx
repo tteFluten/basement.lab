@@ -165,7 +165,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a] overflow-hidden select-none">
+    <div className="flex h-screen bg-[var(--app-bg)] overflow-hidden select-none">
       <Sidebar
         prompt={prompt}
         setPrompt={setPrompt}
@@ -179,21 +179,21 @@ const App: React.FC = () => {
         jobCount={jobs.filter(j => j.status === 'pending').length}
       />
 
-      <main className="flex-1 flex flex-col h-full bg-[#0a0a0a]">
-        <div className="h-14 flex items-center justify-between px-6 border-b border-[#333]">
+      <main className="flex-1 flex flex-col h-full bg-[var(--app-bg)]">
+        <div className="h-14 flex items-center justify-between px-6 border-b border-[var(--app-border)]">
           <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">
             Queue: {jobs.length} items / Rendering: {jobs.filter(j => j.status === 'rendering').length}
           </div>
           <button 
             onClick={clearQueue}
-            className="text-[10px] text-zinc-500 hover:text-white uppercase transition-colors font-mono"
+            className="text-[10px] text-zinc-500 hover:text-[var(--app-text)] uppercase transition-colors font-mono"
           >
             Clear All
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
-          <div className="relative aspect-video border border-dashed border-[#333] flex items-center justify-center hover:border-zinc-500 transition-colors group cursor-pointer overflow-hidden">
+          <div className="relative aspect-video border border-dashed border-[var(--app-border)] flex items-center justify-center hover:border-zinc-500 transition-colors group cursor-pointer overflow-hidden">
             <input
               type="file"
               multiple
@@ -208,8 +208,8 @@ const App: React.FC = () => {
           </div>
 
           {jobs.map((job) => (
-            <div key={job.id} className="group relative aspect-video border border-[#333] bg-[#111] overflow-hidden flex flex-col">
-              <div className="flex-1 relative bg-[#111]">
+            <div key={job.id} className="group relative aspect-video border border-[var(--app-border)] bg-[var(--app-bg-elevated)] overflow-hidden flex flex-col">
+              <div className="flex-1 relative bg-[var(--app-bg-elevated)]">
                 <img 
                   src={job.status === 'completed' ? job.resultUrl : job.previewUrl} 
                   alt="Job" 
@@ -242,7 +242,7 @@ const App: React.FC = () => {
                 )}
               </div>
               
-              <div className="h-10 border-t border-[#333] flex items-center justify-between px-3 text-[9px] uppercase tracking-tighter font-mono">
+              <div className="h-10 border-t border-[var(--app-border)] flex items-center justify-between px-3 text-[9px] uppercase tracking-tighter font-mono">
                 <div className="flex items-center space-x-3">
                   <span className="text-zinc-600">ID_{job.id}</span>
                   <span className={
@@ -257,7 +257,7 @@ const App: React.FC = () => {
                   {(job.status === 'completed' || job.status === 'failed') && (
                     <button 
                       onClick={() => rerenderJob(job.id)}
-                      className="text-zinc-500 hover:text-white transition-colors"
+                      className="text-zinc-500 hover:text-[var(--app-text)] transition-colors"
                       title="Re-run Render"
                     >
                       [RE_RUN]

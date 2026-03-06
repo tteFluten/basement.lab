@@ -262,8 +262,8 @@ const App: React.FC = () => {
   }, [config]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-400 font-mono">
-      <header className="sticky top-0 z-50 bg-[#0a0a0a] border-b border-[#333] px-6 py-4">
+    <div className="min-h-screen bg-[var(--app-bg)] text-zinc-400 font-mono">
+      <header className="sticky top-0 z-50 bg-[var(--app-bg)] border-b border-[var(--app-border)] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-sm font-bold text-zinc-100 tracking-[0.2em] uppercase">CinePrompt_Terminal</h1>
@@ -287,7 +287,7 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 pt-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-8 space-y-16">
           <section className="space-y-6">
-            <div className="flex items-center justify-between border-b border-[#333] pb-2">
+            <div className="flex items-center justify-between border-b border-[var(--app-border)] pb-2">
               <h2 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">01_Narrative</h2>
               <div className="flex gap-2">
                 <button
@@ -311,7 +311,7 @@ const App: React.FC = () => {
               value={config.actionDescription}
               onChange={(e) => setConfig({ ...config, actionDescription: e.target.value })}
               placeholder="Input scene description..."
-              className="w-full h-32 bg-[#111] border border-[#333] p-6 text-zinc-100 focus:outline-none focus:border-zinc-100 transition-all resize-none"
+              className="w-full h-32 bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-6 text-zinc-100 focus:outline-none focus:border-zinc-100 transition-all resize-none"
             />
           </section>
 
@@ -324,7 +324,7 @@ const App: React.FC = () => {
               showImages={false}
               variant="horizontal"
             />
-            <div className="border border-[#333] px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 bg-[#111]">
+            <div className="border border-[var(--app-border)] px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 bg-[var(--app-bg-elevated)]">
               <h3 className="text-[9px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Style_Weight</h3>
               <input 
                 type="range" 
@@ -340,9 +340,9 @@ const App: React.FC = () => {
           </section>
 
           {generatedStill && (
-            <div ref={previewRef} className="relative group border border-[#333] aspect-video bg-[#111]">
+            <div ref={previewRef} className="relative group border border-[var(--app-border)] aspect-video bg-[var(--app-bg-elevated)]">
               <img src={generatedStill} alt="Preview" className="w-full h-full object-cover opacity-80" />
-              <div className="absolute inset-0 bg-[#111]/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div className="absolute inset-0 bg-[var(--app-bg-elevated)]/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                  <button 
                   onClick={handleDownloadPreview}
                   className="px-8 py-3 bg-zinc-100 text-black font-bold text-[10px] uppercase tracking-widest"
@@ -350,7 +350,7 @@ const App: React.FC = () => {
                    Download_Image
                  </button>
               </div>
-              <div className="absolute top-4 left-4 bg-[#111]/60 border border-zinc-800 px-3 py-1 text-[8px] font-bold text-zinc-400 uppercase">Preview_Output</div>
+              <div className="absolute top-4 left-4 bg-[var(--app-bg-elevated)]/60 border border-zinc-800 px-3 py-1 text-[8px] font-bold text-zinc-400 uppercase">Preview_Output</div>
             </div>
           )}
 
@@ -392,7 +392,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="lg:col-span-4 lg:sticky lg:top-28 self-start space-y-12">
-          <section className="bg-[#181818] border border-[#333] p-8 space-y-10">
+          <section className="bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-8 space-y-10">
             <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">Config_Output</h3>
             
             <div className="space-y-8">
@@ -402,7 +402,7 @@ const App: React.FC = () => {
                   <select 
                     value={config.aspectRatio}
                     onChange={(e) => setConfig({ ...config, aspectRatio: e.target.value })}
-                    className="w-full bg-[#111] border border-[#333] p-4 text-[11px] font-bold text-zinc-100 outline-none focus:border-zinc-100"
+                    className="w-full bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-4 text-[11px] font-bold text-zinc-100 outline-none focus:border-zinc-100"
                   >
                     <option value="16:9">16:9_WIDE</option>
                     <option value="9:16">9:16_PORTRAIT</option>
@@ -416,7 +416,7 @@ const App: React.FC = () => {
                   <select 
                     value={config.resolution}
                     onChange={(e) => setConfig({ ...config, resolution: e.target.value })}
-                    className="w-full bg-[#111] border border-[#333] p-4 text-[11px] font-bold text-zinc-100 outline-none focus:border-zinc-100"
+                    className="w-full bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-4 text-[11px] font-bold text-zinc-100 outline-none focus:border-zinc-100"
                   >
                     <option value="1080p">1080P_HD (1K)</option>
                     <option value="4K">4K_UHD (4K)</option>
@@ -426,10 +426,10 @@ const App: React.FC = () => {
 
               <div className="space-y-3">
                 <label className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block">Start_Asset_I2V</label>
-                <div className="relative group p-4 border border-[#333] border-dashed hover:border-zinc-100 cursor-pointer transition-colors bg-[#111]" onClick={handleStartAssetClick}>
+                <div className="relative group p-4 border border-[var(--app-border)] border-dashed hover:border-zinc-100 cursor-pointer transition-colors bg-[var(--app-bg-elevated)]" onClick={handleStartAssetClick}>
                   <input id="start-asset-input" type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => handleFileChange(e, 'start')} />
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[#111] border border-[#333] overflow-hidden flex items-center justify-center">
+                    <div className="w-12 h-12 bg-[var(--app-bg-elevated)] border border-[var(--app-border)] overflow-hidden flex items-center justify-center">
                       {config.startImage ? <img src={config.startImage} className="w-full h-full object-cover" alt="" /> : <div className="text-zinc-600 text-xs">+</div>}
                     </div>
                     <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
@@ -440,7 +440,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-4 pt-4 border-t border-[#333]">
+            <div className="space-y-4 pt-4 border-t border-[var(--app-border)]">
               <button 
                 onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
                 className="w-full py-5 bg-zinc-100 text-black font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-white transition-all"
@@ -469,12 +469,12 @@ const App: React.FC = () => {
           <OutputJSON data={generatedJSON} />
         </div>
         
-        <div className="border-t border-[#333] pt-32">
+        <div className="border-t border-[var(--app-border)] pt-32">
           <BulkProcessor items={bulkItems} setItems={setBulkItems} onProcess={transformImage} />
         </div>
       </div>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-[#111]/95 border-t border-[#333] px-8 py-3 z-50 flex items-center justify-between text-[9px] font-bold tracking-widest text-zinc-600 uppercase">
+      <footer className="fixed bottom-0 left-0 right-0 bg-[var(--app-bg-elevated)]/95 border-t border-[var(--app-border)] px-8 py-3 z-50 flex items-center justify-between text-[9px] font-bold tracking-widest text-zinc-600 uppercase">
         <div className="flex gap-8">
            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-zinc-500" />Status:Ready</div>
            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-zinc-500" />Int: {config.styleWeight}%</div>

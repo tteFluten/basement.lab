@@ -1,3 +1,4 @@
+import "../apps-common/themeSync";
 import './tailwind.css';
 import '../apps-common/global.css';
 import React from 'react';

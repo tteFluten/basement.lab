@@ -1,3 +1,4 @@
+import "../apps-common/themeSync";
 import '../apps-common/global.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';

@@ -21,6 +21,15 @@
   --app-accent: #fafafa;
 }
 
+[data-theme="light"] {
+  --app-bg: #f4f4f5;
+  --app-bg-elevated: #e4e4e7;
+  --app-border: #d4d4d8;
+  --app-text: #18181b;
+  --app-text-muted: #52525b;
+  --app-accent: #18181b;
+}
+
 /* ----- Base ----- */
 body {
   font-family: 'Geist Mono', monospace;

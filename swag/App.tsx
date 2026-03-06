@@ -212,8 +212,8 @@ const App: React.FC = () => {
 
   if (!hasKey) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4 font-mono">
-        <div className="max-w-md w-full border border-[#333] p-8 text-center bg-[#0a0a0a]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--app-bg)] p-4 font-mono">
+        <div className="max-w-md w-full border border-[var(--app-border)] p-8 text-center bg-[var(--app-bg)]">
           <div className="w-12 h-12 border border-zinc-700 flex items-center justify-center mx-auto mb-6">
             <svg className="w-6 h-6 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -246,9 +246,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-400 font-mono">
+    <div className="min-h-screen bg-[var(--app-bg)] text-zinc-400 font-mono">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0a0a0a] backdrop-blur-md border-b border-[#333]">
+      <header className="sticky top-0 z-50 bg-[var(--app-bg)] backdrop-blur-md border-b border-[var(--app-border)]">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-6 h-6 border border-zinc-500 flex items-center justify-center">
@@ -279,7 +279,7 @@ const App: React.FC = () => {
             <h2 className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">01_Logo_Input</h2>
             <div 
               onClick={handleLogoClick}
-              className={`aspect-video border border-[#333] flex items-center justify-center cursor-pointer transition-all bg-[#111] hover:border-zinc-500 ${logo ? 'border-zinc-500' : ''}`}
+              className={`aspect-video border border-[var(--app-border)] flex items-center justify-center cursor-pointer transition-all bg-[var(--app-bg-elevated)] hover:border-zinc-500 ${logo ? 'border-zinc-500' : ''}`}
             >
               {logo ? (
                 <img src={logo} alt="Logo" className="w-full h-full object-contain p-8" />
@@ -298,7 +298,7 @@ const App: React.FC = () => {
               <select 
                 value={stylePreset} 
                 onChange={(e) => setStylePreset(e.target.value as StylePreset)}
-                className="w-full bg-[#111] p-3 border border-[#333] text-xs text-zinc-400 focus:border-zinc-500 outline-none appearance-none"
+                className="w-full bg-[var(--app-bg-elevated)] p-3 border border-[var(--app-border)] text-xs text-zinc-400 focus:border-zinc-500 outline-none appearance-none"
               >
                 {Object.values(StylePreset).map(preset => (
                   <option key={preset} value={preset}>{preset.toUpperCase().replace(/\s/g, '_')}</option>
@@ -307,7 +307,7 @@ const App: React.FC = () => {
               
               <div 
                 onClick={handleStyleClick}
-                className={`aspect-video border border-[#333] flex items-center justify-center cursor-pointer transition-all bg-[#111] hover:border-zinc-500 ${styleRef ? 'border-zinc-500' : ''}`}
+                className={`aspect-video border border-[var(--app-border)] flex items-center justify-center cursor-pointer transition-all bg-[var(--app-bg-elevated)] hover:border-zinc-500 ${styleRef ? 'border-zinc-500' : ''}`}
               >
                 {styleRef ? (
                   <img src={styleRef} alt="Style" className="w-full h-full object-cover" />
@@ -328,7 +328,7 @@ const App: React.FC = () => {
                 value={mockupType} 
                 disabled={strictReference}
                 onChange={(e) => setMockupType(e.target.value as MockupType)}
-                className={`w-full bg-[#111] p-3 border border-[#333] text-xs text-zinc-400 focus:border-zinc-500 outline-none appearance-none ${strictReference ? 'opacity-30' : ''}`}
+                className={`w-full bg-[var(--app-bg-elevated)] p-3 border border-[var(--app-border)] text-xs text-zinc-400 focus:border-zinc-500 outline-none appearance-none ${strictReference ? 'opacity-30' : ''}`}
               >
                 {Object.values(MockupType).map(type => (
                   <option key={type} value={type}>{type.toUpperCase().replace(/\s/g, '_')}</option>
@@ -336,10 +336,10 @@ const App: React.FC = () => {
               </select>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 border border-[#333] hover:border-zinc-500 transition-all cursor-pointer" onClick={() => setStrictReference(!strictReference)}>
+                <div className="flex items-center justify-between p-3 border border-[var(--app-border)] hover:border-zinc-500 transition-all cursor-pointer" onClick={() => setStrictReference(!strictReference)}>
                   <label className="text-[10px] text-zinc-100 uppercase tracking-widest cursor-pointer">Strict_Reference_Mode</label>
                   <div className={`w-4 h-4 border border-zinc-500 flex items-center justify-center ${strictReference ? 'bg-white' : 'bg-transparent'}`}>
-                    {strictReference && <div className="w-2 h-2 bg-black" />}
+                    {strictReference && <div className="w-2 h-2 bg-[var(--app-bg)]" />}
                   </div>
                 </div>
                 <p className="text-[8px] text-zinc-600 uppercase leading-relaxed px-1">
@@ -354,7 +354,7 @@ const App: React.FC = () => {
                     <button 
                       key={ratio}
                       onClick={() => setAspectRatio(ratio)}
-                      className={`text-left p-2 text-[10px] border transition-all ${aspectRatio === ratio ? 'bg-zinc-100 text-black border-zinc-100' : 'border-[#333] text-zinc-600 hover:border-zinc-500'}`}
+                      className={`text-left p-2 text-[10px] border transition-all ${aspectRatio === ratio ? 'bg-zinc-100 text-black border-zinc-100' : 'border-[var(--app-border)] text-zinc-600 hover:border-zinc-500'}`}
                     >
                       {ratio}
                     </button>
@@ -366,7 +366,7 @@ const App: React.FC = () => {
                     <button 
                       key={res}
                       onClick={() => setResolution(res)}
-                      className={`text-left p-2 text-[10px] border transition-all ${resolution === res ? 'bg-zinc-100 text-black border-zinc-100' : 'border-[#333] text-zinc-600 hover:border-zinc-500'}`}
+                      className={`text-left p-2 text-[10px] border transition-all ${resolution === res ? 'bg-zinc-100 text-black border-zinc-100' : 'border-[var(--app-border)] text-zinc-600 hover:border-zinc-500'}`}
                     >
                       {res}
                     </button>
@@ -382,14 +382,14 @@ const App: React.FC = () => {
               value={additionalDetails}
               onChange={(e) => setAdditionalDetails(e.target.value)}
               placeholder="Describe materials, lighting, placement details..."
-              className="w-full bg-[#111] border border-[#333] p-4 text-xs text-zinc-400 focus:border-zinc-500 outline-none min-h-[100px] resize-none uppercase tracking-tighter leading-relaxed"
+              className="w-full bg-[var(--app-bg-elevated)] border border-[var(--app-border)] p-4 text-xs text-zinc-400 focus:border-zinc-500 outline-none min-h-[100px] resize-none uppercase tracking-tighter leading-relaxed"
             />
           </section>
 
           <button
             onClick={handleGenerate}
             disabled={!logo}
-            className={`w-full py-5 font-bold uppercase text-xs tracking-[0.4em] transition-all border ${!logo ? 'border-[#333] text-zinc-700 cursor-not-allowed' : 'bg-zinc-100 border-zinc-100 text-black hover:bg-[#111] hover:text-white hover:border-[#333] active:scale-[0.98]'}`}
+            className={`w-full py-5 font-bold uppercase text-xs tracking-[0.4em] transition-all border ${!logo ? 'border-[var(--app-border)] text-zinc-700 cursor-not-allowed' : 'bg-zinc-100 border-zinc-100 text-black hover:bg-[var(--app-bg-elevated)] hover:text-[var(--app-text)] hover:border-[var(--app-border)] active:scale-[0.98]'}`}
           >
             Execute_Render
           </button>
@@ -404,10 +404,10 @@ const App: React.FC = () => {
         {/* Content Area */}
         <div className="lg:col-span-8 space-y-8">
           {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[#333] pb-4 gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[var(--app-border)] pb-4 gap-4">
             <div className="flex items-center gap-6">
               <h2 className="text-xs font-bold uppercase tracking-[0.5em] text-zinc-100">Archive</h2>
-              <div className="flex border border-[#333]">
+              <div className="flex border border-[var(--app-border)]">
                 <button 
                   onClick={() => setViewMode('GRID')}
                   className={`px-3 py-1.5 text-[10px] uppercase tracking-tighter transition-colors ${viewMode === 'GRID' ? 'bg-zinc-100 text-black' : 'text-zinc-600 hover:text-zinc-400'}`}
@@ -427,7 +427,7 @@ const App: React.FC = () => {
               <button 
                 onClick={handleDownloadAll}
                 disabled={items.filter(i => !('isPending' in i)).length === 0}
-                className="text-[10px] text-zinc-400 hover:text-white uppercase tracking-widest disabled:opacity-30 transition-colors"
+                className="text-[10px] text-zinc-400 hover:text-[var(--app-text)] uppercase tracking-widest disabled:opacity-30 transition-colors"
               >
                 [Export_All]
               </button>
@@ -442,7 +442,7 @@ const App: React.FC = () => {
           </div>
 
           {items.length === 0 ? (
-            <div className="aspect-video border border-[#333] flex flex-col items-center justify-center space-y-6 opacity-30">
+            <div className="aspect-video border border-[var(--app-border)] flex flex-col items-center justify-center space-y-6 opacity-30">
               <p className="text-[10px] uppercase tracking-[0.3em]">No_Output_Cached</p>
             </div>
           ) : (
@@ -450,7 +450,7 @@ const App: React.FC = () => {
               {items.map((item) => {
                 const isPending = 'isPending' in item;
                 return (
-                  <div key={item.id} className="group border border-[#333] bg-[#111] overflow-hidden relative transition-all hover:border-zinc-500">
+                  <div key={item.id} className="group border border-[var(--app-border)] bg-[var(--app-bg-elevated)] overflow-hidden relative transition-all hover:border-zinc-500">
                     <div className="relative aspect-square overflow-hidden bg-zinc-950 flex items-center justify-center">
                       {isPending ? (
                         <div className="flex flex-col items-center gap-4">
@@ -459,7 +459,7 @@ const App: React.FC = () => {
                             <p className="text-[10px] uppercase tracking-widest text-zinc-100">Processing</p>
                             <p className="text-[8px] uppercase tracking-widest text-zinc-600">{item.config.mockup}</p>
                             {item.config.strictReference && (
-                              <p className="text-[8px] text-white/50 animate-pulse">STRICT_TEMPLATE_MODE</p>
+                              <p className="text-[8px] text-[var(--app-text)]/50 animate-pulse">STRICT_TEMPLATE_MODE</p>
                             )}
                           </div>
                         </div>
@@ -470,7 +470,7 @@ const App: React.FC = () => {
                             alt={item.id} 
                             className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
                           />
-                          <div className="absolute inset-0 bg-[#111]/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                          <div className="absolute inset-0 bg-[var(--app-bg-elevated)]/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                             <button 
                               onClick={() => handleDownload(item.imageUrl, `${item.config.mockup}-${item.id}`, item.config.mockup)}
                               className="px-4 py-2 bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-100 transition-all"
@@ -479,7 +479,7 @@ const App: React.FC = () => {
                             </button>
                             <button 
                               onClick={() => handleDelete(item.id)}
-                              className="px-4 py-2 border border-red-900 text-red-900 text-[10px] font-bold uppercase tracking-widest hover:bg-red-900 hover:text-white transition-all"
+                              className="px-4 py-2 border border-red-900 text-red-900 text-[10px] font-bold uppercase tracking-widest hover:bg-red-900 hover:text-[var(--app-text)] transition-all"
                             >
                               Delete
                             </button>
@@ -487,7 +487,7 @@ const App: React.FC = () => {
                         </>
                       )}
                     </div>
-                    <div className="p-4 flex items-center justify-between border-t border-[#333] bg-[#111]">
+                    <div className="p-4 flex items-center justify-between border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]">
                       <div className="space-y-1">
                         <p className="text-[10px] font-bold text-zinc-100 uppercase tracking-tighter">
                           {item.config.strictReference ? 'REFERENCE_TEMPLATE' : item.config.mockup}
