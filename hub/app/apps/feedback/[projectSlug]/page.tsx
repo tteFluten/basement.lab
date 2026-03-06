@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Plus, Video, ArrowLeft, ArrowRight, Loader2, MessageSquare, Search, ChevronDown } from "lucide-react";
+import { Plus, Video, ArrowLeft, ArrowRight, Loader2, MessageSquare, Search, ChevronDown, X } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
 
@@ -17,6 +17,18 @@ const SORT_LABELS: Record<SortKey, string> = {
   "name-az": "Name A–Z",
   "most-comments": "Most comments",
 };
+
+type UploadStage = "idle" | "preparing" | "uploading" | "saving";
+
+function formatSpeed(bytesPerSec: number): string {
+  if (bytesPerSec >= 1024 * 1024) return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`;
+  return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(0)} KB`;
+}
 
 function sortSessions(sessions: FeedbackSession[], sort: SortKey): FeedbackSession[] {
   return [...sessions].sort((a, b) => {
@@ -34,12 +46,15 @@ export default function ProjectPage() {
   const [project, setProject] = useState<FeedbackProject | null>(null);
   const [sessions, setSessions] = useState<FeedbackSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [uploadStage, setUploadStage] = useState<UploadStage>("idle");
+  const [uploadPercent, setUploadPercent] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const speedRef = useRef<{ lastLoaded: number; lastTime: number }>({ lastLoaded: 0, lastTime: 0 });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
 
@@ -58,30 +73,52 @@ export default function ProjectPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  function resetForm() {
+    setNewTitle("");
+    setSelectedFile(null);
+    setUploadStage("idle");
+    setUploadPercent(0);
+    setUploadSpeed(null);
+    setUploadError(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newTitle.trim()) return;
     if (selectedFile && selectedFile.size > MAX_VIDEO_BYTES) {
-      setUploadProgress(`El video no puede superar ${MAX_VIDEO_MB}MB`);
+      setUploadError(`El video no puede superar ${MAX_VIDEO_MB}MB`);
       return;
     }
 
-    setUploading(true);
-    setUploadProgress("Uploading video…");
+    setUploadError(null);
+    setUploadStage("preparing");
+    setUploadPercent(0);
+    speedRef.current = { lastLoaded: 0, lastTime: Date.now() };
 
     try {
       let videoUrl: string | null = null;
       let durationS: number | null = null;
 
       if (selectedFile) {
-        // Direct browser → Vercel Blob upload (bypasses server payload limits)
         const blob = await upload(selectedFile.name, selectedFile, {
           access: "public",
           handleUploadUrl: "/api/feedback/upload",
+          onUploadProgress: ({ loaded, total, percentage }) => {
+            setUploadStage("uploading");
+            setUploadPercent(Math.round(percentage));
+
+            const now = Date.now();
+            const dt = (now - speedRef.current.lastTime) / 1000;
+            if (dt >= 0.3) {
+              const speed = (loaded - speedRef.current.lastLoaded) / dt;
+              setUploadSpeed(formatSpeed(speed));
+              speedRef.current = { lastLoaded: loaded, lastTime: now };
+            }
+          },
         });
         videoUrl = blob.url;
 
-        // Get duration via a temporary video element
         try {
           durationS = await new Promise((resolve) => {
             const v = document.createElement("video");
@@ -92,7 +129,8 @@ export default function ProjectPage() {
         } catch { /* ignore */ }
       }
 
-      setUploadProgress("Creating session…");
+      setUploadStage("saving");
+      setUploadPercent(100);
       const res = await fetch(`/api/feedback/projects/${projectSlug}/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -102,14 +140,15 @@ export default function ProjectPage() {
       if (res.ok) {
         const session = await res.json();
         setSessions((prev) => [session, ...prev]);
-        setNewTitle("");
-        setSelectedFile(null);
         setShowForm(false);
-        if (fileRef.current) fileRef.current.value = "";
+        resetForm();
+      } else {
+        setUploadError("Failed to create session");
+        setUploadStage("idle");
       }
-    } finally {
-      setUploading(false);
-      setUploadProgress(null);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      setUploadStage("idle");
     }
   }
 
@@ -129,6 +168,14 @@ export default function ProjectPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   }
 
+  const uploading = uploadStage !== "idle";
+  const stageLabel = {
+    idle: "",
+    preparing: "Preparing…",
+    uploading: `Uploading ${uploadPercent}%`,
+    saving: "Saving…",
+  }[uploadStage];
+
   if (loading) return (
     <div className="flex justify-center items-center min-h-full">
       <Loader2 size={20} className="animate-spin text-fg-muted" />
@@ -141,6 +188,7 @@ export default function ProjectPage() {
 
   return (
     <div className="min-h-full p-6 max-w-3xl mx-auto">
+      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/apps/feedback" className="text-fg-muted hover:text-fg transition-colors">
           <ArrowLeft size={16} />
@@ -150,7 +198,7 @@ export default function ProjectPage() {
           <p className="text-xs text-fg-muted mt-0.5">{sessions.length} {sessions.length === 1 ? "session" : "sessions"}</p>
         </div>
         <button
-          onClick={() => setShowForm((v) => !v)}
+          onClick={() => { setShowForm((v) => !v); resetForm(); }}
           className="flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
         >
           <Plus size={14} />
@@ -158,49 +206,102 @@ export default function ProjectPage() {
         </button>
       </div>
 
+      {/* Upload form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="flex flex-col gap-3 mb-6 p-4 border border-border bg-bg-muted">
-          <input
-            type="text"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Session title"
-            autoFocus
-            className="bg-bg border border-border px-3 py-2 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted"
-          />
-          <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-border text-xs font-mono text-fg-muted hover:text-fg hover:border-fg-muted cursor-pointer transition-colors">
-            <Video size={14} />
-            {selectedFile ? `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB)` : `Choose video — MP4, WebM, MOV · max ${MAX_VIDEO_MB}MB`}
+        <form onSubmit={handleCreate} className="mb-6 border border-border bg-bg-muted">
+          <div className="flex flex-col gap-3 p-4">
             <input
-              ref={fileRef}
-              type="file"
-              accept="video/mp4,video/webm,video/quicktime"
-              onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-              className="hidden"
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Session title"
+              autoFocus
+              disabled={uploading}
+              className="bg-bg border border-border px-3 py-2 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50"
             />
-          </label>
-          {uploadProgress && (
-            <p className="text-xs font-mono text-fg-muted">{uploadProgress}</p>
-          )}
-          <div className="flex gap-2 justify-end">
+
+            {/* File picker */}
+            {!uploading && (
+              <label className={`flex items-center gap-2 px-3 py-2 border border-dashed text-xs font-mono transition-colors cursor-pointer ${
+                selectedFile ? "border-fg-muted text-fg" : "border-border text-fg-muted hover:text-fg hover:border-fg-muted"
+              }`}>
+                <Video size={14} className="shrink-0" />
+                <span className="truncate flex-1">
+                  {selectedFile
+                    ? `${selectedFile.name} — ${formatSize(selectedFile.size)}`
+                    : `Choose video — MP4, WebM, MOV · max ${MAX_VIDEO_MB}MB`}
+                </span>
+                {selectedFile && (
+                  <span
+                    role="button"
+                    onClick={(e) => { e.preventDefault(); setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+                    className="text-fg-muted hover:text-fg shrink-0"
+                  >
+                    <X size={12} />
+                  </span>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={(e) => { setSelectedFile(e.target.files?.[0] ?? null); setUploadError(null); }}
+                  className="hidden"
+                />
+              </label>
+            )}
+
+            {/* Progress bar */}
+            {uploading && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-fg-muted">{stageLabel}</span>
+                  <div className="flex items-center gap-3 text-fg-muted">
+                    {uploadSpeed && uploadStage === "uploading" && <span>{uploadSpeed}</span>}
+                    {selectedFile && <span>{formatSize(selectedFile.size)}</span>}
+                  </div>
+                </div>
+                <div className="h-0.5 bg-border overflow-hidden">
+                  <div
+                    className="h-full bg-fg transition-all duration-200 ease-out"
+                    style={{
+                      width: uploadStage === "preparing" ? "4%" :
+                             uploadStage === "saving"    ? "100%" :
+                             `${uploadPercent}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {uploadError && (
+              <p className="text-xs font-mono text-red-400">{uploadError}</p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-0 border-t border-border">
             <button
               type="button"
-              onClick={() => { setShowForm(false); setNewTitle(""); setSelectedFile(null); }}
-              className="px-3 py-2 text-xs font-mono uppercase text-fg-muted hover:text-fg border border-border transition-colors"
+              onClick={() => { setShowForm(false); resetForm(); }}
+              disabled={uploading}
+              className="flex-1 py-2 text-xs font-mono uppercase text-fg-muted hover:text-fg hover:bg-bg border-r border-border transition-colors disabled:opacity-40"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={uploading || !newTitle.trim()}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
+              className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
             >
-              {uploading ? <><Loader2 size={12} className="animate-spin" /> {uploadProgress}</> : "Create session"}
+              {uploading
+                ? <><Loader2 size={12} className="animate-spin" /> {stageLabel}</>
+                : "Create session"}
             </button>
           </div>
         </form>
       )}
 
+      {/* Filters */}
       {sessions.length > 0 && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="relative flex-1 min-w-[160px]">
@@ -231,6 +332,7 @@ export default function ProjectPage() {
         </div>
       )}
 
+      {/* Session list */}
       {sessions.length === 0 ? (
         <div className="border border-dashed border-border p-12 text-center">
           <Video size={32} strokeWidth={1} className="mx-auto mb-3 text-fg-muted opacity-40" />
