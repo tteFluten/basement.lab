@@ -100,7 +100,7 @@ export default function FeedbackPage() {
     new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   return (
-    <div className="min-h-full p-6 max-w-5xl mx-auto">
+    <div className="min-h-full p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -229,8 +229,8 @@ export default function FeedbackPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="border border-border overflow-hidden">
               <div className="relative fb-shimmer h-36 bg-bg-muted" />
               <div className="p-4 space-y-2">
@@ -249,7 +249,7 @@ export default function FeedbackPage() {
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((p, index) => (
             <Link
               key={p.id}

@@ -8,6 +8,7 @@ interface VideoPlayerProps {
   src: string;
   commentMarkers: { id: string; timestampS: number }[];
   seekTo?: number | null;
+  overlayDrawing?: DrawingPath[] | null;
   authorName: string;
   onAddComment: (data: {
     timestampS: number;
@@ -35,7 +36,7 @@ function formatSmpte(s: number, fps: number) {
 
 const DRAW_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#ffffff"];
 
-export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComment, onFpsDetected }: VideoPlayerProps) {
+export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, authorName, onAddComment, onFpsDetected }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentPathRef = useRef<Point[]>([]);
@@ -57,22 +58,30 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
   const [saveError, setSaveError] = useState<string | null>(null);
   const [drawColor, setDrawColor] = useState(DRAW_COLORS[0]);
 
-  const redrawCanvas = useCallback((paths: DrawingPath[]) => {
+  const redrawCanvas = useCallback((userPaths: DrawingPath[], overlay?: DrawingPath[] | null) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    paths.forEach((path) => {
-      if (path.points.length < 2) return;
-      ctx.beginPath();
-      ctx.moveTo(path.points[0].x, path.points[0].y);
-      for (let i = 1; i < path.points.length; i++) ctx.lineTo(path.points[i].x, path.points[i].y);
-      ctx.strokeStyle = path.color;
-      ctx.lineWidth = path.width;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.stroke();
-    });
+
+    const drawPaths = (paths: DrawingPath[], alpha = 1) => {
+      ctx.globalAlpha = alpha;
+      paths.forEach((path) => {
+        if (path.points.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(path.points[0].x, path.points[0].y);
+        for (let i = 1; i < path.points.length; i++) ctx.lineTo(path.points[i].x, path.points[i].y);
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = path.width;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+    };
+
+    if (overlay && overlay.length > 0) drawPaths(overlay, 0.9);
+    drawPaths(userPaths);
   }, []);
 
   // Sync canvas size with video element
@@ -83,12 +92,17 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
       if (!video || !canvas) return;
       canvas.width = video.clientWidth;
       canvas.height = video.clientHeight;
-      redrawCanvas(currentPaths);
+      redrawCanvas(currentPaths, overlayDrawing);
     };
     const observer = new ResizeObserver(syncSize);
     if (videoRef.current) observer.observe(videoRef.current);
     return () => observer.disconnect();
-  }, [currentPaths, redrawCanvas]);
+  }, [currentPaths, overlayDrawing, redrawCanvas]);
+
+  // Redraw when overlay changes
+  useEffect(() => {
+    redrawCanvas(currentPaths, overlayDrawing);
+  }, [overlayDrawing, currentPaths, redrawCanvas]);
 
   // FPS detection via requestVideoFrameCallback
   useEffect(() => {
@@ -166,8 +180,8 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
     setCommentText("");
     setCurrentPaths([]);
     setSaveError(null);
-    redrawCanvas([]);
-  }, [redrawCanvas]);
+    redrawCanvas([], overlayDrawing);
+  }, [redrawCanvas, overlayDrawing]);
 
   // Canvas drawing handlers
   const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
@@ -213,8 +227,8 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
 
   const clearDrawing = useCallback(() => {
     setCurrentPaths([]);
-    redrawCanvas([]);
-  }, [redrawCanvas]);
+    redrawCanvas([], overlayDrawing);
+  }, [redrawCanvas, overlayDrawing]);
 
   const handleSave = useCallback(async () => {
     if (!commentText.trim() && currentPaths.length === 0) return;

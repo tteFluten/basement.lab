@@ -37,6 +37,8 @@ export default function SessionPage() {
   const [anonToken, setAnonToken] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(true);
   const [fps, setFps] = useState<number | null>(null);
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+  const [overlayDrawing, setOverlayDrawing] = useState<DrawingPath[] | null>(null);
 
   const currentUserId = authSession?.user?.id ?? null;
   const authorName = currentUserId
@@ -80,6 +82,8 @@ export default function SessionPage() {
     if (!res.ok) throw new Error("Failed to save comment");
     const comment = await res.json();
     setComments((prev) => [...prev, comment]);
+    setOverlayDrawing(null);
+    setSelectedCommentId(null);
     const token = getAnonToken();
     if (token && !anonToken) setAnonToken(token);
   }, [sessionId, currentUserId, anonToken]);
@@ -101,9 +105,11 @@ export default function SessionPage() {
     setComments((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
-  const handleCommentClick = useCallback((timestampS: number) => {
+  const handleCommentClick = useCallback((timestampS: number, id: string, drawing?: DrawingPath[] | null) => {
     setSeekTo(timestampS);
     setTimeout(() => setSeekTo(null), 100);
+    setOverlayDrawing(drawing ?? null);
+    setSelectedCommentId(id);
   }, []);
 
   if (loading) return (
@@ -146,6 +152,7 @@ export default function SessionPage() {
                 src={fbSession.videoUrl}
                 commentMarkers={comments.map((c) => ({ id: c.id, timestampS: c.timestampS }))}
                 seekTo={seekTo}
+                overlayDrawing={overlayDrawing}
                 authorName={authorName}
                 onAddComment={handleAddComment}
                 onFpsDetected={setFps}
@@ -160,6 +167,7 @@ export default function SessionPage() {
               currentUserId={currentUserId}
               anonToken={anonToken}
               fps={fps}
+              selectedCommentId={selectedCommentId}
               onCommentClick={handleCommentClick}
               onEdit={handleEdit}
               onDelete={handleDelete}

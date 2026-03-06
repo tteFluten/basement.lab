@@ -10,6 +10,91 @@ import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
 const MAX_VIDEO_MB = 500;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 
+function SessionCard({ s, projectSlug }: { s: FeedbackSession; projectSlug: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
+
+  function handleMouseEnter() {
+    const v = videoRef.current;
+    if (!v || !s.videoUrl) return;
+    if (v.readyState === 0) v.load();
+    if (s.durationS) v.currentTime = s.durationS * 0.15;
+  }
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const v = videoRef.current;
+    if (!v || !videoReady || !s.durationS) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    v.currentTime = x * s.durationS;
+  }
+
+  function handleMouseLeave() {
+    const v = videoRef.current;
+    if (!v || !s.durationS) return;
+    v.currentTime = s.durationS * 0.15;
+  }
+
+  return (
+    <Link
+      href={`/apps/feedback/${projectSlug}/${s.id}`}
+      className="fb-card group border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted"
+    >
+      {/* Cover */}
+      <div
+        className="relative h-44 bg-[#0d0d0d] overflow-hidden"
+        onMouseEnter={handleMouseEnter}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        {s.videoUrl ? (
+          <video
+            ref={videoRef}
+            src={s.videoUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            preload="none"
+            muted
+            playsInline
+            onLoadedMetadata={() => {
+              setVideoReady(true);
+              if (videoRef.current && s.durationS) videoRef.current.currentTime = s.durationS * 0.15;
+            }}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Video size={36} strokeWidth={1} className="text-white/10" />
+          </div>
+        )}
+        {/* Scrub hint */}
+        {s.videoUrl && (
+          <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="h-full bg-white/30 w-full scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left" />
+          </div>
+        )}
+        {s.durationS != null && (
+          <div className="absolute bottom-3 right-3 bg-black/80 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-white/70 tabular-nums">
+            {Math.floor(s.durationS / 60)}:{String(Math.floor(s.durationS % 60)).padStart(2, "0")}
+          </div>
+        )}
+        {(s.commentCount ?? 0) > 0 && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/80 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-white/70">
+            <MessageSquare size={10} />
+            {s.commentCount}
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+      {/* Info */}
+      <div className="p-4">
+        <p className="text-sm font-mono text-fg truncate mb-1">{s.title}</p>
+        <p className="text-xs text-fg-muted tabular-nums">
+          {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 type SortKey = "newest" | "oldest" | "name-az" | "most-comments";
 const SORT_LABELS: Record<SortKey, string> = {
   newest: "Newest",
@@ -233,10 +318,10 @@ export default function ProjectPage() {
         <div className="relative fb-shimmer w-4 h-4 bg-bg-muted rounded" />
         <div className="relative fb-shimmer h-3 w-32 bg-bg-muted rounded" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="border border-border overflow-hidden">
-            <div className="relative fb-shimmer h-40 bg-bg-muted" />
+            <div className="relative fb-shimmer h-44 bg-bg-muted" />
             <div className="p-4 space-y-2">
               <div className="relative fb-shimmer h-3 w-3/4 bg-bg-muted rounded" />
               <div className="relative fb-shimmer h-2.5 w-1/3 bg-bg-muted rounded" />
@@ -252,7 +337,7 @@ export default function ProjectPage() {
   );
 
   return (
-    <div className="min-h-full p-6 max-w-5xl mx-auto">
+    <div className="min-h-full p-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/apps/feedback" className="text-fg-muted hover:text-fg transition-colors">
@@ -460,38 +545,11 @@ export default function ProjectPage() {
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((s, index) => (
-            <Link
-              key={s.id}
-              href={`/apps/feedback/${projectSlug}/${s.id}`}
-              className="fb-card group border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted"
-              style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
-            >
-              {/* Cover */}
-              <div className="relative h-40 bg-[#0d0d0d] flex items-center justify-center overflow-hidden">
-                <Video size={36} strokeWidth={1} className="text-white/10 group-hover:text-white/20 transition-colors" />
-                {s.durationS != null && (
-                  <div className="absolute bottom-3 right-3 bg-black/70 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-white/60 tabular-nums">
-                    {formatDuration(s.durationS)}
-                  </div>
-                )}
-                {(s.commentCount ?? 0) > 0 && (
-                  <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/70 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-white/60">
-                    <MessageSquare size={10} />
-                    {s.commentCount}
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              {/* Info */}
-              <div className="p-4">
-                <p className="text-sm font-mono text-fg truncate mb-1">{s.title}</p>
-                <p className="text-xs text-fg-muted tabular-nums">
-                  {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </p>
-              </div>
-            </Link>
+            <div key={s.id} className="fb-card" style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}>
+              <SessionCard s={s} projectSlug={projectSlug} />
+            </div>
           ))}
         </div>
       )}

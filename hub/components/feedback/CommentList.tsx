@@ -1,68 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Clock, Edit2, Trash2, Check, X, PenTool, MessageSquare } from "lucide-react";
 import type { FeedbackComment, DrawingPath } from "@/lib/feedback/types";
-
-function DrawingThumb({ paths }: { paths: DrawingPath[] }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || paths.length === 0) return;
-
-    // Find bounding box of all points
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const path of paths) {
-      for (const pt of path.points) {
-        if (pt.x < minX) minX = pt.x;
-        if (pt.y < minY) minY = pt.y;
-        if (pt.x > maxX) maxX = pt.x;
-        if (pt.y > maxY) maxY = pt.y;
-      }
-    }
-
-    const pad = 8;
-    const srcW = maxX - minX || 1;
-    const srcH = maxY - minY || 1;
-    const scale = Math.min((canvas.width - pad * 2) / srcW, (canvas.height - pad * 2) / srcH);
-    const offX = pad + (canvas.width - pad * 2 - srcW * scale) / 2 - minX * scale;
-    const offY = pad + (canvas.height - pad * 2 - srcH * scale) / 2 - minY * scale;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const path of paths) {
-      if (path.points.length < 2) continue;
-      ctx.beginPath();
-      ctx.moveTo(path.points[0].x * scale + offX, path.points[0].y * scale + offY);
-      for (let i = 1; i < path.points.length; i++) {
-        ctx.lineTo(path.points[i].x * scale + offX, path.points[i].y * scale + offY);
-      }
-      ctx.strokeStyle = path.color;
-      ctx.lineWidth = Math.max(1.5, path.width * scale);
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.stroke();
-    }
-  }, [paths]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={220}
-      height={100}
-      className="w-full border border-border bg-black/40"
-      style={{ maxHeight: 100 }}
-    />
-  );
-}
 
 interface CommentListProps {
   comments: FeedbackComment[];
   currentUserId: string | null;
   anonToken: string | null;
   fps?: number | null;
-  onCommentClick: (timestampS: number) => void;
+  selectedCommentId?: string | null;
+  onCommentClick: (timestampS: number, id: string, drawing?: DrawingPath[] | null) => void;
   onEdit: (id: string, text: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
@@ -84,7 +32,7 @@ function initials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function CommentList({ comments, currentUserId, anonToken, fps, onCommentClick, onEdit, onDelete }: CommentListProps) {
+export function CommentList({ comments, currentUserId, anonToken, fps, selectedCommentId, onCommentClick, onEdit, onDelete }: CommentListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -133,21 +81,31 @@ export function CommentList({ comments, currentUserId, anonToken, fps, onComment
               const owner = isOwner(c);
               const isEditing = editingId === c.id;
               const isBusy = busyId === c.id;
+              const isSelected = selectedCommentId === c.id;
+              const hasDrawing = c.drawing && Array.isArray(c.drawing) && c.drawing.length > 0;
 
               return (
-                <div key={c.id} className="group px-4 py-3.5 hover:bg-bg-muted/50 transition-colors">
+                <div
+                  key={c.id}
+                  className={`group px-4 py-3.5 transition-colors cursor-pointer ${
+                    isSelected ? "bg-bg-muted border-l-2 border-l-fg" : "hover:bg-bg-muted/50 border-l-2 border-l-transparent"
+                  }`}
+                  onClick={() => !isEditing && onCommentClick(c.timestampS, c.id, hasDrawing ? c.drawing : null)}
+                >
                   {/* Top row: timestamp + actions */}
                   <div className="flex items-center justify-between mb-2.5">
-                    <button
-                      onClick={() => onCommentClick(c.timestampS)}
-                      className="flex items-center gap-1.5 text-xs font-mono text-fg-muted hover:text-fg transition-colors"
-                    >
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-fg-muted">
                       <Clock size={11} />
                       <span className="tabular-nums">
                         {fps ? formatSmpte(c.timestampS, Math.round(fps)) : formatTime(c.timestampS)}
                       </span>
-                    </button>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {hasDrawing && (
+                        <span title="Has annotation" className={`transition-colors ${isSelected ? "text-fg" : "text-fg-muted/50"}`}>
+                          <PenTool size={10} />
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                       {owner && !isEditing && (
                         <>
                           <button
@@ -173,7 +131,7 @@ export function CommentList({ comments, currentUserId, anonToken, fps, onComment
 
                   {/* Content */}
                   {isEditing ? (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                       <textarea
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
@@ -198,17 +156,10 @@ export function CommentList({ comments, currentUserId, anonToken, fps, onComment
                       {c.text && (
                         <p className="text-[13px] text-fg font-mono leading-relaxed break-words mb-2.5">{c.text}</p>
                       )}
-                      {!c.text && c.drawing && (
-                        <p className="text-[13px] text-fg-muted font-mono italic mb-2.5">Annotation only</p>
+                      {!c.text && hasDrawing && (
+                        <p className="text-[13px] text-fg-muted font-mono italic mb-2.5">Annotation only — click to view</p>
                       )}
                     </>
-                  )}
-
-                  {/* Drawing thumbnail */}
-                  {c.drawing && Array.isArray(c.drawing) && c.drawing.length > 0 && (
-                    <div className="mb-2.5">
-                      <DrawingThumb paths={c.drawing} />
-                    </div>
                   )}
 
                   {/* Author */}
