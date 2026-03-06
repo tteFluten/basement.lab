@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Plus, Video, ArrowLeft, ArrowRight, Loader2, MessageSquare, Search, ChevronDown, X } from "lucide-react";
+import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
 
 const MAX_VIDEO_MB = 500;
@@ -100,7 +101,7 @@ export default function ProjectPage() {
       let durationS: number | null = null;
 
       if (selectedFile) {
-        // Step 1: get presigned PUT URL from server
+        // Ask server which upload mode to use (R2 presigned URL or Vercel Blob)
         const initRes = await fetch("/api/feedback/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -112,38 +113,56 @@ export default function ProjectPage() {
         });
         if (!initRes.ok) {
           const err = await initRes.json().catch(() => ({}));
-          throw new Error(err.error ?? "Failed to get upload URL");
+          throw new Error(err.error ?? "Failed to initialize upload");
         }
-        const { uploadUrl, publicUrl } = await initRes.json() as { uploadUrl: string; publicUrl: string };
+        const init = await initRes.json() as { mode: "r2" | "blob"; uploadUrl?: string; publicUrl?: string };
 
-        // Step 2: upload directly to R2 via XHR for real progress
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.upload.addEventListener("progress", (e) => {
-            setUploadStage("uploading");
-            if (e.lengthComputable) {
-              const pct = Math.round((e.loaded / e.total) * 100);
-              setUploadPercent(pct);
-
+        if (init.mode === "r2" && init.uploadUrl && init.publicUrl) {
+          // R2: upload directly via XHR for real progress
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener("progress", (e) => {
+              setUploadStage("uploading");
+              if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                setUploadPercent(pct);
+                const now = Date.now();
+                const dt = (now - speedRef.current.lastTime) / 1000;
+                if (dt >= 0.3) {
+                  const speed = (e.loaded - speedRef.current.lastLoaded) / dt;
+                  setUploadSpeed(formatSpeed(speed));
+                  speedRef.current = { lastLoaded: e.loaded, lastTime: now };
+                }
+              }
+            });
+            xhr.addEventListener("load", () =>
+              xhr.status < 400 ? resolve() : reject(new Error(`Upload failed (${xhr.status})`))
+            );
+            xhr.addEventListener("error", () => reject(new Error("Upload failed")));
+            xhr.open("PUT", init.uploadUrl!);
+            xhr.setRequestHeader("Content-Type", selectedFile.type);
+            xhr.send(selectedFile);
+          });
+          videoUrl = init.publicUrl;
+        } else {
+          // Blob fallback: @vercel/blob/client handles the upload handshake
+          const blob = await upload(selectedFile.name, selectedFile, {
+            access: "public",
+            handleUploadUrl: "/api/feedback/upload",
+            onUploadProgress: ({ loaded, total, percentage }) => {
+              setUploadStage("uploading");
+              setUploadPercent(Math.round(percentage));
               const now = Date.now();
               const dt = (now - speedRef.current.lastTime) / 1000;
               if (dt >= 0.3) {
-                const speed = (e.loaded - speedRef.current.lastLoaded) / dt;
+                const speed = (loaded - speedRef.current.lastLoaded) / dt;
                 setUploadSpeed(formatSpeed(speed));
-                speedRef.current = { lastLoaded: e.loaded, lastTime: now };
+                speedRef.current = { lastLoaded: loaded, lastTime: now };
               }
-            }
+            },
           });
-          xhr.addEventListener("load", () =>
-            xhr.status < 400 ? resolve() : reject(new Error(`Upload failed (${xhr.status})`))
-          );
-          xhr.addEventListener("error", () => reject(new Error("Upload failed")));
-          xhr.open("PUT", uploadUrl);
-          xhr.setRequestHeader("Content-Type", selectedFile.type);
-          xhr.send(selectedFile);
-        });
-
-        videoUrl = publicUrl;
+          videoUrl = blob.url;
+        }
 
         try {
           durationS = await new Promise((resolve) => {
