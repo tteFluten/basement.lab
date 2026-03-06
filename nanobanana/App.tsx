@@ -101,7 +101,6 @@ function IllustrationBatch() {
 const STEP_ILLUSTRATIONS = [IllustrationRefs, IllustrationIterative, IllustrationBatch];
 
 export default function App() {
-  useThemeSync();
   const [prompt, setPrompt] = useState('');
   const [images, setImages] = useState<AttachedImage[]>([]);
   const [hasKey, setHasKey] = useState<boolean | null>(null);

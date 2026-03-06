@@ -149,15 +149,15 @@ export function Footer() {
         aria-checked={theme === "light"}
         aria-label="Toggle theme"
         title={theme === "dark" ? "Switch to light" : "Switch to dark"}
-        className="relative flex h-7 w-14 items-center border border-border bg-bg-muted px-1 transition-colors hover:border-fg-muted"
+        className="relative h-7 w-14 border border-border bg-bg-muted transition-colors hover:border-fg-muted"
         style={{ borderRadius: 9999 }}
       >
         <div
-          className={`absolute top-1 h-5 w-5 bg-fg-muted transition-all duration-200`}
+          className="absolute top-1 h-5 w-5 bg-fg-muted transition-all duration-200"
           style={{ borderRadius: 9999, left: theme === "light" ? 4 : 28 }}
         />
-        <Sun size={12} strokeWidth={1.5} className={`relative z-10 transition-colors ${theme === "light" ? "text-bg" : "text-fg-muted/50"}`} />
-        <Moon size={12} strokeWidth={1.5} className={`relative z-10 ml-auto transition-colors ${theme === "dark" ? "text-bg" : "text-fg-muted/50"}`} />
+        <Sun size={12} strokeWidth={1.5} className={`absolute top-1/2 -translate-y-1/2 transition-colors ${theme === "light" ? "text-bg" : "text-fg-muted/50"}`} style={{ left: 9 }} />
+        <Moon size={12} strokeWidth={1.5} className={`absolute top-1/2 -translate-y-1/2 transition-colors ${theme === "dark" ? "text-bg" : "text-fg-muted/50"}`} style={{ right: 9 }} />
       </button>
     </footer>
   );
