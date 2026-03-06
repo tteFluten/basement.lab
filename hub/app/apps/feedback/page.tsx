@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Plus, FolderOpen, Video, ArrowRight, Loader2, Search, ChevronDown } from "lucide-react";
+import { Plus, FolderOpen, Video, ArrowRight, Loader2, Search, ChevronDown, RefreshCw } from "lucide-react";
+import { useSession } from "next-auth/react";
 import type { FeedbackProject } from "@/lib/feedback/types";
 
 type SortKey = "newest" | "oldest" | "name-az" | "name-za" | "most-videos";
@@ -28,6 +29,10 @@ function sortProjects(projects: FeedbackProject[], sort: SortKey): FeedbackProje
 }
 
 export default function FeedbackPage() {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as { role?: string })?.role === "admin";
+  const [corsStatus, setCorsStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [corsError, setCorsError] = useState<string | null>(null);
   const [projects, setProjects] = useState<FeedbackProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -102,14 +107,39 @@ export default function FeedbackPage() {
           <h1 className="text-sm font-mono uppercase tracking-widest text-fg">MonoFeedback</h1>
           <p className="text-xs text-fg-muted mt-1">Video annotation and timestamped feedback</p>
         </div>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
-        >
-          <Plus size={14} />
-          New project
-        </button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={async () => {
+                setCorsStatus("loading");
+                setCorsError(null);
+                try {
+                  const res = await fetch("/api/feedback/setup-cors", { method: "POST" });
+                  const data = await res.json();
+                  if (res.ok) { setCorsStatus("ok"); }
+                  else { setCorsStatus("error"); setCorsError(data.error ?? JSON.stringify(data)); }
+                } catch { setCorsStatus("error"); setCorsError("Network error"); }
+              }}
+              disabled={corsStatus === "loading"}
+              title="Setup R2 CORS"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors disabled:opacity-40"
+            >
+              {corsStatus === "loading" ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              {corsStatus === "ok" ? "CORS OK" : corsStatus === "error" ? "CORS ERR" : "Setup CORS"}
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
+          >
+            <Plus size={14} />
+            New project
+          </button>
+        </div>
       </div>
+      {corsStatus === "error" && corsError && (
+        <p className="text-xs font-mono text-red-400 mb-4">{corsError}</p>
+      )}
 
       {/* New project form */}
       {showForm && (
