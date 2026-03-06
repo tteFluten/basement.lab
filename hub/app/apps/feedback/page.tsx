@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Plus, FolderOpen, Video, ArrowRight, Loader2, Search, ChevronDown, RefreshCw } from "lucide-react";
+import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import type { FeedbackProject } from "@/lib/feedback/types";
 
@@ -221,10 +221,11 @@ export default function FeedbackPage() {
       )}
 
       <style>{`
-        @keyframes fb-fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-        .fb-card { animation: fb-fade-in 0.25s ease-out both; }
-        @keyframes fb-shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
-        .fb-shimmer::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); animation:fb-shimmer 1.4s infinite; }
+        @keyframes fb-fade-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .fb-card { animation: fb-fade-in 0.28s ease-out both; }
       `}</style>
 
       {/* Content */}
@@ -232,11 +233,12 @@ export default function FeedbackPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="border border-border overflow-hidden">
-              <div className="relative fb-shimmer h-36 bg-bg-muted" />
+              <div className="animate-pulse bg-zinc-800/60 w-full h-36" />
               <div className="p-4 space-y-2">
-                <div className="relative fb-shimmer h-3 w-3/4 bg-bg-muted rounded" />
-                <div className="relative fb-shimmer h-2.5 w-1/2 bg-bg-muted rounded" />
+                <div className="animate-pulse bg-zinc-800/60 h-3.5 w-3/4" />
+                <div className="animate-pulse bg-zinc-800/60 h-3 w-1/2" />
               </div>
+              <div className="h-9 border-t border-border" />
             </div>
           ))}
         </div>
@@ -254,29 +256,32 @@ export default function FeedbackPage() {
             <Link
               key={p.id}
               href={`/apps/feedback/${p.slug}`}
-              className="fb-card group border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted"
-              style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+              className="fb-card block border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted group"
+              style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}
             >
               {/* Cover */}
               <div className="relative h-36 bg-[#0d0d0d] flex items-center justify-center overflow-hidden">
                 <FolderOpen size={40} strokeWidth={1} className="text-white/10 group-hover:text-white/20 transition-colors" />
-                {(p.sessionCount ?? 0) > 0 && (
-                  <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 py-1 text-[11px] font-mono text-white/60">
-                    <Video size={10} />
-                    {p.sessionCount}
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
               {/* Info */}
-              <div className="p-4">
-                <p className="text-sm font-mono text-fg truncate mb-1">{p.name}</p>
-                <div className="flex items-center justify-between text-xs text-fg-muted">
-                  {p.ownerName
-                    ? <span className="truncate max-w-[140px]">{p.ownerName}</span>
-                    : <span />}
-                  <span className="shrink-0 tabular-nums">{formatDate(p.createdAt)}</span>
-                </div>
+              <div className="p-4 space-y-1.5">
+                <p className="text-sm font-mono text-fg truncate">{p.name}</p>
+                <p className="text-xs text-fg-muted">{formatDate(p.createdAt)}</p>
+              </div>
+              {/* Bottom bar */}
+              <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
+                {(p.sessionCount ?? 0) > 0 ? (
+                  <span className="flex items-center gap-1.5 text-[11px] font-mono text-fg-muted">
+                    <Video size={10} />
+                    {p.sessionCount} {p.sessionCount === 1 ? "session" : "sessions"}
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-mono text-fg-muted/50">No sessions yet</span>
+                )}
+                {p.ownerName && (
+                  <span className="ml-auto text-[11px] font-mono text-fg-muted/60 truncate max-w-[120px]">{p.ownerName}</span>
+                )}
               </div>
             </Link>
           ))}

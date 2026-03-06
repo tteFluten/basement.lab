@@ -3,12 +3,26 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Plus, Video, ArrowLeft, ArrowRight, Loader2, MessageSquare, Search, ChevronDown, X } from "lucide-react";
+import { Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown, X, Clock } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
 
 const MAX_VIDEO_MB = 500;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
+
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse bg-zinc-800/60 ${className ?? ""}`} />;
+}
+
+function formatDuration(s: number) {
+  const mins = Math.floor(s / 60);
+  const secs = Math.floor(s % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatDate(ms: number) {
+  return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 function SessionCard({ s, projectSlug }: { s: FeedbackSession; projectSlug: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -38,7 +52,7 @@ function SessionCard({ s, projectSlug }: { s: FeedbackSession; projectSlug: stri
   return (
     <Link
       href={`/apps/feedback/${projectSlug}/${s.id}`}
-      className="fb-card group border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted"
+      className="block border border-border overflow-hidden bg-bg-muted group transition-colors hover:border-fg-muted"
     >
       {/* Cover */}
       <div
@@ -65,31 +79,29 @@ function SessionCard({ s, projectSlug }: { s: FeedbackSession; projectSlug: stri
             <Video size={36} strokeWidth={1} className="text-white/10" />
           </div>
         )}
-        {/* Scrub hint */}
-        {s.videoUrl && (
-          <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="h-full bg-white/30 w-full scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left" />
-          </div>
-        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      </div>
+
+      {/* Info */}
+      <div className="p-4 space-y-1.5">
+        <p className="text-sm font-mono text-fg truncate">{s.title}</p>
+        <p className="text-xs text-fg-muted">{formatDate(s.createdAt)}</p>
+      </div>
+
+      {/* Bottom bar */}
+      <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
         {s.durationS != null && (
-          <div className="absolute bottom-3 right-3 bg-black/80 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-white/70 tabular-nums">
-            {Math.floor(s.durationS / 60)}:{String(Math.floor(s.durationS % 60)).padStart(2, "0")}
-          </div>
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-fg-muted">
+            <Clock size={10} />
+            {formatDuration(s.durationS)}
+          </span>
         )}
         {(s.commentCount ?? 0) > 0 && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/80 border border-white/10 px-2 py-0.5 text-[11px] font-mono text-white/70">
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-fg-muted">
             <MessageSquare size={10} />
             {s.commentCount}
-          </div>
+          </span>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
-      {/* Info */}
-      <div className="p-4">
-        <p className="text-sm font-mono text-fg truncate mb-1">{s.title}</p>
-        <p className="text-xs text-fg-muted tabular-nums">
-          {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-        </p>
       </div>
     </Link>
   );
@@ -186,7 +198,6 @@ export default function ProjectPage() {
       let durationS: number | null = null;
 
       if (selectedFile) {
-        // Ask server which upload mode to use (R2 presigned URL or Vercel Blob)
         const initRes = await fetch("/api/feedback/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -203,7 +214,6 @@ export default function ProjectPage() {
         const init = await initRes.json() as { mode: "r2" | "blob"; uploadUrl?: string; publicUrl?: string };
 
         if (init.mode === "r2" && init.uploadUrl && init.publicUrl) {
-          // R2: upload directly via XHR for real progress
           await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.upload.addEventListener("progress", (e) => {
@@ -230,7 +240,6 @@ export default function ProjectPage() {
           });
           videoUrl = init.publicUrl;
         } else {
-          // Blob fallback: @vercel/blob/client handles the upload handshake
           const blob = await upload(selectedFile.name, selectedFile, {
             access: "public",
             handleUploadUrl: "/api/feedback/upload",
@@ -291,13 +300,6 @@ export default function ProjectPage() {
     return sortSessions(list, sort);
   }, [sessions, search, sort]);
 
-  function formatDuration(s: number | null) {
-    if (!s) return null;
-    const mins = Math.floor(s / 60);
-    const secs = Math.floor(s % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  }
-
   const uploading = uploadStage !== "idle";
   const stageLabel = {
     idle: "",
@@ -306,26 +308,23 @@ export default function ProjectPage() {
     saving: "Saving…",
   }[uploadStage];
 
+  const GRID = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4";
+
   if (loading) return (
-    <div className="min-h-full p-6 max-w-3xl mx-auto">
-      <style>{`
-        @keyframes fb-fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-        .fb-card { animation: fb-fade-in 0.25s ease-out both; }
-        @keyframes fb-shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
-        .fb-shimmer::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); animation:fb-shimmer 1.4s infinite; }
-      `}</style>
+    <div className="min-h-full p-6">
       <div className="flex items-center gap-3 mb-8">
-        <div className="relative fb-shimmer w-4 h-4 bg-bg-muted rounded" />
-        <div className="relative fb-shimmer h-3 w-32 bg-bg-muted rounded" />
+        <Skeleton className="w-4 h-4" />
+        <Skeleton className="h-3 w-32" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className={GRID}>
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="border border-border overflow-hidden">
-            <div className="relative fb-shimmer h-44 bg-bg-muted" />
+            <Skeleton className="w-full h-44" />
             <div className="p-4 space-y-2">
-              <div className="relative fb-shimmer h-3 w-3/4 bg-bg-muted rounded" />
-              <div className="relative fb-shimmer h-2.5 w-1/3 bg-bg-muted rounded" />
+              <Skeleton className="h-3.5 w-3/4" />
+              <Skeleton className="h-3 w-1/3" />
             </div>
+            <div className="h-9 border-t border-border" />
           </div>
         ))}
       </div>
@@ -338,6 +337,14 @@ export default function ProjectPage() {
 
   return (
     <div className="min-h-full p-6">
+      <style>{`
+        @keyframes fb-fade-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .fb-card { animation: fb-fade-in 0.28s ease-out both; }
+      `}</style>
+
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/apps/feedback" className="text-fg-muted hover:text-fg transition-colors">
@@ -359,7 +366,6 @@ export default function ProjectPage() {
       {/* Upload form */}
       {showForm && (
         <form onSubmit={handleCreate} className="mb-8 border border-border">
-          {/* Fields */}
           <div className="flex flex-col gap-4 p-6">
             {/* Title */}
             <div className="flex flex-col gap-1.5">
@@ -474,7 +480,6 @@ export default function ProjectPage() {
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex border-t border-border">
             <button
               type="button"
@@ -499,7 +504,7 @@ export default function ProjectPage() {
 
       {/* Filters */}
       {sessions.length > 0 && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
           <div className="relative flex-1 min-w-[160px]">
             <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
             <input
@@ -528,13 +533,6 @@ export default function ProjectPage() {
         </div>
       )}
 
-      <style>{`
-        @keyframes fb-fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-        .fb-card { animation: fb-fade-in 0.25s ease-out both; }
-        @keyframes fb-shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
-        .fb-shimmer::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); animation:fb-shimmer 1.4s infinite; }
-      `}</style>
-
       {/* Session list */}
       {sessions.length === 0 ? (
         <div className="border border-dashed border-border p-16 text-center">
@@ -545,9 +543,9 @@ export default function ProjectPage() {
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className={GRID}>
           {filtered.map((s, index) => (
-            <div key={s.id} className="fb-card" style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}>
+            <div key={s.id} className="fb-card" style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}>
               <SessionCard s={s} projectSlug={projectSlug} />
             </div>
           ))}
