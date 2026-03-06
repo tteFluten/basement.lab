@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { S3Client, PutBucketCorsCommand, GetBucketCorsCommand } from "@aws-sdk/client-s3";
 
 export const runtime = "nodejs";
 
-/** One-time endpoint to set CORS on the R2 bucket. Admin only. */
+/**
+ * One-time endpoint to set CORS on the R2 bucket via Cloudflare REST API.
+ * Admin only. Requires CLOUDFLARE_API_TOKEN env var.
+ */
 export async function POST() {
   const session = await getServerSession(authOptions);
   if ((session?.user as { role?: string })?.role !== "admin") {
@@ -13,47 +15,50 @@ export async function POST() {
   }
 
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   const bucket = process.env.R2_BUCKET_NAME;
 
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucket) {
-    return NextResponse.json({ error: "R2 env vars not configured" }, { status: 503 });
+  if (!accountId || !apiToken || !bucket) {
+    return NextResponse.json({
+      error: "Missing env vars",
+      missing: {
+        CLOUDFLARE_ACCOUNT_ID: !accountId,
+        CLOUDFLARE_API_TOKEN: !apiToken,
+        R2_BUCKET_NAME: !bucket,
+      },
+    }, { status: 503 });
   }
 
-  const client = new S3Client({
-    region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey },
-    requestChecksumCalculation: "WHEN_REQUIRED",
-    responseChecksumValidation: "WHEN_REQUIRED",
+  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${bucket}/cors`;
+
+  const body = {
+    rules: [
+      {
+        allowed: {
+          origins: ["*"],
+          methods: ["GET", "PUT", "HEAD"],
+          headers: ["*"],
+        },
+        exposeHeaders: ["ETag"],
+        maxAgeSeconds: 3600,
+      },
+    ],
+  };
+
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
   });
 
-  try {
-    await client.send(new PutBucketCorsCommand({
-      Bucket: bucket,
-      CORSConfiguration: {
-        CORSRules: [
-          {
-            AllowedOrigins: ["*"],
-            AllowedMethods: ["PUT", "GET", "HEAD"],
-            AllowedHeaders: ["*"],
-            ExposeHeaders: ["ETag"],
-            MaxAgeSeconds: 3600,
-          },
-        ],
-      },
-    }));
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("PutBucketCors failed:", msg);
-    return NextResponse.json({ error: "PutBucketCors failed", detail: msg }, { status: 500 });
+  const data = await res.json();
+
+  if (!res.ok) {
+    return NextResponse.json({ error: "Cloudflare API error", detail: data }, { status: 500 });
   }
 
-  try {
-    const result = await client.send(new GetBucketCorsCommand({ Bucket: bucket }));
-    return NextResponse.json({ ok: true, rules: result.CORSRules });
-  } catch (e) {
-    return NextResponse.json({ ok: true, note: "Set but could not verify", error: String(e) });
-  }
+  return NextResponse.json({ ok: true, result: data });
 }
