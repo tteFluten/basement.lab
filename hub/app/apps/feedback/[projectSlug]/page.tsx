@@ -311,22 +311,47 @@ export default function ProjectPage() {
   const GRID = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4";
 
   if (loading) return (
-    <div className="min-h-full p-6">
-      <div className="flex items-center gap-3 mb-8">
-        <Skeleton className="w-4 h-4" />
-        <Skeleton className="h-3 w-32" />
-      </div>
-      <div className={GRID}>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="border border-border overflow-hidden">
-            <Skeleton className="w-full h-44" />
-            <div className="p-4 space-y-2">
-              <Skeleton className="h-3.5 w-3/4" />
-              <Skeleton className="h-3 w-1/3" />
-            </div>
-            <div className="h-9 border-t border-border" />
-          </div>
-        ))}
+    <div className="flex items-center justify-center h-full min-h-[60vh]">
+      <style>{`
+        @keyframes fb-spin     { to { transform: rotate(360deg); } }
+        @keyframes fb-spin-rev { to { transform: rotate(-360deg); } }
+        @keyframes fb-dash     { to { stroke-dashoffset: -20; } }
+        @keyframes fb-pulse    { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+        @keyframes fb-dot-wave { 0%,60%,100% { transform: translateY(0); opacity: 0.3; } 30% { transform: translateY(-3px); opacity: 1; } }
+      `}</style>
+      <div className="flex flex-col items-center gap-6">
+        <svg width="120" height="120" viewBox="0 0 120 120" className="text-fg overflow-visible">
+          {/* outer dashed ring — slow spin */}
+          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin 18s linear infinite" }}>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="0.5"
+              strokeOpacity="0.15" strokeDasharray="4 6"
+              style={{ animation: "fb-dash 2s linear infinite" }} />
+          </g>
+          {/* mid ring — reverse */}
+          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin-rev 10s linear infinite" }}>
+            <circle cx="60" cy="60" r="38" fill="none" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.08" />
+          </g>
+          {/* inner arc — fast spin */}
+          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin 3s linear infinite" }}>
+            <circle cx="60" cy="60" r="24" fill="none" stroke="currentColor" strokeWidth="1.5"
+              strokeOpacity="0.5" strokeDasharray="20 60" strokeLinecap="round" />
+          </g>
+          {/* core dot */}
+          <circle cx="60" cy="60" r="4" fill="currentColor" strokeOpacity="0.8"
+            style={{ animation: "fb-pulse 2.5s ease-in-out infinite" }} />
+        </svg>
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-fg-muted"
+            style={{ animation: "fb-pulse 2s ease-in-out infinite" }}>
+            Loading
+          </span>
+          <svg width="28" height="8" viewBox="0 0 28 8">
+            {[0, 1, 2].map(i => (
+              <circle key={i} cx={4 + i * 10} cy="4" r="1.5" fill="currentColor" className="text-fg-muted"
+                style={{ animation: "fb-dot-wave 1.2s ease-in-out infinite", animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </svg>
+        </div>
       </div>
     </div>
   );
