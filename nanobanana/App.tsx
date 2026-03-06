@@ -919,17 +919,6 @@ export default function App() {
                 </button>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
                 {/* Clipboard paste */}
-                {/* Improve prompt */}
-                <button
-                  onClick={handleImprovePrompt}
-                  disabled={isImprovingPrompt}
-                  className={`p-2 transition-colors disabled:cursor-not-allowed ${isImprovingPrompt ? 'text-[#ccc] bg-[#111]' : 'text-[#666] hover:bg-[#111] hover:text-[#ccc]'}`}
-                  title="Improve prompt with AI"
-                >
-                  {isImprovingPrompt
-                    ? <Loader2 size={16} className="animate-spin" />
-                    : <Wand2 size={16} />}
-                </button>
                 <button
                   onClick={async () => {
                     try {
@@ -951,6 +940,16 @@ export default function App() {
                 </button>
               </div>
 
+              <button
+                onClick={handleImprovePrompt}
+                disabled={isImprovingPrompt}
+                className={`p-2 transition-colors disabled:cursor-not-allowed ${isImprovingPrompt ? 'text-[#ccc] bg-[#111]' : 'text-[#666] hover:bg-[#111] hover:text-[#ccc]'}`}
+                title="Improve prompt with AI"
+              >
+                {isImprovingPrompt
+                  ? <Loader2 size={16} className="animate-spin" />
+                  : <Wand2 size={16} />}
+              </button>
               <button
                 onClick={handleExecute}
                 disabled={activeGenerations + batchSize > MAX_CONCURRENT || (!prompt.trim() && images.length === 0)}
