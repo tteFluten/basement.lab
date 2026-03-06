@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Play, Pause, PenTool, Trash2, MessageSquare } from "lucide-react";
+import { Play, Pause, PenTool, Trash2, MessageSquare, X, Send, Loader2 } from "lucide-react";
 import type { DrawingPath, Point } from "@/lib/feedback/types";
 
 interface VideoPlayerProps {
@@ -23,10 +23,13 @@ function formatTime(s: number) {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+const DRAW_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#ffffff"];
+
 export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComment }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentPathRef = useRef<Point[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -34,9 +37,11 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [currentPaths, setCurrentPaths] = useState<DrawingPath[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [showCommentInput, setShowCommentInput] = useState(false);
+  const [showPanel, setShowPanel] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [drawColor, setDrawColor] = useState(DRAW_COLORS[0]);
 
   const redrawCanvas = useCallback((paths: DrawingPath[]) => {
     const canvas = canvasRef.current;
@@ -56,20 +61,19 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
     });
   }, []);
 
-  // Sync canvas size with video
+  // Sync canvas size with video element
   useEffect(() => {
-    const update = () => {
-      if (videoRef.current && canvasRef.current) {
-        canvasRef.current.width = videoRef.current.clientWidth;
-        canvasRef.current.height = videoRef.current.clientHeight;
-        redrawCanvas(currentPaths);
-      }
+    const syncSize = () => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas) return;
+      canvas.width = video.clientWidth;
+      canvas.height = video.clientHeight;
+      redrawCanvas(currentPaths);
     };
-    window.addEventListener("resize", update);
-    videoRef.current?.addEventListener("loadedmetadata", update);
-    return () => {
-      window.removeEventListener("resize", update);
-    };
+    const observer = new ResizeObserver(syncSize);
+    if (videoRef.current) observer.observe(videoRef.current);
+    return () => observer.disconnect();
   }, [currentPaths, redrawCanvas]);
 
   // External seek
@@ -77,82 +81,96 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
     if (seekTo == null || !videoRef.current) return;
     videoRef.current.currentTime = seekTo;
     setCurrentTime(seekTo);
-    setCurrentPaths([]);
-    redrawCanvas([]);
-  }, [seekTo, redrawCanvas]);
+  }, [seekTo]);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
     if (isPlaying) {
       videoRef.current.pause();
     } else {
       videoRef.current.play();
     }
-    setIsPlaying(!isPlaying);
-  };
+    setIsPlaying((v) => !v);
+  }, [isPlaying]);
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
     if (videoRef.current) {
       videoRef.current.currentTime = time;
       setCurrentTime(time);
     }
-  };
+  }, []);
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawingMode) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    setIsDrawing(true);
-    currentPathRef.current = [{ x: e.clientX - rect.left, y: e.clientY - rect.top }];
-    if (isPlaying && videoRef.current) {
+  const openPanel = useCallback((withDraw = false) => {
+    if (videoRef.current && isPlaying) {
       videoRef.current.pause();
       setIsPlaying(false);
     }
+    setShowPanel(true);
+    if (withDraw) setIsDrawingMode(true);
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  }, [isPlaying]);
+
+  const closePanel = useCallback(() => {
+    setShowPanel(false);
+    setIsDrawingMode(false);
+    setCommentText("");
+    setCurrentPaths([]);
+    setSaveError(null);
+    redrawCanvas([]);
+  }, [redrawCanvas]);
+
+  // Canvas drawing handlers
+  const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawingMode) return;
+    setIsDrawing(true);
+    currentPathRef.current = [getCanvasPoint(e)];
+  }, [isDrawingMode]);
+
+  const draw = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !isDrawingMode) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    currentPathRef.current.push({ x, y });
+    const pt = getCanvasPoint(e);
+    currentPathRef.current.push(pt);
     const pts = currentPathRef.current;
     if (pts.length >= 2) {
       ctx.beginPath();
       ctx.moveTo(pts[pts.length - 2].x, pts[pts.length - 2].y);
-      ctx.lineTo(x, y);
-      ctx.strokeStyle = "#ef4444";
+      ctx.lineTo(pt.x, pt.y);
+      ctx.strokeStyle = drawColor;
       ctx.lineWidth = 3;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.stroke();
     }
-  };
+  }, [isDrawing, isDrawingMode, drawColor]);
 
-  const stopDrawing = () => {
+  const stopDrawing = useCallback(() => {
     if (!isDrawing) return;
     setIsDrawing(false);
     if (currentPathRef.current.length > 0) {
-      const newPath: DrawingPath = { points: [...currentPathRef.current], color: "#ef4444", width: 3 };
-      const newPaths = [...currentPaths, newPath];
-      setCurrentPaths(newPaths);
+      const newPath: DrawingPath = { points: [...currentPathRef.current], color: drawColor, width: 3 };
+      setCurrentPaths((prev) => [...prev, newPath]);
       currentPathRef.current = [];
     }
-  };
+  }, [isDrawing, drawColor]);
 
-  const clearDrawing = () => {
+  const clearDrawing = useCallback(() => {
     setCurrentPaths([]);
     redrawCanvas([]);
-  };
+  }, [redrawCanvas]);
 
-  const handleSaveComment = async () => {
+  const handleSave = useCallback(async () => {
     if (!commentText.trim() && currentPaths.length === 0) return;
     setSaving(true);
+    setSaveError(null);
     try {
       await onAddComment({
         timestampS: currentTime,
@@ -160,138 +178,197 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
         drawing: currentPaths.length > 0 ? currentPaths : undefined,
         authorName,
       });
-      setCommentText("");
-      setShowCommentInput(false);
-      setIsDrawingMode(false);
-      setCurrentPaths([]);
-      redrawCanvas([]);
+      closePanel();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
-  };
+  }, [commentText, currentPaths, currentTime, authorName, onAddComment, closePanel]);
+
+  const canSave = (commentText.trim().length > 0 || currentPaths.length > 0) && !saving;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="flex flex-col w-full max-w-4xl mx-auto border border-border bg-bg-muted">
-      {/* Video */}
-      <div className="relative bg-black aspect-video w-full overflow-hidden group">
+    <div className="flex flex-col w-full max-w-4xl mx-auto">
+      {/* ── Video area ── */}
+      <div className="relative bg-black aspect-video w-full overflow-hidden">
         <video
           ref={videoRef}
           src={src}
           className="w-full h-full object-contain"
           onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+          onLoadedMetadata={(e) => {
+            setDuration(e.currentTarget.duration);
+            // initial canvas sync
+            const canvas = canvasRef.current;
+            const video = e.currentTarget;
+            if (canvas) { canvas.width = video.clientWidth; canvas.height = video.clientHeight; }
+          }}
           onEnded={() => setIsPlaying(false)}
+          onClick={togglePlay}
         />
         <canvas
           ref={canvasRef}
-          className={`absolute inset-0 w-full h-full ${isDrawingMode ? "cursor-crosshair pointer-events-auto" : "pointer-events-none"}`}
+          className={`absolute inset-0 w-full h-full ${isDrawingMode ? "cursor-crosshair" : "pointer-events-none"}`}
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
           onMouseLeave={stopDrawing}
         />
 
-        {/* Controls overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <div className="flex items-center gap-4 mb-2">
-            <button onClick={togglePlay} className="text-white hover:text-fg-muted transition-colors">
-              {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+        {/* Drawing mode indicator */}
+        {isDrawingMode && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/80 border border-white/20 px-3 py-1.5 text-xs font-mono text-white/80 pointer-events-none">
+            Drawing mode — draw on the video then add your comment below
+          </div>
+        )}
+      </div>
+
+      {/* ── Control bar (always visible) ── */}
+      <div className="bg-[#0a0a0a] border-x border-b border-border px-4 pt-3 pb-2">
+        {/* Timeline */}
+        <div className="relative h-5 flex items-center mb-2 group/tl">
+          {/* comment markers */}
+          {duration > 0 && commentMarkers.map((m) => (
+            <div
+              key={m.id}
+              className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3 bg-white/40 group-hover/tl:bg-white/70 transition-colors pointer-events-none z-10"
+              style={{ left: `${(m.timestampS / duration) * 100}%` }}
+            />
+          ))}
+          {/* filled track */}
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 bg-white/10 pointer-events-none">
+            <div className="h-full bg-white/60 transition-none" style={{ width: `${progress}%` }} />
+          </div>
+          {/* scrubber thumb */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full pointer-events-none z-20 -translate-x-1/2"
+            style={{ left: `${progress}%` }}
+          />
+          <input
+            type="range" min="0" max={duration || 100} step="0.1" value={currentTime}
+            onChange={handleSeek}
+            className="absolute inset-0 w-full opacity-0 cursor-pointer z-30"
+          />
+        </div>
+
+        {/* Buttons row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={togglePlay}
+              className="text-white/70 hover:text-white transition-colors"
+            >
+              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
             </button>
-
-            <div className="relative flex-1 h-3 flex items-center group/timeline">
-              {duration > 0 &&
-                commentMarkers.map((m) => (
-                  <div
-                    key={m.id}
-                    className="absolute top-1/2 -translate-y-1/2 w-1 h-3 bg-fg-muted pointer-events-none z-10 opacity-50 group-hover/timeline:opacity-100 transition-opacity"
-                    style={{ left: `${(m.timestampS / duration) * 100}%` }}
-                  />
-                ))}
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                value={currentTime}
-                onChange={handleSeek}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-              />
-              <div className="w-full h-0.5 bg-border pointer-events-none">
-                <div
-                  className="h-full bg-white transition-all duration-75 ease-linear"
-                  style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <span className="text-xs font-mono text-fg-muted tabular-nums">
+            <span className="text-xs font-mono text-white/40 tabular-nums">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
           </div>
 
-          <div className="flex items-center justify-between border-t border-border pt-2">
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  const entering = !isDrawingMode;
-                  setIsDrawingMode(entering);
-                  if (entering) {
-                    if (videoRef.current) { videoRef.current.pause(); setIsPlaying(false); }
-                    setShowCommentInput(true);
-                  }
-                }}
-                className={`flex items-center gap-2 px-3 py-1 text-xs font-mono uppercase transition-colors ${
-                  isDrawingMode ? "bg-fg text-bg" : "bg-bg border border-border text-fg-muted hover:text-fg"
-                }`}
-              >
-                <PenTool size={14} />
-                {isDrawingMode ? "Drawing" : "Annotate"}
-              </button>
-              {isDrawingMode && (
-                <button onClick={clearDrawing} className="p-1.5 text-fg-muted hover:text-red-400 transition-colors" title="Clear">
-                  <Trash2 size={14} />
-                </button>
-              )}
-            </div>
-            {!isDrawingMode && !showCommentInput && (
-              <button
-                onClick={() => {
-                  setShowCommentInput(true);
-                  if (videoRef.current) { videoRef.current.pause(); setIsPlaying(false); }
-                }}
-                className="flex items-center gap-2 px-3 py-1 text-xs font-mono uppercase bg-bg border border-border text-fg-muted hover:text-fg transition-colors"
-              >
-                <MessageSquare size={14} />
-                Comment
-              </button>
-            )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openPanel(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase transition-colors ${
+                isDrawingMode && showPanel
+                  ? "bg-red-500/20 border border-red-500/40 text-red-400"
+                  : "border border-white/10 text-white/50 hover:text-white hover:border-white/30"
+              }`}
+            >
+              <PenTool size={12} />
+              Annotate
+            </button>
+            <button
+              onClick={() => openPanel(false)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase transition-colors ${
+                showPanel && !isDrawingMode
+                  ? "bg-fg/10 border border-fg/30 text-fg"
+                  : "border border-white/10 text-white/50 hover:text-white hover:border-white/30"
+              }`}
+            >
+              <MessageSquare size={12} />
+              Comment
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Comment input */}
-      {showCommentInput && (
-        <div className="p-4 border-t border-border bg-bg">
-          <textarea
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Type your feedback here..."
-            className="w-full bg-bg-muted border border-border p-3 text-sm text-fg focus:outline-none focus:border-fg-muted min-h-[80px] resize-none font-mono"
-            autoFocus
-          />
-          <div className="flex justify-end gap-2 mt-2">
-            <button
-              onClick={() => { setShowCommentInput(false); setIsDrawingMode(false); setCommentText(""); clearDrawing(); }}
-              className="px-4 py-2 text-xs font-mono uppercase text-fg-muted hover:text-fg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveComment}
-              disabled={saving || (!commentText.trim() && currentPaths.length === 0)}
-              className="px-4 py-2 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
-            >
-              {saving ? "Saving…" : "Save feedback"}
-            </button>
+      {/* ── Comment / annotation panel ── */}
+      {showPanel && (
+        <div className="border-x border-b border-border bg-bg">
+          {/* Drawing toolbar */}
+          {isDrawingMode && (
+            <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-bg-muted">
+              <span className="text-xs font-mono text-fg-muted uppercase tracking-widest shrink-0">Color</span>
+              <div className="flex gap-1.5">
+                {DRAW_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setDrawColor(c)}
+                    className="w-5 h-5 rounded-full transition-transform hover:scale-110"
+                    style={{ backgroundColor: c, outline: drawColor === c ? `2px solid ${c}` : "none", outlineOffset: "2px" }}
+                  />
+                ))}
+              </div>
+              {currentPaths.length > 0 && (
+                <button
+                  onClick={clearDrawing}
+                  className="ml-auto flex items-center gap-1.5 text-xs font-mono text-fg-muted hover:text-red-400 transition-colors"
+                >
+                  <Trash2 size={12} />
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="p-4">
+            {/* Timestamp badge */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-mono text-fg-muted bg-bg-muted border border-border px-2 py-0.5">
+                @ {formatTime(currentTime)}
+              </span>
+              {isDrawingMode && currentPaths.length > 0 && (
+                <span className="text-xs font-mono text-fg-muted bg-bg-muted border border-border px-2 py-0.5 flex items-center gap-1">
+                  <PenTool size={10} />
+                  {currentPaths.length} stroke{currentPaths.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            <textarea
+              ref={textareaRef}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave(); }}
+              placeholder={isDrawingMode ? "Add a note about your drawing… (optional)" : "Type your feedback…"}
+              className="w-full bg-bg-muted border border-border px-3 py-2.5 text-sm text-fg focus:outline-none focus:border-fg-muted min-h-[80px] resize-none font-mono placeholder:text-fg-muted/50"
+            />
+
+            {saveError && (
+              <p className="text-xs font-mono text-red-400 mt-2">{saveError}</p>
+            )}
+
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-xs font-mono text-fg-muted/60">⌘↵ to save</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={closePanel}
+                  className="px-3 py-1.5 text-xs font-mono uppercase text-fg-muted hover:text-fg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!canSave}
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-30 transition-opacity"
+                >
+                  {saving ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

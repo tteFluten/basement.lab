@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, Edit2, Trash2, Check, X } from "lucide-react";
+import { Clock, Edit2, Trash2, Check, X, PenTool, MessageSquare } from "lucide-react";
 import type { FeedbackComment } from "@/lib/feedback/types";
 
 interface CommentListProps {
@@ -19,17 +19,14 @@ function formatTime(s: number) {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function CommentList({
-  comments,
-  currentUserId,
-  anonToken,
-  onCommentClick,
-  onEdit,
-  onDelete,
-}: CommentListProps) {
+function initials(name: string): string {
+  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+export function CommentList({ comments, currentUserId, anonToken, onCommentClick, onEdit, onDelete }: CommentListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   function isOwner(c: FeedbackComment) {
     if (currentUserId && c.authorId === currentUserId) return true;
@@ -38,66 +35,59 @@ export function CommentList({
   }
 
   async function handleSaveEdit(id: string) {
-    setSavingId(id);
-    try {
-      await onEdit(id, editText);
-      setEditingId(null);
-    } finally {
-      setSavingId(null);
-    }
+    setBusyId(id);
+    try { await onEdit(id, editText); setEditingId(null); }
+    finally { setBusyId(null); }
   }
 
   async function handleDelete(id: string) {
-    setSavingId(id);
-    try {
-      await onDelete(id);
-    } finally {
-      setSavingId(null);
-    }
+    setBusyId(id);
+    try { await onDelete(id); }
+    finally { setBusyId(null); }
   }
 
   const sorted = [...comments].sort((a, b) => a.timestampS - b.timestampS);
 
   return (
-    <div className="flex flex-col h-full border-l border-border bg-bg w-80 shrink-0">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-xs font-mono uppercase text-fg-muted tracking-widest">
-          Feedback Log
-          {comments.length > 0 && (
-            <span className="ml-2 text-fg">{comments.length}</span>
-          )}
-        </h2>
+    <div className="flex flex-col w-80 shrink-0 border-l border-border bg-bg h-full">
+      {/* Header */}
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-bg-muted">
+        <span className="text-xs font-mono uppercase tracking-widest text-fg-muted">Feedback</span>
+        {comments.length > 0 && (
+          <span className="text-xs font-mono bg-bg border border-border text-fg px-2 py-0.5">{comments.length}</span>
+        )}
       </div>
 
+      {/* List */}
       <div className="flex-1 overflow-y-auto">
         {sorted.length === 0 ? (
-          <div className="p-8 text-center text-fg-muted text-xs font-mono">
-            No feedback yet.
-            <br />
-            Pause the video to add a comment.
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
+            <MessageSquare size={28} strokeWidth={1} className="text-fg-muted opacity-40" />
+            <p className="text-xs font-mono text-fg-muted">No feedback yet</p>
+            <p className="text-[11px] text-fg-muted/60">Pause the video and click Comment or Annotate</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
             {sorted.map((c) => {
               const owner = isOwner(c);
               const isEditing = editingId === c.id;
-              const isBusy = savingId === c.id;
+              const isBusy = busyId === c.id;
 
               return (
-                <div key={c.id} className="p-4 hover:bg-bg-muted transition-colors">
-                  <div className="flex items-center justify-between mb-2">
+                <div key={c.id} className="group px-4 py-3.5 hover:bg-bg-muted/50 transition-colors">
+                  {/* Top row: timestamp + actions */}
+                  <div className="flex items-center justify-between mb-2.5">
                     <button
                       onClick={() => onCommentClick(c.timestampS)}
-                      className="flex items-center gap-2 text-xs font-mono text-fg-muted hover:text-fg transition-colors"
+                      className="flex items-center gap-1.5 text-xs font-mono text-fg-muted hover:text-fg transition-colors"
                     >
-                      <Clock size={12} />
-                      {formatTime(c.timestampS)}
+                      <Clock size={11} />
+                      <span className="tabular-nums">{formatTime(c.timestampS)}</span>
                     </button>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       {c.drawing && (
-                        <span className="flex items-center gap-1 text-[10px] font-mono uppercase text-fg-muted border border-border px-1.5 py-0.5">
-                          <Edit2 size={10} />
-                          Drawing
+                        <span title="Has annotation" className="p-1 text-fg-muted/60">
+                          <PenTool size={11} />
                         </span>
                       )}
                       {owner && !isEditing && (
@@ -108,7 +98,7 @@ export function CommentList({
                             className="p-1 text-fg-muted hover:text-fg transition-colors disabled:opacity-40"
                             title="Edit"
                           >
-                            <Edit2 size={12} />
+                            <Edit2 size={11} />
                           </button>
                           <button
                             onClick={() => handleDelete(c.id)}
@@ -116,40 +106,53 @@ export function CommentList({
                             className="p-1 text-fg-muted hover:text-red-400 transition-colors disabled:opacity-40"
                             title="Delete"
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={11} />
                           </button>
                         </>
                       )}
                     </div>
                   </div>
 
+                  {/* Content */}
                   {isEditing ? (
                     <div className="flex flex-col gap-2">
                       <textarea
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
-                        className="w-full bg-bg-muted border border-border p-2 text-sm text-fg focus:outline-none focus:border-fg-muted resize-none font-mono min-h-[60px]"
+                        className="w-full bg-bg-muted border border-border px-2.5 py-2 text-sm text-fg focus:outline-none focus:border-fg-muted resize-none font-mono min-h-[64px] text-[13px]"
                         autoFocus
                       />
-                      <div className="flex gap-2 justify-end">
-                        <button onClick={() => setEditingId(null)} className="p-1 text-fg-muted hover:text-fg" title="Cancel">
-                          <X size={14} />
+                      <div className="flex gap-1.5 justify-end">
+                        <button onClick={() => setEditingId(null)} className="p-1 text-fg-muted hover:text-fg transition-colors">
+                          <X size={13} />
                         </button>
                         <button
                           onClick={() => handleSaveEdit(c.id)}
                           disabled={isBusy}
-                          className="p-1 text-fg-muted hover:text-fg disabled:opacity-40"
-                          title="Save"
+                          className="p-1 text-fg-muted hover:text-fg disabled:opacity-40 transition-colors"
                         >
-                          <Check size={14} />
+                          <Check size={13} />
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-fg font-mono leading-relaxed break-words">{c.text}</p>
+                    <>
+                      {c.text && (
+                        <p className="text-[13px] text-fg font-mono leading-relaxed break-words mb-2.5">{c.text}</p>
+                      )}
+                      {!c.text && c.drawing && (
+                        <p className="text-[13px] text-fg-muted font-mono italic mb-2.5">Annotation only</p>
+                      )}
+                    </>
                   )}
 
-                  <div className="mt-2 text-[10px] text-fg-muted font-mono uppercase">{c.authorName}</div>
+                  {/* Author */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-bg-muted border border-border flex items-center justify-center text-[9px] font-mono text-fg-muted shrink-0">
+                      {initials(c.authorName)}
+                    </div>
+                    <span className="text-[11px] text-fg-muted/70 font-mono truncate">{c.authorName}</span>
+                  </div>
                 </div>
               );
             })}
