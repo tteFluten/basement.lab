@@ -23,6 +23,7 @@ import {
   ArrowRight,
   X,
   Banana,
+  Video,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
@@ -482,6 +483,13 @@ export function Toolbar() {
 
         <span className="flex-1 min-w-4" />
 
+        <Link
+          href="/apps/feedback"
+          title="MonoFeedback"
+          className={`p-1.5 shrink-0 ${pathname === "/apps/feedback" ? "text-fg border-b border-fg" : "text-fg-muted hover:text-fg"}`}
+        >
+          <Video size={iconSize} strokeWidth={1.5} />
+        </Link>
         <Link
           href="/history"
           title="History"
