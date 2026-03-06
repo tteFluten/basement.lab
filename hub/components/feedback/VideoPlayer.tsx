@@ -15,6 +15,7 @@ interface VideoPlayerProps {
     drawing?: DrawingPath[];
     authorName: string;
   }) => Promise<void>;
+  onFpsDetected?: (fps: number) => void;
 }
 
 function formatTime(s: number) {
@@ -23,17 +24,30 @@ function formatTime(s: number) {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+function formatSmpte(s: number, fps: number) {
+  const totalFrames = Math.round(s * fps);
+  const f = totalFrames % fps;
+  const totalSecs = Math.floor(totalFrames / fps);
+  const secs = totalSecs % 60;
+  const mins = Math.floor(totalSecs / 60);
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}:${String(f).padStart(2, "0")}`;
+}
+
 const DRAW_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#ffffff"];
 
-export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComment }: VideoPlayerProps) {
+export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComment, onFpsDetected }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentPathRef = useRef<Point[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fpsRef = useRef<{ lastTime: number; samples: number[] }>({ lastTime: 0, samples: [] });
+  const rvcIdRef = useRef<number>(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [videoSize, setVideoSize] = useState<{ w: number; h: number } | null>(null);
+  const [fps, setFps] = useState<number | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [currentPaths, setCurrentPaths] = useState<DrawingPath[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -75,6 +89,41 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
     if (videoRef.current) observer.observe(videoRef.current);
     return () => observer.disconnect();
   }, [currentPaths, redrawCanvas]);
+
+  // FPS detection via requestVideoFrameCallback
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !("requestVideoFrameCallback" in video)) return;
+    type RVFC = (now: number, meta: { mediaTime: number; presentedFrames: number }) => void;
+    const onFrame: RVFC = (_now, meta) => {
+      const dt = meta.mediaTime - fpsRef.current.lastTime;
+      if (dt > 0 && dt < 0.1) {
+        fpsRef.current.samples.push(1 / dt);
+        if (fpsRef.current.samples.length > 20) fpsRef.current.samples.shift();
+        if (fpsRef.current.samples.length >= 5) {
+          const avg = fpsRef.current.samples.reduce((a, b) => a + b) / fpsRef.current.samples.length;
+          // Round to common frame rates
+          const common = [23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60];
+          const rounded = common.reduce((best, r) => Math.abs(r - avg) < Math.abs(best - avg) ? r : best, avg);
+          const display = Math.round(rounded === 23.976 ? 23.976 : rounded === 29.97 ? 29.97 : rounded);
+          setFps((prev) => {
+            const next = rounded;
+            if (prev === null || Math.abs(next - prev) > 0.5) {
+              onFpsDetected?.(display);
+              return next;
+            }
+            return prev;
+          });
+        }
+      }
+      fpsRef.current.lastTime = meta.mediaTime;
+      rvcIdRef.current = (video as unknown as { requestVideoFrameCallback: (cb: RVFC) => number }).requestVideoFrameCallback(onFrame);
+    };
+    rvcIdRef.current = (video as unknown as { requestVideoFrameCallback: (cb: RVFC) => number }).requestVideoFrameCallback(onFrame);
+    return () => {
+      (video as unknown as { cancelVideoFrameCallback: (id: number) => void }).cancelVideoFrameCallback(rvcIdRef.current);
+    };
+  }, [onFpsDetected]);
 
   // External seek
   useEffect(() => {
@@ -199,10 +248,10 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
           className="w-full h-full object-contain"
           onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
           onLoadedMetadata={(e) => {
-            setDuration(e.currentTarget.duration);
-            // initial canvas sync
-            const canvas = canvasRef.current;
             const video = e.currentTarget;
+            setDuration(video.duration);
+            setVideoSize({ w: video.videoWidth, h: video.videoHeight });
+            const canvas = canvasRef.current;
             if (canvas) { canvas.width = video.clientWidth; canvas.height = video.clientHeight; }
           }}
           onEnded={() => setIsPlaying(false)}
@@ -224,6 +273,15 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
           </div>
         )}
       </div>
+
+      {/* ── Video info strip ── */}
+      {videoSize && (
+        <div className="bg-[#0a0a0a] border-x border-border px-4 py-1.5 flex items-center gap-4 text-[11px] font-mono text-white/30">
+          <span>{videoSize.w}×{videoSize.h}</span>
+          {fps !== null && <span>{fps % 1 === 0 ? fps : fps.toFixed(3)} fps</span>}
+          <span>{formatTime(duration)}</span>
+        </div>
+      )}
 
       {/* ── Control bar (always visible) ── */}
       <div className="bg-[#0a0a0a] border-x border-b border-border px-4 pt-3 pb-2">
@@ -262,9 +320,16 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} />}
             </button>
-            <span className="text-xs font-mono text-white/40 tabular-nums">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-xs font-mono text-white/60 tabular-nums">
+                {fps !== null ? formatSmpte(currentTime, Math.round(fps)) : formatTime(currentTime)}
+              </span>
+              {fps !== null && (
+                <span className="text-[10px] font-mono text-white/25 tabular-nums">
+                  f{Math.round(currentTime * fps)} / {formatTime(duration)}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -327,7 +392,8 @@ export function VideoPlayer({ src, commentMarkers, seekTo, authorName, onAddComm
             {/* Timestamp badge */}
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xs font-mono text-fg-muted bg-bg-muted border border-border px-2 py-0.5">
-                @ {formatTime(currentTime)}
+                {fps !== null ? formatSmpte(currentTime, Math.round(fps)) : formatTime(currentTime)}
+                {fps !== null && <span className="text-fg-muted/50 ml-1.5">f{Math.round(currentTime * fps)}</span>}
               </span>
               {isDrawingMode && currentPaths.length > 0 && (
                 <span className="text-xs font-mono text-fg-muted bg-bg-muted border border-border px-2 py-0.5 flex items-center gap-1">

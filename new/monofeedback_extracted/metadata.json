@@ -1,0 +1,5 @@
+{
+  "name": "MonoFeedback",
+  "description": "Minimalist video feedback tool with drawing capabilities",
+  "requestFramePermissions": []
+}

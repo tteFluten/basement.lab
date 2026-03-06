@@ -36,6 +36,7 @@ export default function SessionPage() {
   const [seekTo, setSeekTo] = useState<number | null>(null);
   const [anonToken, setAnonToken] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(true);
+  const [fps, setFps] = useState<number | null>(null);
 
   const currentUserId = authSession?.user?.id ?? null;
   const authorName = currentUserId
@@ -147,6 +148,7 @@ export default function SessionPage() {
                 seekTo={seekTo}
                 authorName={authorName}
                 onAddComment={handleAddComment}
+                onFpsDetected={setFps}
               />
             </div>
           </div>
@@ -157,6 +159,7 @@ export default function SessionPage() {
               comments={comments}
               currentUserId={currentUserId}
               anonToken={anonToken}
+              fps={fps}
               onCommentClick={handleCommentClick}
               onEdit={handleEdit}
               onDelete={handleDelete}

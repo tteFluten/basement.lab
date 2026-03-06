@@ -307,7 +307,19 @@ export default function ProjectPage() {
                     ref={fileRef}
                     type="file"
                     accept="video/mp4,video/webm,video/quicktime"
-                    onChange={(e) => { setSelectedFile(e.target.files?.[0] ?? null); setUploadError(null); }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setSelectedFile(file);
+                      setUploadError(null);
+                      if (file && !newTitle.trim()) {
+                        const auto = file.name
+                          .replace(/\.[^/.]+$/, "")
+                          .replace(/[-_.]+/g, " ")
+                          .replace(/\b\w/g, (c) => c.toUpperCase())
+                          .trim();
+                        setNewTitle(auto);
+                      }
+                    }}
                     className="hidden"
                   />
                 </label>

@@ -23,7 +23,30 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(where npm)",
       "Bash(cmd.exe /c \"where npm\")",
-      "Bash(git add nanobanana/App.tsx hub/public/embed/nanobanana/)"
+      "Bash(git add nanobanana/App.tsx hub/public/embed/nanobanana/)",
+      "Bash(ssh:*)",
+      "Bash(chmod 600 ~/.ssh/id_github_cuenta1 ~/.ssh/id_github_cuenta2 ~/.ssh/config)",
+      "Bash(printf \"Host github-cuenta1\\\\n  HostName github.com\\\\n  User git\\\\n  IdentityFile ~/.ssh/id_github_cuenta1\\\\n\\\\nHost github-cuenta2\\\\n  HostName github.com\\\\n  User git\\\\n  IdentityFile ~/.ssh/id_github_cuenta2\\\\n\")",
+      "Bash(~/.ssh/config)",
+      "Read(//c/Users/54223/.ssh/**)",
+      "Bash(ssh-keygen:*)",
+      "Bash(ls:*)",
+      "Bash(chmod 600:*)",
+      "Bash(mv:*)",
+      "Bash(git config:*)",
+      "Bash(for app in chronos cineprompt swag avatar render frame-variator)",
+      "Bash(do echo \"=== $app ===\")",
+      "Read(//e/basement.lab/$app/**)",
+      "Bash(done)",
+      "Bash(for app in chronos cineprompt swag avatar render frame-variator nanobanana)",
+      "Bash(node:*)",
+      "Bash(do)",
+      "Bash(echo \"=== Building $app ===\")",
+      "Read(//e/basement.lab/**)",
+      "Bash(grep:*)",
+      "Bash(unzip:*)",
+      "Bash(npm install:*)",
+      "Bash(rm:*)"
     ]
   }
 }

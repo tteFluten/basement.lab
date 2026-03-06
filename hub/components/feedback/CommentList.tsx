@@ -61,6 +61,7 @@ interface CommentListProps {
   comments: FeedbackComment[];
   currentUserId: string | null;
   anonToken: string | null;
+  fps?: number | null;
   onCommentClick: (timestampS: number) => void;
   onEdit: (id: string, text: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -72,11 +73,18 @@ function formatTime(s: number) {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+function formatSmpte(s: number, fps: number) {
+  const totalFrames = Math.round(s * fps);
+  const f = totalFrames % fps;
+  const totalSecs = Math.floor(totalFrames / fps);
+  return `${formatTime(totalSecs)} · f${f}`;
+}
+
 function initials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function CommentList({ comments, currentUserId, anonToken, onCommentClick, onEdit, onDelete }: CommentListProps) {
+export function CommentList({ comments, currentUserId, anonToken, fps, onCommentClick, onEdit, onDelete }: CommentListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -135,7 +143,9 @@ export function CommentList({ comments, currentUserId, anonToken, onCommentClick
                       className="flex items-center gap-1.5 text-xs font-mono text-fg-muted hover:text-fg transition-colors"
                     >
                       <Clock size={11} />
-                      <span className="tabular-nums">{formatTime(c.timestampS)}</span>
+                      <span className="tabular-nums">
+                        {fps ? formatSmpte(c.timestampS, Math.round(fps)) : formatTime(c.timestampS)}
+                      </span>
                     </button>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       {owner && !isEditing && (
