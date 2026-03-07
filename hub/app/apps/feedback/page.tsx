@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Plus, FolderOpen, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut } from "lucide-react";
+import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut } from "lucide-react";
 import { MonkeyIcon } from "@/components/MonkeyIcon";
 import { useSession } from "next-auth/react";
 import type { FeedbackProject } from "@/lib/feedback/types";
