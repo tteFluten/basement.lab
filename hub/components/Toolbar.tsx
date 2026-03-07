@@ -23,9 +23,9 @@ import {
   ArrowRight,
   X,
   Banana,
+  ListChecks,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { MonkeyIcon } from "@/components/MonkeyIcon";
 import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
 import { getTemplateIcon } from "@/lib/iconTemplate";
 import { Image as ImageIcon } from "lucide-react";
@@ -485,10 +485,10 @@ export function Toolbar() {
 
         <Link
           href="/apps/feedback"
-          title="MonoFeedback"
+          title="Feedback"
           className={`p-1.5 shrink-0 transition-colors ${pathname?.startsWith("/apps/feedback") ? "text-fg bg-bg border border-border" : "text-fg-muted hover:text-fg"}`}
         >
-          <MonkeyIcon size={iconSize} strokeWidth={1.5} />
+          <ListChecks size={iconSize} strokeWidth={1.5} />
         </Link>
         <Link
           href="/history"

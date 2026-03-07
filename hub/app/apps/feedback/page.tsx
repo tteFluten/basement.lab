@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut } from "lucide-react";
-import { MonkeyIcon } from "@/components/MonkeyIcon";
+import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut, ListChecks } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId } from "@/lib/currentProject";
 import type { FeedbackProject } from "@/lib/feedback/types";
@@ -256,9 +255,9 @@ export default function FeedbackPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <MonkeyIcon size={28} className="text-fg-muted/60 shrink-0" />
+          <ListChecks size={22} strokeWidth={1.5} className="text-fg-muted/60 shrink-0" />
           <div>
-            <h1 className="text-sm font-mono uppercase tracking-widest text-fg">MonoFeedback</h1>
+            <h1 className="text-sm font-mono uppercase tracking-widest text-fg">Feedback</h1>
             {linkedFilter !== "all" && workProjects.length > 0 ? (
               <p className="text-xs text-fg-muted mt-1">
                 {workProjects.find(p => p.id === linkedFilter)?.name ?? "Project"}
@@ -405,7 +404,7 @@ export default function FeedbackPage() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="border border-border overflow-hidden">
               <div className="animate-pulse bg-zinc-800/60 w-full h-36 flex items-center justify-center">
-                <MonkeyIcon size={36} strokeWidth={1} className="text-white/10" />
+                <ListChecks size={36} strokeWidth={1} className="text-white/10" />
               </div>
               <div className="p-4 space-y-2">
                 <div className="animate-pulse bg-zinc-800/60 h-3.5 w-3/4" />

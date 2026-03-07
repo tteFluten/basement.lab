@@ -1,6 +1,6 @@
 "use client";
 
-import { MonkeyIcon } from "@/components/MonkeyIcon";
+import { ListChecks } from "lucide-react";
 
 export function FeedbackLoader() {
   return (
@@ -30,7 +30,7 @@ export function FeedbackLoader() {
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             <span style={{ animation: "fb-pulse 2.5s ease-in-out infinite" }} className="flex">
-              <MonkeyIcon size={28} strokeWidth={1.2} className="text-fg-muted/50" />
+              <ListChecks size={26} strokeWidth={1.2} className="text-fg-muted/50" />
             </span>
           </div>
         </div>
