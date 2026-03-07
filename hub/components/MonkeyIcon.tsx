@@ -1,4 +1,4 @@
-export function MonkeyIcon({ size = 24, className, strokeWidth = 1.5 }: { size?: number; className?: string; strokeWidth?: number }) {
+export function MonkeyIcon({ size = 24, className, strokeWidth = 1.5 }: { size?: string | number; className?: string; strokeWidth?: string | number }) {
   return (
     <svg
       width={size}
