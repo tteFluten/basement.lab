@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Loader2, Film, MessageSquare, Share2, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Film, MessageSquare, Share2, Check, X, Pencil } from "lucide-react";
 import { VideoPlayer } from "@/components/feedback/VideoPlayer";
 import { CommentList } from "@/components/feedback/CommentList";
 import type { FeedbackSession, FeedbackComment, DrawingPath } from "@/lib/feedback/types";
