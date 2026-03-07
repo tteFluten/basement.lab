@@ -3,6 +3,22 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut } from "lucide-react";
+
+function MonkeyIcon({ size = 24, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="5.5" cy="11.5" r="2.5" />
+      <circle cx="18.5" cy="11.5" r="2.5" />
+      <circle cx="12" cy="11" r="6.5" />
+      <ellipse cx="12" cy="14" rx="2.8" ry="2" />
+      <circle cx="10.9" cy="13.8" r="0.45" fill="currentColor" stroke="none" />
+      <circle cx="13.1" cy="13.8" r="0.45" fill="currentColor" stroke="none" />
+      <circle cx="9.8" cy="9.8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="14.2" cy="9.8" r="0.9" fill="currentColor" stroke="none" />
+      <path d="M10.2 16.5 Q12 17.6 13.8 16.5" />
+    </svg>
+  );
+}
 import { useSession } from "next-auth/react";
 import type { FeedbackProject } from "@/lib/feedback/types";
 
@@ -159,6 +175,7 @@ export default function FeedbackPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
+  const [linkedFilter, setLinkedFilter] = useState<string>("all");
 
   const load = useCallback(async () => {
     try {
@@ -204,15 +221,25 @@ export default function FeedbackPage() {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [projects]);
 
+  // Unique linked projects for filter dropdown
+  const linkedProjects = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      if (p.linkedProjectId && p.linkedProjectName) map.set(p.linkedProjectId, p.linkedProjectName);
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [projects]);
+
   const filtered = useMemo(() => {
     let list = projects;
     if (ownerFilter !== "all") list = list.filter((p) => p.ownerId === ownerFilter);
+    if (linkedFilter !== "all") list = list.filter((p) => p.linkedProjectId === linkedFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((p) => p.name.toLowerCase().includes(q) || p.ownerName?.toLowerCase().includes(q));
     }
     return sortProjects(list, sort);
-  }, [projects, search, sort, ownerFilter]);
+  }, [projects, search, sort, ownerFilter, linkedFilter]);
 
   const myProjects = useMemo(() => filtered.filter((p) => p.isMember), [filtered]);
   const otherProjects = useMemo(() => filtered.filter((p) => !p.isMember), [filtered]);
@@ -232,9 +259,12 @@ export default function FeedbackPage() {
     <div className="min-h-full p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-sm font-mono uppercase tracking-widest text-fg">MonoFeedback</h1>
-          <p className="text-xs text-fg-muted mt-1">Video annotation and timestamped feedback</p>
+        <div className="flex items-center gap-3">
+          <MonkeyIcon size={28} className="text-fg-muted/60 shrink-0" />
+          <div>
+            <h1 className="text-sm font-mono uppercase tracking-widest text-fg">MonoFeedback</h1>
+            <p className="text-xs text-fg-muted mt-1">Video annotation and timestamped feedback</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -287,6 +317,21 @@ export default function FeedbackPage() {
               className="w-full bg-bg-muted border border-border pl-8 pr-3 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted"
             />
           </div>
+          {linkedProjects.length > 1 && (
+            <div className="relative">
+              <select
+                value={linkedFilter}
+                onChange={(e) => setLinkedFilter(e.target.value)}
+                className="appearance-none bg-bg-muted border border-border pl-3 pr-7 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted cursor-pointer"
+              >
+                <option value="all">All projects</option>
+                {linkedProjects.map((lp) => (
+                  <option key={lp.id} value={lp.id}>{lp.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
+            </div>
+          )}
           {owners.length > 1 && (
             <div className="relative">
               <select
@@ -314,9 +359,9 @@ export default function FeedbackPage() {
             </select>
             <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
           </div>
-          {(search || ownerFilter !== "all") && (
+          {(search || ownerFilter !== "all" || linkedFilter !== "all") && (
             <button
-              onClick={() => { setSearch(""); setOwnerFilter("all"); }}
+              onClick={() => { setSearch(""); setOwnerFilter("all"); setLinkedFilter("all"); }}
               className="text-xs font-mono text-fg-muted hover:text-fg transition-colors"
             >
               Clear
