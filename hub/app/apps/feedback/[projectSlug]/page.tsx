@@ -330,7 +330,7 @@ const SORT_LABELS: Record<SortKey, string> = {
 
 type UploadStage = "idle" | "preparing" | "uploading" | "saving";
 
-const SESSION_TYPE_ICONS: Record<SessionType, React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>> = {
+const SESSION_TYPE_ICONS: Record<SessionType, React.ComponentType<{ size?: string | number; strokeWidth?: string | number; className?: string }>> = {
   video: Video,
   image: Image,
   url: Globe,
@@ -818,7 +818,7 @@ export default function ProjectPage() {
               className="flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors shrink-0"
             >
               <Plus size={14} />
-              Add video
+              New session
             </button>
           )}
         </div>
