@@ -141,10 +141,10 @@ export default function SessionPage() {
 
   const handleCommentClick = useCallback((timestampS: number, id: string, drawing?: DrawingPath[] | null) => {
     setSelectedCommentId(id);
+    setOverlayDrawing(drawing ?? null);
     if (fbSession?.sessionType === "video") {
       setSeekTo(timestampS);
       setTimeout(() => setSeekTo(null), 100);
-      setOverlayDrawing(drawing ?? null);
     }
   }, [fbSession?.sessionType]);
 
@@ -257,6 +257,7 @@ export default function SessionPage() {
               src={fbSession.videoUrl}
               comments={comments}
               selectedCommentId={selectedCommentId}
+              overlayDrawing={overlayDrawing}
               authorName={authorName}
               onAddComment={handleAddComment}
               onSelectComment={setSelectedCommentId}

@@ -10,6 +10,7 @@ interface ImageAnnotatorProps {
   src: string;
   comments: FeedbackComment[];
   selectedCommentId?: string | null;
+  overlayDrawing?: DrawingPath[] | null;
   authorName: string;
   onAddComment: (data: {
     timestampS: number;
@@ -33,7 +34,7 @@ function screenToCanvas(e: React.MouseEvent, canvas: HTMLCanvasElement): Point {
 }
 
 export function ImageAnnotator({
-  src, comments, selectedCommentId, authorName, onAddComment, onSelectComment,
+  src, comments, selectedCommentId, overlayDrawing, authorName, onAddComment, onSelectComment,
 }: ImageAnnotatorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,6 +69,15 @@ export function ImageAnnotator({
 
   // Redraw when paths change
   useEffect(() => { redrawCanvas(currentPaths); }, [currentPaths, redrawCanvas]);
+
+  // Show overlay drawing when a saved comment is selected (no pending pin)
+  useEffect(() => {
+    if (!pendingPin && overlayDrawing) {
+      redrawCanvas(overlayDrawing);
+    } else if (!pendingPin && !overlayDrawing) {
+      redrawCanvas([]);
+    }
+  }, [overlayDrawing, pendingPin, redrawCanvas]);
 
   function handleContainerClick(e: React.MouseEvent<HTMLDivElement>) {
     if (isDrawingMode) return;

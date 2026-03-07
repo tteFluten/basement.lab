@@ -60,6 +60,11 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
     sessionType === "video" ? a.timestampS - b.timestampS : a.createdAt - b.createdAt
   );
 
+  // Map comment id → 1-based pin index (image sessions only)
+  const pinIndex = sessionType === "image"
+    ? new Map(sorted.map((c, i) => [c.id, i + 1]))
+    : null;
+
   return (
     <div className="flex flex-col w-80 shrink-0 border-l border-border bg-bg h-full">
       {/* Header */}
@@ -109,12 +114,18 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                             {fps ? formatSmpte(c.timestampS, Math.round(fps)) : formatTime(c.timestampS)}
                           </span>
                         </>
-                      ) : sessionType === "image" && c.xPct != null ? (
+                      ) : sessionType === "image" ? (
                         <>
-                          <MapPin size={11} />
-                          <span className="tabular-nums">
-                            {Math.round((c.xPct ?? 0) * 100)}%, {Math.round((c.yPct ?? 0) * 100)}%
-                          </span>
+                          {pinIndex && (
+                            <span className="inline-flex items-center justify-center w-4 h-4 bg-fg text-bg text-[9px] font-bold shrink-0">
+                              {pinIndex.get(c.id) ?? "·"}
+                            </span>
+                          )}
+                          {c.xPct != null && (
+                            <span className="tabular-nums text-fg-muted/60">
+                              {Math.round((c.xPct ?? 0) * 100)}%, {Math.round((c.yPct ?? 0) * 100)}%
+                            </span>
+                          )}
                         </>
                       ) : sessionType === "url" ? (
                         <Globe size={11} />

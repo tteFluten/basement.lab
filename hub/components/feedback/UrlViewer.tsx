@@ -2,10 +2,22 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import {
-  GripVertical, MessageSquare, Send, X, Loader2, ExternalLink,
-  Camera, ChevronDown, ChevronUp,
+  GripVertical, MessageSquare, X, Loader2, ExternalLink,
+  Camera, PenTool, Trash2,
 } from "lucide-react";
-import type { FeedbackComment } from "@/lib/feedback/types";
+import type { FeedbackComment, DrawingPath, Point } from "@/lib/feedback/types";
+
+const DRAW_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#ffffff"];
+
+function screenToCanvas(e: MouseEvent, canvas: HTMLCanvasElement): Point {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY,
+  };
+}
 
 interface UrlViewerProps {
   url: string;
@@ -16,6 +28,7 @@ interface UrlViewerProps {
   onAddComment: (data: {
     timestampS: number;
     text: string;
+    drawing?: DrawingPath[];
     authorName: string;
     screenshotUrl?: string | null;
   }) => Promise<void>;
@@ -40,12 +53,89 @@ export function UrlViewer({
   const toolbarRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ mx: number; my: number; bx: number; by: number } | null>(null);
 
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const currentPathRef = useRef<Point[]>([]);
+
   const [pos, setPos] = useState({ x: 24, y: 72 });
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [saving, setSaving] = useState(false);
   const [capturingScreenshot, setCapturingScreenshot] = useState(false);
   const [iframeError, setIframeError] = useState(false);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [currentPaths, setCurrentPaths] = useState<DrawingPath[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawColor, setDrawColor] = useState(DRAW_COLORS[0]);
+
+  // Drawing canvas logic
+  const redrawCanvas = useCallback((paths: DrawingPath[]) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    paths.forEach((path) => {
+      if (path.points.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(path.points[0].x, path.points[0].y);
+      for (let i = 1; i < path.points.length; i++) ctx.lineTo(path.points[i].x, path.points[i].y);
+      ctx.strokeStyle = path.color;
+      ctx.lineWidth = path.width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    });
+  }, []);
+
+  useEffect(() => { redrawCanvas(currentPaths); }, [currentPaths, redrawCanvas]);
+
+  const handleCanvasMouseDown = useCallback((e: MouseEvent) => {
+    if (!isDrawingMode || !canvasRef.current) return;
+    setIsDrawing(true);
+    const pt = screenToCanvas(e, canvasRef.current);
+    currentPathRef.current = [pt];
+  }, [isDrawingMode]);
+
+  const handleCanvasMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDrawing || !isDrawingMode || !canvasRef.current) return;
+    const pt = screenToCanvas(e, canvasRef.current);
+    currentPathRef.current.push(pt);
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx || currentPathRef.current.length < 2) return;
+    const pts = currentPathRef.current;
+    ctx.beginPath();
+    ctx.moveTo(pts[pts.length - 2].x, pts[pts.length - 2].y);
+    ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+  }, [isDrawing, isDrawingMode, drawColor]);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (!isDrawing || !isDrawingMode) return;
+    setIsDrawing(false);
+    if (currentPathRef.current.length > 1) {
+      const newPath: DrawingPath = { points: [...currentPathRef.current], color: drawColor, width: 3 };
+      setCurrentPaths((prev) => [...prev, newPath]);
+    }
+    currentPathRef.current = [];
+  }, [isDrawing, isDrawingMode, drawColor]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isDrawingMode) return;
+    canvas.addEventListener("mousedown", handleCanvasMouseDown);
+    canvas.addEventListener("mousemove", handleCanvasMouseMove);
+    canvas.addEventListener("mouseup", handleCanvasMouseUp);
+    canvas.addEventListener("mouseleave", handleCanvasMouseUp);
+    return () => {
+      canvas.removeEventListener("mousedown", handleCanvasMouseDown);
+      canvas.removeEventListener("mousemove", handleCanvasMouseMove);
+      canvas.removeEventListener("mouseup", handleCanvasMouseUp);
+      canvas.removeEventListener("mouseleave", handleCanvasMouseUp);
+    };
+  }, [isDrawingMode, handleCanvasMouseDown, handleCanvasMouseMove, handleCanvasMouseUp]);
 
   // Drag logic
   const onMouseMove = useCallback((e: MouseEvent) => {
@@ -74,8 +164,17 @@ export function UrlViewer({
     window.removeEventListener("mouseup", onMouseUp);
   }, [onMouseMove, onMouseUp]);
 
+  function closeForm() {
+    setExpanded(false);
+    setCommentText("");
+    setIsDrawingMode(false);
+    setCurrentPaths([]);
+    redrawCanvas([]);
+    currentPathRef.current = [];
+  }
+
   async function handleSave() {
-    if (!commentText.trim()) return;
+    if (!commentText.trim() && currentPaths.length === 0) return;
     setSaving(true);
     setCapturingScreenshot(true);
     let screenshotUrl: string | null = null;
@@ -88,11 +187,11 @@ export function UrlViewer({
       await onAddComment({
         timestampS: 0,
         text: commentText.trim(),
+        drawing: currentPaths.length > 0 ? currentPaths : undefined,
         authorName,
         screenshotUrl,
       });
-      setCommentText("");
-      setExpanded(false);
+      closeForm();
     } finally {
       setSaving(false);
     }
@@ -142,8 +241,18 @@ export function UrlViewer({
           src={url}
           className="w-full h-full border-0"
           title="URL preview"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           onError={() => setIframeError(true)}
+        />
+      )}
+
+      {/* Drawing canvas overlay — covers iframe when drawing mode is active */}
+      {expanded && isDrawingMode && (
+        <canvas
+          ref={canvasRef}
+          width={typeof window !== "undefined" ? window.innerWidth : 1920}
+          height={typeof window !== "undefined" ? window.innerHeight : 1080}
+          className="absolute inset-0 w-full h-full z-[9998]"
+          style={{ cursor: "crosshair" }}
         />
       )}
 
@@ -175,8 +284,40 @@ export function UrlViewer({
         {/* Comment input area */}
         {expanded ? (
           <div className="p-3 space-y-2">
+            {/* Drawing controls */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setIsDrawingMode((v) => !v)}
+                className={`flex items-center gap-1.5 px-2 py-1 text-[11px] font-mono uppercase border transition-colors ${
+                  isDrawingMode ? "border-fg bg-fg text-bg" : "border-border text-fg-muted hover:text-fg"
+                }`}
+              >
+                <PenTool size={10} />
+                {isDrawingMode ? "Drawing" : "Draw"}
+              </button>
+              {isDrawingMode && (
+                <>
+                  <div className="flex items-center gap-1">
+                    {DRAW_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setDrawColor(c)}
+                        className={`w-4 h-4 transition-transform ${drawColor === c ? "scale-125 ring-1 ring-white/50" : "hover:scale-110"}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => { setCurrentPaths([]); redrawCanvas([]); }}
+                    className="flex items-center gap-0.5 px-1.5 py-1 text-[11px] font-mono text-fg-muted hover:text-red-400 border border-border transition-colors"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </>
+              )}
+            </div>
             <textarea
-              autoFocus
+              autoFocus={!isDrawingMode}
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave(); }}
@@ -187,7 +328,7 @@ export function UrlViewer({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSave}
-                disabled={saving || !commentText.trim()}
+                disabled={saving || (!commentText.trim() && currentPaths.length === 0)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity flex-1 justify-center"
               >
                 {saving ? (
@@ -203,14 +344,14 @@ export function UrlViewer({
                 )}
               </button>
               <button
-                onClick={() => { setExpanded(false); setCommentText(""); }}
+                onClick={closeForm}
                 className="p-1.5 text-fg-muted hover:text-fg border border-border transition-colors"
               >
                 <X size={13} />
               </button>
             </div>
             <p className="text-[10px] font-mono text-fg-muted/40">
-              Screenshot is captured automatically on save.
+              {isDrawingMode ? "Draw on the page, then save." : "Screenshot is captured automatically on save."}
             </p>
           </div>
         ) : (
