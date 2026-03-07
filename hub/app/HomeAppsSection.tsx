@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Film, Clock, Shirt, UserCircle, ImagePlus, Layers, ArrowRight, Plus, Banana, Video } from "lucide-react";
+import { Film, Clock, Shirt, UserCircle, ImagePlus, Layers, ArrowRight, Plus, Banana } from "lucide-react";
+import { MonkeyIcon } from "@/components/MonkeyIcon";
 import { useState, useCallback } from "react";
 import { SubmittedAppsSection } from "@/components/SubmittedAppsSection";
 import { AddSubmittedAppModal } from "@/components/AddSubmittedAppModal";
@@ -17,7 +18,7 @@ const IMAGE_APPS = [
 ];
 
 const TOOL_APPS = [
-  { slug: "feedback", label: "MonoFeedback", desc: "Video annotation and timestamped feedback", Icon: Video, span: "col-span-2 row-span-1", cover: null },
+  { slug: "feedback", label: "MonoFeedback", desc: "Video annotation and timestamped feedback", Icon: MonkeyIcon, span: "col-span-2 row-span-1", cover: null },
 ];
 
 const BANANA_COLS = [
