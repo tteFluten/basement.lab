@@ -824,116 +824,141 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      {/* Upload form */}
+      {/* New session form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-8 border border-border">
-          {/* Session type selector */}
-          <div className="flex border-b border-border">
-            {(["video", "image", "url"] as SessionType[]).map((type) => {
-              const Icon = SESSION_TYPE_ICONS[type];
+        <form onSubmit={handleCreate} className="mb-10 border border-border bg-bg">
+
+          {/* ── Type selector ── */}
+          <div className="grid grid-cols-3 border-b border-border">
+            {([
+              { type: "video" as SessionType, Icon: Video,  label: "Video",  desc: "Upload a video file"   },
+              { type: "image" as SessionType, Icon: Image,  label: "Image",  desc: "Upload an image"       },
+              { type: "url"   as SessionType, Icon: Globe,  label: "URL",    desc: "Review a live page"    },
+            ]).map(({ type, Icon, label, desc }, i) => {
+              const active = sessionType === type;
               return (
                 <button
                   key={type}
                   type="button"
                   onClick={() => { setSessionType(type); setSelectedFile(null); setNewUrl(""); setUploadError(null); if (fileRef.current) fileRef.current.value = ""; }}
-                  className={`flex items-center gap-2 flex-1 py-3 text-xs font-mono uppercase tracking-widest transition-colors ${
-                    sessionType === type
-                      ? "bg-fg text-bg"
-                      : "text-fg-muted hover:text-fg hover:bg-bg-muted"
-                  }`}
+                  className={`relative flex flex-col items-center justify-center gap-3 py-8 transition-all ${
+                    i < 2 ? "border-r border-border" : ""
+                  } ${active ? "bg-fg text-bg" : "bg-bg-muted text-fg-muted hover:text-fg hover:bg-bg-muted/60"}`}
                 >
-                  <Icon size={13} strokeWidth={1.5} />
-                  {type}
+                  <Icon size={28} strokeWidth={1.2} />
+                  <div className="text-center space-y-0.5">
+                    <p className="text-sm font-mono font-medium tracking-wide">{label}</p>
+                    <p className={`text-[11px] font-mono ${active ? "opacity-60" : "opacity-40"}`}>{desc}</p>
+                  </div>
+                  {active && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-bg" />
+                  )}
                 </button>
               );
             })}
           </div>
 
-          <div className="flex flex-col gap-4 p-6">
-            <div className="flex gap-3">
-              <div className="flex flex-col gap-1.5 flex-1">
-                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Session title</label>
+          {/* ── Fields ── */}
+          <div className="p-6 space-y-5">
+
+            {/* Title + version */}
+            <div className="flex gap-4">
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">Title</label>
                 <input
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Homepage review — March"
+                  placeholder={
+                    sessionType === "url"   ? "e.g. Homepage — desktop review" :
+                    sessionType === "image" ? "e.g. Landing page — hero section" :
+                    "e.g. Homepage walkthrough — March"
+                  }
                   autoFocus
                   disabled={uploading}
-                  className="bg-bg border border-border px-4 py-3 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/50"
+                  className="w-full bg-bg-muted border border-border px-4 py-3.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/40"
                 />
               </div>
-              <div className="flex flex-col gap-1.5 w-36">
-                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Version</label>
+              <div className="w-32 space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">Version</label>
                 <div className="relative">
-                  <Hash size={11} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted/50 pointer-events-none" />
+                  <Hash size={11} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted/40 pointer-events-none" />
                   <input
                     type="text"
                     value={newVersion}
                     onChange={(e) => setNewVersion(e.target.value)}
                     placeholder="v1"
                     disabled={uploading}
-                    className="w-full bg-bg border border-border pl-7 pr-3 py-3 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/50"
+                    className="w-full bg-bg-muted border border-border pl-8 pr-3 py-3.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/40"
                   />
                 </div>
               </div>
             </div>
 
-            {/* File / URL input — conditional on session type */}
+            {/* URL input */}
             {!uploading && sessionType === "url" && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">URL</label>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">URL to review</label>
                 <div className="relative">
-                  <Globe size={13} className="absolute left-4 top-1/2 -translate-y-1/2 text-fg-muted/50 pointer-events-none" />
+                  <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-fg-muted/40 pointer-events-none" />
                   <input
                     type="url"
                     value={newUrl}
                     onChange={(e) => setNewUrl(e.target.value)}
-                    placeholder="https://example.com/page-to-review"
+                    placeholder="https://staging.example.com/page"
                     disabled={uploading}
-                    className="w-full bg-bg border border-border pl-9 pr-4 py-3 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/50"
+                    className="w-full bg-bg-muted border border-border pl-10 pr-4 py-3.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/40"
                   />
                 </div>
-                <p className="text-[11px] text-fg-muted/50 font-mono">A screenshot will be captured automatically when the session is created.</p>
+                <p className="text-[11px] font-mono text-fg-muted/40 pt-0.5">
+                  A screenshot will be captured automatically on creation and on every feedback note.
+                </p>
               </div>
             )}
 
+            {/* File drop zone */}
             {!uploading && (sessionType === "video" || sessionType === "image") && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">
                   {sessionType === "image" ? "Image file" : "Video file"}
                 </label>
-                <label className={`relative flex flex-col items-center justify-center gap-3 py-8 border border-dashed transition-colors cursor-pointer ${
+                <label className={`relative flex flex-col items-center justify-center gap-4 py-14 border border-dashed cursor-pointer transition-all ${
                   selectedFile
                     ? "border-fg-muted bg-bg-muted"
-                    : "border-border hover:border-fg-muted hover:bg-bg-muted/50"
+                    : "border-border hover:border-fg-muted hover:bg-bg-muted/40"
                 }`}>
                   {selectedFile ? (
                     <>
-                      {sessionType === "image" ? <Image size={28} strokeWidth={1.5} className="text-fg" /> : <Video size={28} strokeWidth={1.5} className="text-fg" />}
+                      <div className={`w-14 h-14 flex items-center justify-center border ${selectedFile ? "border-fg-muted/30 bg-bg" : "border-border"}`}>
+                        {sessionType === "image"
+                          ? <Image size={26} strokeWidth={1.2} className="text-fg" />
+                          : <Video size={26} strokeWidth={1.2} className="text-fg" />}
+                      </div>
                       <div className="text-center">
                         <p className="text-sm font-mono text-fg truncate max-w-xs px-4">{selectedFile.name}</p>
-                        <p className="text-xs font-mono text-fg-muted mt-1">{formatSize(selectedFile.size)}</p>
+                        <p className="text-xs font-mono text-fg-muted/60 mt-1">{formatSize(selectedFile.size)}</p>
                       </div>
                       <button
                         type="button"
                         onClick={(e) => { e.preventDefault(); setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}
-                        className="absolute top-3 right-3 p-1 text-fg-muted hover:text-fg transition-colors"
+                        className="absolute top-4 right-4 p-1.5 text-fg-muted hover:text-fg border border-border hover:border-fg-muted transition-colors bg-bg"
                       >
-                        <X size={14} />
+                        <X size={13} />
                       </button>
                     </>
                   ) : (
                     <>
-                      {sessionType === "image"
-                        ? <Image size={28} strokeWidth={1} className="text-fg-muted opacity-60" />
-                        : <Video size={28} strokeWidth={1} className="text-fg-muted opacity-60" />}
-                      <div className="text-center">
+                      <div className="w-14 h-14 flex items-center justify-center border border-border">
+                        {sessionType === "image"
+                          ? <Image size={26} strokeWidth={1} className="text-fg-muted/50" />
+                          : <Video size={26} strokeWidth={1} className="text-fg-muted/50" />}
+                      </div>
+                      <div className="text-center space-y-1">
                         <p className="text-sm font-mono text-fg-muted">
-                          {sessionType === "image" ? "Choose an image file" : "Choose a video file"}
+                          {sessionType === "image" ? "Click or drag an image here" : "Click or drag a video here"}
                         </p>
-                        <p className="text-xs text-fg-muted/60 mt-1">
-                          {sessionType === "image" ? "JPEG, PNG, WebP, GIF · max 20 MB" : `MP4, WebM or MOV · max ${MAX_VIDEO_MB} MB`}
+                        <p className="text-xs font-mono text-fg-muted/40">
+                          {sessionType === "image" ? "JPEG · PNG · WebP · GIF — max 20 MB" : `MP4 · WebM · MOV — max ${MAX_VIDEO_MB} MB`}
                         </p>
                       </div>
                     </>
@@ -963,30 +988,29 @@ export default function ProjectPage() {
               </div>
             )}
 
+            {/* Progress bar */}
             {uploading && (
-              <div className="flex flex-col gap-4 py-2">
+              <div className="space-y-3 py-2">
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className="text-3xl font-mono font-bold text-fg tabular-nums leading-none">
-                      {uploadStage === "preparing" ? "—"
-                        : uploadStage === "saving" ? "100"
-                        : uploadPercent}
-                      {uploadStage !== "preparing" && <span className="text-lg text-fg-muted ml-0.5">%</span>}
+                    <p className="text-4xl font-mono font-bold text-fg tabular-nums leading-none">
+                      {uploadStage === "preparing" ? "—" : uploadStage === "saving" ? "100" : uploadPercent}
+                      {uploadStage !== "preparing" && <span className="text-xl text-fg-muted ml-1">%</span>}
                     </p>
-                    <p className="text-xs font-mono text-fg-muted mt-1">{stageLabel}</p>
+                    <p className="text-xs font-mono text-fg-muted mt-2">{stageLabel}</p>
                   </div>
                   <div className="text-right">
                     {uploadSpeed && uploadStage === "uploading" && (
                       <p className="text-sm font-mono text-fg">{uploadSpeed}</p>
                     )}
                     {selectedFile && (
-                      <p className="text-xs font-mono text-fg-muted mt-0.5">{formatSize(selectedFile.size)}</p>
+                      <p className="text-xs font-mono text-fg-muted/60 mt-0.5">{formatSize(selectedFile.size)}</p>
                     )}
                   </div>
                 </div>
-                <div className="h-1.5 bg-border overflow-hidden rounded-full">
+                <div className="h-1 bg-border overflow-hidden">
                   <div
-                    className="h-full bg-fg transition-all duration-300 ease-out rounded-full"
+                    className="h-full bg-fg transition-all duration-300 ease-out"
                     style={{
                       width: uploadStage === "preparing" ? "3%" :
                              uploadStage === "saving"    ? "100%" :
@@ -997,31 +1021,38 @@ export default function ProjectPage() {
               </div>
             )}
 
+            {/* Error */}
             {uploadError && (
-              <p className="text-sm font-mono text-red-400 flex items-center gap-2">
-                <X size={14} className="shrink-0" />
-                {uploadError}
-              </p>
+              <div className="flex items-center gap-2.5 px-4 py-3 border border-red-500/20 bg-red-500/5 text-red-400">
+                <X size={13} className="shrink-0" />
+                <p className="text-sm font-mono">{uploadError}</p>
+              </div>
             )}
           </div>
 
+          {/* ── Actions ── */}
           <div className="flex border-t border-border">
             <button
               type="button"
               onClick={() => { setShowForm(false); resetForm(); }}
               disabled={uploading}
-              className="flex-1 py-3 text-xs font-mono uppercase text-fg-muted hover:text-fg hover:bg-bg-muted border-r border-border transition-colors disabled:opacity-40"
+              className="flex-1 py-4 text-sm font-mono uppercase tracking-widest text-fg-muted hover:text-fg hover:bg-bg-muted border-r border-border transition-colors disabled:opacity-40"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={uploading || !newTitle.trim() || (sessionType === "url" && !newUrl.trim())}
-              className="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
+              className="flex-[2] flex items-center justify-center gap-2.5 py-4 text-sm font-mono uppercase tracking-widest bg-fg text-bg hover:opacity-85 disabled:opacity-30 transition-opacity"
             >
               {uploading
-                ? <><Loader2 size={13} className="animate-spin" /> {stageLabel}</>
-                : `Create ${sessionType} session`}
+                ? <><Loader2 size={14} className="animate-spin" />{stageLabel}</>
+                : <>
+                    {sessionType === "video" && <Video size={14} strokeWidth={1.5} />}
+                    {sessionType === "image" && <Image size={14} strokeWidth={1.5} />}
+                    {sessionType === "url"   && <Globe size={14} strokeWidth={1.5} />}
+                    Create {sessionType} session
+                  </>}
             </button>
           </div>
         </form>
