@@ -368,7 +368,9 @@ export default function FeedbackPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="border border-border overflow-hidden">
-              <div className="animate-pulse bg-zinc-800/60 w-full h-36" />
+              <div className="animate-pulse bg-zinc-800/60 w-full h-36 flex items-center justify-center">
+                <MonkeyIcon size={36} strokeWidth={1} className="text-white/10" />
+              </div>
               <div className="p-4 space-y-2">
                 <div className="animate-pulse bg-zinc-800/60 h-3.5 w-3/4" />
                 <div className="animate-pulse bg-zinc-800/60 h-3 w-1/2" />
