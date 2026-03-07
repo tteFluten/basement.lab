@@ -13,7 +13,7 @@ export async function GET(
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("feedback_sessions")
-    .select("id, project_id, title, description, version, video_url, thumbnail_url, duration_s, created_at")
+    .select("id, project_id, title, description, version, session_type, video_url, source_url, thumbnail_url, duration_s, created_at")
     .eq("id", params.id)
     .single();
 
@@ -25,7 +25,9 @@ export async function GET(
     title: data.title,
     description: data.description ?? null,
     version: data.version ?? null,
+    sessionType: (data.session_type ?? "video") as "video" | "image" | "url",
     videoUrl: data.video_url ?? null,
+    sourceUrl: data.source_url ?? null,
     thumbnailUrl: data.thumbnail_url ?? null,
     durationS: data.duration_s ?? null,
     createdAt: new Date(data.created_at).getTime(),
@@ -66,11 +68,13 @@ export async function PATCH(
     }
   }
 
-  const body = await request.json() as { title?: string; description?: string; version?: string };
-  const updates: Record<string, string> = {};
+  const body = await request.json() as { title?: string; description?: string; version?: string; thumbnailUrl?: string; sourceUrl?: string };
+  const updates: Record<string, string | null> = {};
   if (typeof body.title === "string" && body.title.trim()) updates.title = body.title.trim();
   if (typeof body.description === "string") updates.description = body.description.trim();
   if (typeof body.version === "string") updates.version = body.version.trim();
+  if (typeof body.thumbnailUrl === "string") updates.thumbnail_url = body.thumbnailUrl;
+  if (typeof body.sourceUrl === "string") updates.source_url = body.sourceUrl;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -80,7 +84,7 @@ export async function PATCH(
     .from("feedback_sessions")
     .update(updates)
     .eq("id", params.id)
-    .select("id, project_id, title, description, version, video_url, thumbnail_url, duration_s, created_at")
+    .select("id, project_id, title, description, version, session_type, video_url, source_url, thumbnail_url, duration_s, created_at")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
@@ -91,7 +95,9 @@ export async function PATCH(
     title: data.title,
     description: data.description ?? null,
     version: data.version ?? null,
+    sessionType: (data.session_type ?? "video") as "video" | "image" | "url",
     videoUrl: data.video_url ?? null,
+    sourceUrl: data.source_url ?? null,
     thumbnailUrl: data.thumbnail_url ?? null,
     durationS: data.duration_s ?? null,
     createdAt: new Date(data.created_at).getTime(),

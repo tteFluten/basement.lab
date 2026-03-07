@@ -1,6 +1,8 @@
 export interface Point { x: number; y: number }
 export interface DrawingPath { points: Point[]; color: string; width: number }
 
+export type SessionType = "video" | "image" | "url";
+
 export interface FeedbackProject {
   id: string;
   slug: string;
@@ -23,7 +25,9 @@ export interface FeedbackSession {
   title: string;
   description: string | null;
   version: string | null;
-  videoUrl: string | null;
+  sessionType: SessionType;
+  videoUrl: string | null;    // also stores image URL for image sessions
+  sourceUrl: string | null;   // URL for url sessions
   thumbnailUrl: string | null;
   durationS: number | null;
   createdAt: number;
@@ -36,6 +40,9 @@ export interface FeedbackComment {
   timestampS: number;
   text: string;
   drawing?: DrawingPath[] | null;
+  xPct?: number | null;
+  yPct?: number | null;
+  screenshotUrl?: string | null;
   authorName: string;
   authorId: string | null;
   anonToken: string | null;

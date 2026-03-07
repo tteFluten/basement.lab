@@ -25,9 +25,10 @@ export async function GET(
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("feedback_comments")
-    .select("id, session_id, timestamp_s, text, drawing, author_name, author_id, anon_token, created_at, updated_at")
+    .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at")
     .eq("session_id", params.id)
-    .order("timestamp_s", { ascending: true });
+    .order("timestamp_s", { ascending: true })
+    .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -37,6 +38,9 @@ export async function GET(
     timestampS: c.timestamp_s,
     text: c.text,
     drawing: c.drawing ?? null,
+    xPct: c.x_pct ?? null,
+    yPct: c.y_pct ?? null,
+    screenshotUrl: c.screenshot_url ?? null,
     authorName: c.author_name,
     authorId: c.author_id ?? null,
     anonToken: c.anon_token ?? null,
@@ -62,12 +66,18 @@ export async function POST(
     text?: string;
     drawing?: unknown;
     authorName?: string;
+    xPct?: number | null;
+    yPct?: number | null;
+    screenshotUrl?: string | null;
   };
 
   const timestampS = typeof body.timestampS === "number" ? body.timestampS : 0;
   const text = (body.text ?? "").trim();
   const authorName = (body.authorName ?? "Anonymous").trim() || "Anonymous";
   const drawing = body.drawing ?? null;
+  const xPct = typeof body.xPct === "number" ? body.xPct : null;
+  const yPct = typeof body.yPct === "number" ? body.yPct : null;
+  const screenshotUrl = body.screenshotUrl ?? null;
 
   if (!text && !drawing) {
     return NextResponse.json({ error: "text or drawing required" }, { status: 400 });
@@ -89,11 +99,14 @@ export async function POST(
       timestamp_s: timestampS,
       text,
       drawing,
+      x_pct: xPct,
+      y_pct: yPct,
+      screenshot_url: screenshotUrl,
       author_name: authorName,
       author_id: authorId,
       anon_token: anonToken,
     })
-    .select("id, session_id, timestamp_s, text, drawing, author_name, author_id, anon_token, created_at, updated_at")
+    .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
@@ -104,6 +117,9 @@ export async function POST(
     timestampS: data.timestamp_s,
     text: data.text,
     drawing: data.drawing ?? null,
+    xPct: data.x_pct ?? null,
+    yPct: data.y_pct ?? null,
+    screenshotUrl: data.screenshot_url ?? null,
     authorName: data.author_name,
     authorId: data.author_id ?? null,
     anonToken: data.anon_token ?? null,

@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, Edit2, Trash2, Check, X, PenTool, MessageSquare } from "lucide-react";
-import type { FeedbackComment, DrawingPath } from "@/lib/feedback/types";
+import { Clock, Edit2, Trash2, Check, X, PenTool, MessageSquare, MapPin, Globe } from "lucide-react";
+import type { FeedbackComment, DrawingPath, SessionType } from "@/lib/feedback/types";
 
 interface CommentListProps {
   comments: FeedbackComment[];
   currentUserId: string | null;
   anonToken: string | null;
   fps?: number | null;
+  sessionType?: SessionType;
   selectedCommentId?: string | null;
   onCommentClick: (timestampS: number, id: string, drawing?: DrawingPath[] | null) => void;
   onEdit: (id: string, text: string) => Promise<void>;
@@ -32,7 +33,7 @@ function initials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function CommentList({ comments, currentUserId, anonToken, fps, selectedCommentId, onCommentClick, onEdit, onDelete }: CommentListProps) {
+export function CommentList({ comments, currentUserId, anonToken, fps, sessionType = "video", selectedCommentId, onCommentClick, onEdit, onDelete }: CommentListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -55,7 +56,9 @@ export function CommentList({ comments, currentUserId, anonToken, fps, selectedC
     finally { setBusyId(null); }
   }
 
-  const sorted = [...comments].sort((a, b) => a.timestampS - b.timestampS);
+  const sorted = [...comments].sort((a, b) =>
+    sessionType === "video" ? a.timestampS - b.timestampS : a.createdAt - b.createdAt
+  );
 
   return (
     <div className="flex flex-col w-80 shrink-0 border-l border-border bg-bg h-full">
@@ -73,7 +76,11 @@ export function CommentList({ comments, currentUserId, anonToken, fps, selectedC
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
             <MessageSquare size={28} strokeWidth={1} className="text-fg-muted opacity-40" />
             <p className="text-xs font-mono text-fg-muted">No feedback yet</p>
-            <p className="text-[11px] text-fg-muted/60">Pause the video and click Comment or Annotate</p>
+            <p className="text-[11px] text-fg-muted/60">
+              {sessionType === "image" ? "Click on the image to add a pin annotation" :
+               sessionType === "url" ? "Use the floating toolbar to add notes" :
+               "Pause the video and click Comment or Annotate"}
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -92,13 +99,26 @@ export function CommentList({ comments, currentUserId, anonToken, fps, selectedC
                   }`}
                   onClick={() => !isEditing && onCommentClick(c.timestampS, c.id, hasDrawing ? c.drawing : null)}
                 >
-                  {/* Top row: timestamp + actions */}
+                  {/* Top row: position indicator + actions */}
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5 text-xs font-mono text-fg-muted">
-                      <Clock size={11} />
-                      <span className="tabular-nums">
-                        {fps ? formatSmpte(c.timestampS, Math.round(fps)) : formatTime(c.timestampS)}
-                      </span>
+                      {sessionType === "video" ? (
+                        <>
+                          <Clock size={11} />
+                          <span className="tabular-nums">
+                            {fps ? formatSmpte(c.timestampS, Math.round(fps)) : formatTime(c.timestampS)}
+                          </span>
+                        </>
+                      ) : sessionType === "image" && c.xPct != null ? (
+                        <>
+                          <MapPin size={11} />
+                          <span className="tabular-nums">
+                            {Math.round((c.xPct ?? 0) * 100)}%, {Math.round((c.yPct ?? 0) * 100)}%
+                          </span>
+                        </>
+                      ) : sessionType === "url" ? (
+                        <Globe size={11} />
+                      ) : null}
                       {hasDrawing && (
                         <span title="Has annotation" className={`transition-colors ${isSelected ? "text-fg" : "text-fg-muted/50"}`}>
                           <PenTool size={10} />
@@ -153,6 +173,13 @@ export function CommentList({ comments, currentUserId, anonToken, fps, selectedC
                     </div>
                   ) : (
                     <>
+                      {c.screenshotUrl && (
+                        <img
+                          src={c.screenshotUrl}
+                          alt="Screenshot"
+                          className="w-full h-24 object-cover object-top mb-2 border border-border/50 opacity-80 hover:opacity-100 transition-opacity"
+                        />
+                      )}
                       {c.text && (
                         <p className="text-[13px] text-fg font-mono leading-relaxed break-words mb-2.5">{c.text}</p>
                       )}

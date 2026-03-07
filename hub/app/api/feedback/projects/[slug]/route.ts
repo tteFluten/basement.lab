@@ -31,7 +31,7 @@ export async function GET(
 
   const { data: sessions } = await supabase
     .from("feedback_sessions")
-    .select("id, project_id, title, description, version, video_url, thumbnail_url, duration_s, created_at")
+    .select("id, project_id, title, description, version, session_type, video_url, source_url, thumbnail_url, duration_s, created_at")
     .eq("project_id", project.id)
     .order("created_at", { ascending: false });
 
@@ -77,7 +77,9 @@ export async function GET(
       title: s.title,
       description: s.description ?? null,
       version: s.version ?? null,
+      sessionType: (s.session_type ?? "video") as "video" | "image" | "url",
       videoUrl: s.video_url ?? null,
+      sourceUrl: s.source_url ?? null,
       thumbnailUrl: s.thumbnail_url ?? null,
       durationS: s.duration_s ?? null,
       createdAt: new Date(s.created_at).getTime(),

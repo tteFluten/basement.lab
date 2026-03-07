@@ -7,6 +7,8 @@ import { useSession } from "next-auth/react";
 import { ArrowLeft, Film, MessageSquare, Share2, Check, X, Pencil, Loader2, Hash } from "lucide-react";
 import { FeedbackLoader } from "@/components/feedback/FeedbackLoader";
 import { VideoPlayer } from "@/components/feedback/VideoPlayer";
+import { ImageAnnotator } from "@/components/feedback/ImageAnnotator";
+import { UrlViewer } from "@/components/feedback/UrlViewer";
 import { CommentList } from "@/components/feedback/CommentList";
 import type { FeedbackSession, FeedbackComment, DrawingPath } from "@/lib/feedback/types";
 
@@ -73,6 +75,9 @@ export default function SessionPage() {
     text: string;
     drawing?: DrawingPath[];
     authorName: string;
+    xPct?: number | null;
+    yPct?: number | null;
+    screenshotUrl?: string | null;
   }) => {
     const resolvedName = currentUserId ? data.authorName : getOrPromptAnonName();
     const res = await fetch(`/api/feedback/sessions/${sessionId}/comments`, {
@@ -83,6 +88,9 @@ export default function SessionPage() {
         text: data.text,
         drawing: data.drawing ?? null,
         authorName: resolvedName,
+        xPct: data.xPct ?? null,
+        yPct: data.yPct ?? null,
+        screenshotUrl: data.screenshotUrl ?? null,
       }),
     });
     if (!res.ok) throw new Error("Failed to save comment");
@@ -132,17 +140,29 @@ export default function SessionPage() {
   }, [sessionId, editTitle, editDesc]);
 
   const handleCommentClick = useCallback((timestampS: number, id: string, drawing?: DrawingPath[] | null) => {
-    setSeekTo(timestampS);
-    setTimeout(() => setSeekTo(null), 100);
-    setOverlayDrawing(drawing ?? null);
     setSelectedCommentId(id);
-  }, []);
+    if (fbSession?.sessionType === "video") {
+      setSeekTo(timestampS);
+      setTimeout(() => setSeekTo(null), 100);
+      setOverlayDrawing(drawing ?? null);
+    }
+  }, [fbSession?.sessionType]);
 
   if (loading) return <FeedbackLoader />;
 
   if (!fbSession) return (
     <div className="p-6 text-fg-muted text-sm font-mono">Session not found.</div>
   );
+
+  const sessionType = fbSession.sessionType ?? "video";
+
+  // Wrap handleAddComment for VideoPlayer (which uses old signature without xPct/yPct)
+  const handleVideoComment = async (data: {
+    timestampS: number;
+    text: string;
+    drawing?: DrawingPath[];
+    authorName: string;
+  }) => handleAddComment(data);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -196,24 +216,23 @@ export default function SessionPage() {
                 setTimeout(() => setCopied(false), 2000);
               }}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
-              title="Copy share link"
             >
               {copied ? <Check size={12} className="text-green-400" /> : <Share2 size={12} />}
               {copied ? "Copied" : "Share"}
             </button>
-            <button
-              onClick={() => setShowComments((v) => !v)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase border transition-colors ${
-                showComments ? "border-border text-fg-muted hover:text-fg" : "border-fg-muted text-fg"
-              }`}
-              title="Toggle feedback panel"
-            >
-              <MessageSquare size={12} />
-              {comments.length}
-            </button>
+            {sessionType !== "url" && (
+              <button
+                onClick={() => setShowComments((v) => !v)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase border transition-colors ${
+                  showComments ? "border-border text-fg-muted hover:text-fg" : "border-fg-muted text-fg"
+                }`}
+              >
+                <MessageSquare size={12} />
+                {comments.length}
+              </button>
+            )}
           </div>
         </div>
-        {/* Description row */}
         {editingMeta && (
           <div className="px-4 pb-3">
             <textarea
@@ -230,41 +249,63 @@ export default function SessionPage() {
       </div>
 
       {/* ── Body ── */}
-      {fbSession.videoUrl ? (
-        <div className="flex-1 flex overflow-hidden min-h-0">
-          {/* Video column */}
-          <div className="flex-1 overflow-y-auto bg-[#0d0d0d] flex flex-col">
-            <VideoPlayer
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Main content */}
+        <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+          {sessionType === "image" && fbSession.videoUrl ? (
+            <ImageAnnotator
               src={fbSession.videoUrl}
-              commentMarkers={comments.map((c) => ({ id: c.id, timestampS: c.timestampS }))}
-              seekTo={seekTo}
-              overlayDrawing={overlayDrawing}
+              comments={comments}
+              selectedCommentId={selectedCommentId}
               authorName={authorName}
               onAddComment={handleAddComment}
-              onFpsDetected={setFps}
+              onSelectComment={setSelectedCommentId}
             />
-          </div>
-
-          {/* Comments panel */}
-          {showComments && (
-            <CommentList
+          ) : sessionType === "url" && fbSession.sourceUrl ? (
+            <UrlViewer
+              url={fbSession.sourceUrl}
+              sessionId={sessionId}
               comments={comments}
-              currentUserId={currentUserId}
-              anonToken={anonToken}
-              fps={fps}
               selectedCommentId={selectedCommentId}
-              onCommentClick={handleCommentClick}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
+              authorName={authorName}
+              onAddComment={handleAddComment}
+              onSelectComment={setSelectedCommentId}
             />
+          ) : fbSession.videoUrl ? (
+            <div className="flex-1 overflow-y-auto bg-[#0d0d0d] flex flex-col">
+              <VideoPlayer
+                src={fbSession.videoUrl}
+                commentMarkers={comments.map((c) => ({ id: c.id, timestampS: c.timestampS }))}
+                seekTo={seekTo}
+                overlayDrawing={overlayDrawing}
+                authorName={authorName}
+                onAddComment={handleVideoComment}
+                onFpsDetected={setFps}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-fg-muted gap-3">
+              <Film size={40} strokeWidth={1} className="opacity-40" />
+              <p className="text-sm font-mono">No content attached to this session.</p>
+            </div>
           )}
         </div>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-fg-muted gap-3">
-          <Film size={40} strokeWidth={1} className="opacity-40" />
-          <p className="text-sm font-mono">No video attached to this session.</p>
-        </div>
-      )}
+
+        {/* Comments panel — hidden for url sessions (toolbar handles it) */}
+        {showComments && sessionType !== "url" && (
+          <CommentList
+            comments={comments}
+            currentUserId={currentUserId}
+            anonToken={anonToken}
+            fps={fps}
+            sessionType={sessionType}
+            selectedCommentId={selectedCommentId}
+            onCommentClick={handleCommentClick}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        )}
+      </div>
     </div>
   );
 }

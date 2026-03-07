@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown,
-  X, Clock, Pencil, Check, Link2, Share2, Hash, Calendar,
+  X, Clock, Pencil, Check, Link2, Share2, Hash, Calendar, Image, Globe,
 } from "lucide-react";
+import type { SessionType } from "@/lib/feedback/types";
 import { useSession } from "next-auth/react";
 import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
@@ -92,7 +93,12 @@ function SessionCard({
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const isVideoSession = !s.sessionType || s.sessionType === "video";
+  const isImageSession = s.sessionType === "image";
+  const isUrlSession = s.sessionType === "url";
+
   function handleMouseEnter() {
+    if (!isVideoSession) return;
     const v = videoRef.current;
     if (!v || !s.videoUrl) return;
     if (v.readyState === 0) v.load();
@@ -100,6 +106,7 @@ function SessionCard({
   }
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!isVideoSession) return;
     const v = videoRef.current;
     if (!v || !videoReady || !s.durationS) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -108,6 +115,7 @@ function SessionCard({
   }
 
   function handleMouseLeave() {
+    if (!isVideoSession) return;
     const v = videoRef.current;
     if (!v || !s.durationS) return;
     v.currentTime = s.durationS * 0.15;
@@ -156,16 +164,16 @@ function SessionCard({
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
           >
-            {/* Static thumbnail — instant, no network wait */}
+            {/* Static thumbnail */}
             {s.thumbnailUrl && (
               <img
                 src={s.thumbnailUrl}
                 alt=""
-                className="absolute inset-0 w-full h-full object-cover"
+                className={`absolute inset-0 w-full h-full ${isImageSession ? "object-contain" : "object-cover"}`}
               />
             )}
-            {/* Video — loads on hover, scrubs with mouse */}
-            {s.videoUrl ? (
+            {/* Video — loads on hover, scrubs with mouse (video sessions only) */}
+            {isVideoSession && s.videoUrl ? (
               <video
                 ref={videoRef}
                 src={s.videoUrl}
@@ -180,9 +188,18 @@ function SessionCard({
               />
             ) : !s.thumbnailUrl ? (
               <div className="absolute inset-0 flex items-center justify-center">
-                <Video size={36} strokeWidth={1} className="text-white/10" />
+                {isUrlSession ? <Globe size={36} strokeWidth={1} className="text-white/10" /> :
+                 isImageSession ? <Image size={36} strokeWidth={1} className="text-white/10" /> :
+                 <Video size={36} strokeWidth={1} className="text-white/10" />}
               </div>
             ) : null}
+            {/* Session type badge */}
+            {(isImageSession || isUrlSession) && (
+              <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 border border-white/10 text-[10px] font-mono text-white/60">
+                {isImageSession ? <Image size={9} /> : <Globe size={9} />}
+                {isImageSession ? "Image" : "URL"}
+              </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
         </Link>
@@ -257,6 +274,12 @@ function SessionCard({
 
       {/* Bottom bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
+        {isUrlSession && s.sourceUrl && (
+          <span className="flex items-center gap-1 text-[11px] font-mono text-fg-muted/60 truncate max-w-[120px]" title={s.sourceUrl}>
+            <Globe size={9} className="shrink-0" />
+            {(() => { try { return new URL(s.sourceUrl).hostname; } catch { return s.sourceUrl; } })()}
+          </span>
+        )}
         {s.durationS != null && (
           <span className="flex items-center gap-1 text-[11px] font-mono text-fg-muted">
             <Clock size={9} />
@@ -307,6 +330,12 @@ const SORT_LABELS: Record<SortKey, string> = {
 
 type UploadStage = "idle" | "preparing" | "uploading" | "saving";
 
+const SESSION_TYPE_ICONS: Record<SessionType, React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>> = {
+  video: Video,
+  image: Image,
+  url: Globe,
+};
+
 function sortSessions(sessions: FeedbackSession[], sort: SortKey): FeedbackSession[] {
   return [...sessions].sort((a, b) => {
     switch (sort) {
@@ -334,6 +363,8 @@ export default function ProjectPage() {
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newVersion, setNewVersion] = useState("");
+  const [sessionType, setSessionType] = useState<SessionType>("video");
+  const [newUrl, setNewUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStage, setUploadStage] = useState<UploadStage>("idle");
   const [uploadPercent, setUploadPercent] = useState(0);
@@ -365,6 +396,7 @@ export default function ProjectPage() {
   function resetForm() {
     setNewTitle("");
     setNewVersion("");
+    setNewUrl("");
     setSelectedFile(null);
     setUploadStage("idle");
     setUploadPercent(0);
@@ -373,9 +405,108 @@ export default function ProjectPage() {
     if (fileRef.current) fileRef.current.value = "";
   }
 
+  async function uploadImageFile(file: File): Promise<string> {
+    const res = await fetch("/api/feedback/upload/image", {
+      method: "POST",
+      headers: {
+        "Content-Type": file.type,
+        "x-filename": file.name,
+      },
+      body: file,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? "Image upload failed");
+    }
+    return (await res.json()).url as string;
+  }
+
+  async function captureUrlScreenshot(url: string): Promise<string | null> {
+    try {
+      const res = await fetch("/api/feedback/screenshot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      if (!res.ok) return null;
+      return (await res.json()).screenshotUrl ?? null;
+    } catch { return null; }
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newTitle.trim()) return;
+
+    // ── URL session ──────────────────────────────────────────────────────────
+    if (sessionType === "url") {
+      const trimmedUrl = newUrl.trim();
+      if (!trimmedUrl) { setUploadError("URL is required"); return; }
+      try { new URL(trimmedUrl); } catch { setUploadError("Enter a valid URL"); return; }
+      setUploadStage("saving");
+      setUploadError(null);
+      try {
+        const res = await fetch(`/api/feedback/projects/${projectSlug}/sessions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: newTitle.trim(), sessionType: "url", sourceUrl: trimmedUrl, version: newVersion.trim() || undefined }),
+        });
+        if (!res.ok) { setUploadError("Failed to create session"); setUploadStage("idle"); return; }
+        const newSession = await res.json();
+        setSessions((prev) => [newSession, ...prev]);
+        setShowForm(false);
+        resetForm();
+        // Capture screenshot in background → patch thumbnailUrl
+        captureUrlScreenshot(trimmedUrl).then(async (screenshotUrl) => {
+          if (!screenshotUrl) return;
+          await fetch(`/api/feedback/sessions/${newSession.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ thumbnailUrl: screenshotUrl }),
+          });
+          setSessions((prev) => prev.map((s) => s.id === newSession.id ? { ...s, thumbnailUrl: screenshotUrl } : s));
+        }).catch(() => {});
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Failed");
+        setUploadStage("idle");
+      }
+      return;
+    }
+
+    // ── Image session ────────────────────────────────────────────────────────
+    if (sessionType === "image") {
+      if (!selectedFile) { setUploadError("Select an image file"); return; }
+      if (selectedFile.size > 20 * 1024 * 1024) { setUploadError("Image must be under 20 MB"); return; }
+      setUploadError(null);
+      setUploadStage("uploading");
+      setUploadPercent(50);
+      try {
+        const imageUrl = await uploadImageFile(selectedFile);
+        setUploadStage("saving");
+        setUploadPercent(100);
+        const res = await fetch(`/api/feedback/projects/${projectSlug}/sessions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: newTitle.trim(),
+            sessionType: "image",
+            videoUrl: imageUrl,
+            thumbnailUrl: imageUrl, // image IS the thumbnail
+            version: newVersion.trim() || undefined,
+          }),
+        });
+        if (!res.ok) { setUploadError("Failed to create session"); setUploadStage("idle"); return; }
+        const newSession = await res.json();
+        setSessions((prev) => [newSession, ...prev]);
+        setShowForm(false);
+        resetForm();
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Upload failed");
+        setUploadStage("idle");
+      }
+      return;
+    }
+
+    // ── Video session (existing logic) ───────────────────────────────────────
     if (selectedFile && selectedFile.size > MAX_VIDEO_BYTES) {
       setUploadError(`El video no puede superar ${MAX_VIDEO_MB}MB`);
       return;
@@ -672,6 +803,28 @@ export default function ProjectPage() {
       {/* Upload form */}
       {showForm && (
         <form onSubmit={handleCreate} className="mb-8 border border-border">
+          {/* Session type selector */}
+          <div className="flex border-b border-border">
+            {(["video", "image", "url"] as SessionType[]).map((type) => {
+              const Icon = SESSION_TYPE_ICONS[type];
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setSessionType(type); setSelectedFile(null); setNewUrl(""); setUploadError(null); if (fileRef.current) fileRef.current.value = ""; }}
+                  className={`flex items-center gap-2 flex-1 py-3 text-xs font-mono uppercase tracking-widest transition-colors ${
+                    sessionType === type
+                      ? "bg-fg text-bg"
+                      : "text-fg-muted hover:text-fg hover:bg-bg-muted"
+                  }`}
+                >
+                  <Icon size={13} strokeWidth={1.5} />
+                  {type}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="flex flex-col gap-4 p-6">
             <div className="flex gap-3">
               <div className="flex flex-col gap-1.5 flex-1">
@@ -702,9 +855,30 @@ export default function ProjectPage() {
               </div>
             </div>
 
-            {!uploading && (
+            {/* File / URL input — conditional on session type */}
+            {!uploading && sessionType === "url" && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Video file</label>
+                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">URL</label>
+                <div className="relative">
+                  <Globe size={13} className="absolute left-4 top-1/2 -translate-y-1/2 text-fg-muted/50 pointer-events-none" />
+                  <input
+                    type="url"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    placeholder="https://example.com/page-to-review"
+                    disabled={uploading}
+                    className="w-full bg-bg border border-border pl-9 pr-4 py-3 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/50"
+                  />
+                </div>
+                <p className="text-[11px] text-fg-muted/50 font-mono">A screenshot will be captured automatically when the session is created.</p>
+              </div>
+            )}
+
+            {!uploading && (sessionType === "video" || sessionType === "image") && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">
+                  {sessionType === "image" ? "Image file" : "Video file"}
+                </label>
                 <label className={`relative flex flex-col items-center justify-center gap-3 py-8 border border-dashed transition-colors cursor-pointer ${
                   selectedFile
                     ? "border-fg-muted bg-bg-muted"
@@ -712,7 +886,7 @@ export default function ProjectPage() {
                 }`}>
                   {selectedFile ? (
                     <>
-                      <Video size={28} strokeWidth={1.5} className="text-fg" />
+                      {sessionType === "image" ? <Image size={28} strokeWidth={1.5} className="text-fg" /> : <Video size={28} strokeWidth={1.5} className="text-fg" />}
                       <div className="text-center">
                         <p className="text-sm font-mono text-fg truncate max-w-xs px-4">{selectedFile.name}</p>
                         <p className="text-xs font-mono text-fg-muted mt-1">{formatSize(selectedFile.size)}</p>
@@ -727,17 +901,25 @@ export default function ProjectPage() {
                     </>
                   ) : (
                     <>
-                      <Video size={28} strokeWidth={1} className="text-fg-muted opacity-60" />
+                      {sessionType === "image"
+                        ? <Image size={28} strokeWidth={1} className="text-fg-muted opacity-60" />
+                        : <Video size={28} strokeWidth={1} className="text-fg-muted opacity-60" />}
                       <div className="text-center">
-                        <p className="text-sm font-mono text-fg-muted">Choose a video file</p>
-                        <p className="text-xs text-fg-muted/60 mt-1">MP4, WebM or MOV · max {MAX_VIDEO_MB} MB</p>
+                        <p className="text-sm font-mono text-fg-muted">
+                          {sessionType === "image" ? "Choose an image file" : "Choose a video file"}
+                        </p>
+                        <p className="text-xs text-fg-muted/60 mt-1">
+                          {sessionType === "image" ? "JPEG, PNG, WebP, GIF · max 20 MB" : `MP4, WebM or MOV · max ${MAX_VIDEO_MB} MB`}
+                        </p>
                       </div>
                     </>
                   )}
                   <input
                     ref={fileRef}
                     type="file"
-                    accept="video/mp4,video/webm,video/quicktime"
+                    accept={sessionType === "image"
+                      ? "image/jpeg,image/png,image/webp,image/gif"
+                      : "video/mp4,video/webm,video/quicktime"}
                     onChange={(e) => {
                       const file = e.target.files?.[0] ?? null;
                       setSelectedFile(file);
@@ -810,12 +992,12 @@ export default function ProjectPage() {
             </button>
             <button
               type="submit"
-              disabled={uploading || !newTitle.trim()}
+              disabled={uploading || !newTitle.trim() || (sessionType === "url" && !newUrl.trim())}
               className="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
             >
               {uploading
                 ? <><Loader2 size={13} className="animate-spin" /> {stageLabel}</>
-                : "Create session"}
+                : `Create ${sessionType} session`}
             </button>
           </div>
         </form>

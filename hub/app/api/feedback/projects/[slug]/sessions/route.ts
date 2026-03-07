@@ -29,7 +29,7 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json() as { title?: string; videoUrl?: string; thumbnailUrl?: string; durationS?: number; version?: string };
+  const body = await request.json() as { title?: string; sessionType?: string; videoUrl?: string; sourceUrl?: string; thumbnailUrl?: string; durationS?: number; version?: string };
   const title = body.title?.trim();
   if (!title) return NextResponse.json({ error: "title required" }, { status: 400 });
 
@@ -38,13 +38,15 @@ export async function POST(
     .insert({
       project_id: project.id,
       title,
+      session_type: body.sessionType ?? "video",
       video_url: body.videoUrl ?? null,
+      source_url: body.sourceUrl ?? null,
       thumbnail_url: body.thumbnailUrl ?? null,
       duration_s: body.durationS ?? null,
       version: body.version?.trim() || null,
       created_by: session.user.id,
     })
-    .select("id, project_id, title, description, version, video_url, thumbnail_url, duration_s, created_at")
+    .select("id, project_id, title, description, version, session_type, video_url, source_url, thumbnail_url, duration_s, created_at")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
@@ -55,7 +57,9 @@ export async function POST(
     title: data.title,
     description: data.description ?? null,
     version: data.version ?? null,
+    sessionType: (data.session_type ?? "video") as "video" | "image" | "url",
     videoUrl: data.video_url ?? null,
+    sourceUrl: data.source_url ?? null,
     thumbnailUrl: data.thumbnail_url ?? null,
     durationS: data.duration_s ?? null,
     createdAt: new Date(data.created_at).getTime(),
