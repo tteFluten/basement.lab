@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown, X, Clock } from "lucide-react";
+import { Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown, X, Clock, Pencil, Check } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
 
@@ -24,9 +24,18 @@ function formatDate(ms: number) {
   return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function SessionCard({ s, projectSlug }: { s: FeedbackSession; projectSlug: string }) {
+function SessionCard({
+  s, projectSlug, onUpdate,
+}: {
+  s: FeedbackSession; projectSlug: string;
+  onUpdate: (id: string, updates: Partial<FeedbackSession>) => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(s.title);
+  const [editDesc, setEditDesc] = useState(s.description ?? "");
+  const [saving, setSaving] = useState(false);
 
   function handleMouseEnter() {
     const v = videoRef.current;
@@ -49,44 +58,96 @@ function SessionCard({ s, projectSlug }: { s: FeedbackSession; projectSlug: stri
     v.currentTime = s.durationS * 0.15;
   }
 
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!editTitle.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/feedback/sessions/${s.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: editTitle.trim(), description: editDesc }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        onUpdate(s.id, { title: updated.title, description: updated.description });
+        setEditing(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <Link
-      href={`/apps/feedback/${projectSlug}/${s.id}`}
-      className="block border border-border overflow-hidden bg-bg-muted group transition-colors hover:border-fg-muted"
-    >
-      {/* Cover */}
-      <div
-        className="relative h-44 bg-[#0d0d0d] overflow-hidden"
-        onMouseEnter={handleMouseEnter}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
-        {s.videoUrl ? (
-          <video
-            ref={videoRef}
-            src={s.videoUrl}
-            className="absolute inset-0 w-full h-full object-cover"
-            preload="none"
-            muted
-            playsInline
-            onLoadedMetadata={() => {
-              setVideoReady(true);
-              if (videoRef.current && s.durationS) videoRef.current.currentTime = s.durationS * 0.15;
-            }}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Video size={36} strokeWidth={1} className="text-white/10" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      </div>
+    <div className="block border border-border overflow-hidden bg-bg-muted group transition-colors hover:border-fg-muted">
+      {/* Cover — link to session */}
+      <Link href={`/apps/feedback/${projectSlug}/${s.id}`}>
+        <div
+          className="relative h-44 bg-[#0d0d0d] overflow-hidden"
+          onMouseEnter={handleMouseEnter}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          {s.videoUrl ? (
+            <video
+              ref={videoRef}
+              src={s.videoUrl}
+              className="absolute inset-0 w-full h-full object-cover"
+              preload="none"
+              muted
+              playsInline
+              onLoadedMetadata={() => {
+                setVideoReady(true);
+                if (videoRef.current && s.durationS) videoRef.current.currentTime = s.durationS * 0.15;
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Video size={36} strokeWidth={1} className="text-white/10" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </div>
+      </Link>
 
       {/* Info */}
-      <div className="p-4 space-y-1.5">
-        <p className="text-sm font-mono text-fg truncate">{s.title}</p>
-        <p className="text-xs text-fg-muted">{formatDate(s.createdAt)}</p>
-      </div>
+      {editing ? (
+        <form onSubmit={handleSave} className="p-4 space-y-2" onClick={(e) => e.stopPropagation()}>
+          <input
+            autoFocus
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="w-full bg-bg border border-border px-2.5 py-1.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted"
+            placeholder="Session title"
+          />
+          <textarea
+            value={editDesc}
+            onChange={(e) => setEditDesc(e.target.value)}
+            className="w-full bg-bg border border-border px-2.5 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted resize-none min-h-[56px]"
+            placeholder="Description (optional)"
+          />
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={() => { setEditing(false); setEditTitle(s.title); setEditDesc(s.description ?? ""); }}
+              className="p-1 text-fg-muted hover:text-fg transition-colors">
+              <X size={13} />
+            </button>
+            <button type="submit" disabled={saving || !editTitle.trim()}
+              className="p-1 text-fg-muted hover:text-fg disabled:opacity-40 transition-colors">
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="p-4 space-y-1.5">
+          <p className="text-sm font-mono text-fg truncate">{s.title}</p>
+          {s.description ? (
+            <p className="text-xs text-fg-muted line-clamp-2">{s.description}</p>
+          ) : (
+            <p className="text-xs text-fg-muted">{formatDate(s.createdAt)}</p>
+          )}
+        </div>
+      )}
 
       {/* Bottom bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
@@ -102,8 +163,17 @@ function SessionCard({ s, projectSlug }: { s: FeedbackSession; projectSlug: stri
             {s.commentCount}
           </span>
         )}
+        {!editing && (
+          <button
+            onClick={(e) => { e.preventDefault(); setEditing(true); setEditTitle(s.title); setEditDesc(s.description ?? ""); }}
+            className="ml-auto p-1 text-fg-muted/40 hover:text-fg-muted transition-colors opacity-0 group-hover:opacity-100"
+            title="Edit session"
+          >
+            <Pencil size={11} />
+          </button>
+        )}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -142,6 +212,10 @@ export default function ProjectPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const [project, setProject] = useState<FeedbackProject | null>(null);
   const [sessions, setSessions] = useState<FeedbackSession[]>([]);
+  const [editingProject, setEditingProject] = useState(false);
+  const [editProjName, setEditProjName] = useState("");
+  const [editProjDesc, setEditProjDesc] = useState("");
+  const [savingProject, setSavingProject] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -291,6 +365,30 @@ export default function ProjectPage() {
     }
   }
 
+  const handleUpdateSession = useCallback((id: string, updates: Partial<FeedbackSession>) => {
+    setSessions((prev) => prev.map((s) => s.id === id ? { ...s, ...updates } : s));
+  }, []);
+
+  async function handleSaveProject(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editProjName.trim() || !project) return;
+    setSavingProject(true);
+    try {
+      const res = await fetch(`/api/feedback/projects/${projectSlug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editProjName.trim(), description: editProjDesc }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setProject((prev) => prev ? { ...prev, name: updated.name, description: updated.description } : prev);
+        setEditingProject(false);
+      }
+    } finally {
+      setSavingProject(false);
+    }
+  }
+
   const filtered = useMemo(() => {
     let list = sessions;
     if (search.trim()) {
@@ -371,21 +469,66 @@ export default function ProjectPage() {
       `}</style>
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/apps/feedback" className="text-fg-muted hover:text-fg transition-colors">
-          <ArrowLeft size={16} />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-sm font-mono uppercase tracking-widest text-fg">{project.name}</h1>
-          <p className="text-xs text-fg-muted mt-0.5">{sessions.length} {sessions.length === 1 ? "session" : "sessions"}</p>
+      <div className="mb-6">
+        <div className="flex items-start gap-3">
+          <Link href="/apps/feedback" className="text-fg-muted hover:text-fg transition-colors mt-0.5 shrink-0">
+            <ArrowLeft size={16} />
+          </Link>
+          {editingProject ? (
+            <form onSubmit={handleSaveProject} className="flex-1 space-y-2">
+              <input
+                autoFocus
+                value={editProjName}
+                onChange={(e) => setEditProjName(e.target.value)}
+                className="w-full bg-bg border border-border px-3 py-1.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted uppercase tracking-widest"
+                placeholder="Project name"
+              />
+              <textarea
+                value={editProjDesc}
+                onChange={(e) => setEditProjDesc(e.target.value)}
+                className="w-full bg-bg border border-border px-3 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted resize-none min-h-[60px]"
+                placeholder="Description (optional)"
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setEditingProject(false)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg transition-colors">
+                  <X size={12} /> Cancel
+                </button>
+                <button type="submit" disabled={savingProject || !editProjName.trim()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity">
+                  {savingProject ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                  Save
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-mono uppercase tracking-widest text-fg truncate">{project.name}</h1>
+                <button
+                  onClick={() => { setEditingProject(true); setEditProjName(project.name); setEditProjDesc(project.description ?? ""); }}
+                  className="shrink-0 p-0.5 text-fg-muted/40 hover:text-fg-muted transition-colors"
+                  title="Edit project"
+                >
+                  <Pencil size={11} />
+                </button>
+              </div>
+              {project.description && (
+                <p className="text-xs text-fg-muted mt-1">{project.description}</p>
+              )}
+              <p className="text-xs text-fg-muted/60 mt-0.5">{sessions.length} {sessions.length === 1 ? "session" : "sessions"}</p>
+            </div>
+          )}
+          {!editingProject && (
+            <button
+              onClick={() => { setShowForm((v) => !v); resetForm(); }}
+              className="flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors shrink-0"
+            >
+              <Plus size={14} />
+              Add video
+            </button>
+          )}
         </div>
-        <button
-          onClick={() => { setShowForm((v) => !v); resetForm(); }}
-          className="flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
-        >
-          <Plus size={14} />
-          Add video
-        </button>
       </div>
 
       {/* Upload form */}
@@ -571,7 +714,7 @@ export default function ProjectPage() {
         <div className={GRID}>
           {filtered.map((s, index) => (
             <div key={s.id} className="fb-card" style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}>
-              <SessionCard s={s} projectSlug={projectSlug} />
+              <SessionCard s={s} projectSlug={projectSlug} onUpdate={handleUpdateSession} />
             </div>
           ))}
         </div>

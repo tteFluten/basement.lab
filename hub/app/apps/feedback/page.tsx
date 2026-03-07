@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -26,6 +26,85 @@ function sortProjects(projects: FeedbackProject[], sort: SortKey): FeedbackProje
       case "most-videos": return (b.sessionCount ?? 0) - (a.sessionCount ?? 0);
     }
   });
+}
+
+function ProjectCard({ p, index }: { p: FeedbackProject; index: number }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
+
+  function handleMouseEnter() {
+    const v = videoRef.current;
+    if (!v || !p.thumbVideoUrl) return;
+    if (v.readyState === 0) v.load();
+  }
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const v = videoRef.current;
+    if (!v || !videoReady) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (v.duration) v.currentTime = x * v.duration;
+  }
+
+  function handleMouseLeave() {
+    const v = videoRef.current;
+    if (!v || !videoReady) return;
+    v.currentTime = 0;
+  }
+
+  return (
+    <Link
+      href={`/apps/feedback/${p.slug}`}
+      className="fb-card block border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted group"
+      style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}
+    >
+      {/* Cover */}
+      <div
+        className="relative h-36 bg-[#0d0d0d] overflow-hidden flex items-center justify-center"
+        onMouseEnter={handleMouseEnter}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        {p.thumbVideoUrl ? (
+          <video
+            ref={videoRef}
+            src={p.thumbVideoUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            preload="none"
+            muted
+            playsInline
+            onLoadedMetadata={() => setVideoReady(true)}
+          />
+        ) : (
+          <FolderOpen size={40} strokeWidth={1} className="text-white/10 group-hover:text-white/20 transition-colors" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      </div>
+      {/* Info */}
+      <div className="p-4 space-y-1.5">
+        <p className="text-sm font-mono text-fg truncate">{p.name}</p>
+        {p.description ? (
+          <p className="text-xs text-fg-muted line-clamp-2">{p.description}</p>
+        ) : (
+          <p className="text-xs text-fg-muted">{formatDate(p.createdAt)}</p>
+        )}
+      </div>
+      {/* Bottom bar */}
+      <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
+        {(p.sessionCount ?? 0) > 0 ? (
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-fg-muted">
+            <Video size={10} />
+            {p.sessionCount} {p.sessionCount === 1 ? "session" : "sessions"}
+          </span>
+        ) : (
+          <span className="text-[11px] font-mono text-fg-muted/50">No sessions yet</span>
+        )}
+        {p.ownerName && (
+          <span className="ml-auto text-[11px] font-mono text-fg-muted/60 truncate max-w-[120px]">{p.ownerName}</span>
+        )}
+      </div>
+    </Link>
+  );
 }
 
 export default function FeedbackPage() {
@@ -253,37 +332,7 @@ export default function FeedbackPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((p, index) => (
-            <Link
-              key={p.id}
-              href={`/apps/feedback/${p.slug}`}
-              className="fb-card block border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted group"
-              style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}
-            >
-              {/* Cover */}
-              <div className="relative h-36 bg-[#0d0d0d] flex items-center justify-center overflow-hidden">
-                <FolderOpen size={40} strokeWidth={1} className="text-white/10 group-hover:text-white/20 transition-colors" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </div>
-              {/* Info */}
-              <div className="p-4 space-y-1.5">
-                <p className="text-sm font-mono text-fg truncate">{p.name}</p>
-                <p className="text-xs text-fg-muted">{formatDate(p.createdAt)}</p>
-              </div>
-              {/* Bottom bar */}
-              <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
-                {(p.sessionCount ?? 0) > 0 ? (
-                  <span className="flex items-center gap-1.5 text-[11px] font-mono text-fg-muted">
-                    <Video size={10} />
-                    {p.sessionCount} {p.sessionCount === 1 ? "session" : "sessions"}
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-mono text-fg-muted/50">No sessions yet</span>
-                )}
-                {p.ownerName && (
-                  <span className="ml-auto text-[11px] font-mono text-fg-muted/60 truncate max-w-[120px]">{p.ownerName}</span>
-                )}
-              </div>
-            </Link>
+            <ProjectCard key={p.id} p={p} index={index} />
           ))}
         </div>
       )}

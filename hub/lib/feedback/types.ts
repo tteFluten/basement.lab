@@ -5,16 +5,19 @@ export interface FeedbackProject {
   id: string;
   slug: string;
   name: string;
+  description: string | null;
   ownerId: string | null;
   ownerName: string | null;
   createdAt: number;
   sessionCount?: number;
+  thumbVideoUrl?: string | null;
 }
 
 export interface FeedbackSession {
   id: string;
   projectId: string;
   title: string;
+  description: string | null;
   videoUrl: string | null;
   durationS: number | null;
   createdAt: number;
