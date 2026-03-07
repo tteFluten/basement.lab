@@ -84,6 +84,15 @@ function ProjectCard({
       className="fb-card block border border-border overflow-hidden hover:border-fg-muted transition-colors bg-bg-muted group"
       style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}
     >
+      {/* Project tag strip */}
+      {p.linkedProjectName ? (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-fg/[0.04] border-b border-fg/10">
+          <Link2 size={9} className="text-fg-muted/50 shrink-0" />
+          <span className="text-[10px] font-mono uppercase tracking-widest text-fg-muted/60 truncate">{p.linkedProjectName}</span>
+        </div>
+      ) : (
+        <div className="h-0.5 bg-border/30" />
+      )}
       {/* Cover */}
       <div
         className="relative h-36 bg-[#0d0d0d] overflow-hidden flex items-center justify-center"
@@ -113,14 +122,6 @@ function ProjectCard({
           <p className="text-xs text-fg-muted line-clamp-2">{p.description}</p>
         ) : (
           <p className="text-xs text-fg-muted">{formatDate(p.createdAt)}</p>
-        )}
-        {p.linkedProjectName && (
-          <div className="flex items-center gap-1.5 mt-1">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide border border-fg-muted/20 bg-fg-muted/5 text-fg-muted/70 truncate max-w-full">
-              <Link2 size={8} className="shrink-0" />
-              {p.linkedProjectName}
-            </span>
-          </div>
         )}
       </div>
       {/* Bottom bar */}
