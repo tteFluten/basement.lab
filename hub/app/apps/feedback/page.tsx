@@ -85,14 +85,14 @@ function ProjectCard({
       style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}
     >
       {/* Project tag strip */}
-      {p.linkedProjectName ? (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-fg/[0.04] border-b border-fg/10">
-          <Link2 size={9} className="text-fg-muted/50 shrink-0" />
-          <span className="text-[10px] font-mono uppercase tracking-widest text-fg-muted/60 truncate">{p.linkedProjectName}</span>
-        </div>
-      ) : (
-        <div className="h-0.5 bg-border/30" />
-      )}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border bg-bg">
+        <Link2 size={9} className="text-fg-muted/50 shrink-0" />
+        {p.linkedProjectName ? (
+          <span className="text-[10px] font-mono uppercase tracking-widest text-fg-muted truncate">{p.linkedProjectName}</span>
+        ) : (
+          <span className="text-[10px] font-mono text-fg-muted/30 italic">No project</span>
+        )}
+      </div>
       {/* Cover */}
       <div
         className="relative h-36 bg-[#0d0d0d] overflow-hidden flex items-center justify-center"
