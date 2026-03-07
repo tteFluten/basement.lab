@@ -29,7 +29,7 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json() as { title?: string; videoUrl?: string; durationS?: number; version?: string };
+  const body = await request.json() as { title?: string; videoUrl?: string; thumbnailUrl?: string; durationS?: number; version?: string };
   const title = body.title?.trim();
   if (!title) return NextResponse.json({ error: "title required" }, { status: 400 });
 
@@ -39,11 +39,12 @@ export async function POST(
       project_id: project.id,
       title,
       video_url: body.videoUrl ?? null,
+      thumbnail_url: body.thumbnailUrl ?? null,
       duration_s: body.durationS ?? null,
       version: body.version?.trim() || null,
       created_by: session.user.id,
     })
-    .select("id, project_id, title, description, version, video_url, duration_s, created_at")
+    .select("id, project_id, title, description, version, video_url, thumbnail_url, duration_s, created_at")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
@@ -55,6 +56,7 @@ export async function POST(
     description: data.description ?? null,
     version: data.version ?? null,
     videoUrl: data.video_url ?? null,
+    thumbnailUrl: data.thumbnail_url ?? null,
     durationS: data.duration_s ?? null,
     createdAt: new Date(data.created_at).getTime(),
     commentCount: 0,

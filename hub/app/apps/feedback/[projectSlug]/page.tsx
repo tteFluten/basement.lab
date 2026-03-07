@@ -15,6 +15,45 @@ import { FeedbackLoader } from "@/components/feedback/FeedbackLoader";
 const MAX_VIDEO_MB = 500;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 
+async function generateVideoThumbnail(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.muted = true;
+    video.playsInline = true;
+    video.addEventListener("loadedmetadata", () => {
+      video.currentTime = video.duration * 0.15;
+    });
+    video.addEventListener("seeked", () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const maxW = 800;
+        const scale = Math.min(1, maxW / (video.videoWidth || maxW));
+        canvas.width = Math.round((video.videoWidth || maxW) * scale);
+        canvas.height = Math.round((video.videoHeight || 450) * scale);
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => { URL.revokeObjectURL(url); resolve(blob); }, "image/jpeg", 0.82);
+      } catch { URL.revokeObjectURL(url); resolve(null); }
+    });
+    video.addEventListener("error", () => { URL.revokeObjectURL(url); resolve(null); });
+    video.load();
+  });
+}
+
+async function uploadThumbnail(blob: Blob): Promise<string | null> {
+  try {
+    const res = await fetch("/api/feedback/upload/thumbnail", {
+      method: "POST",
+      headers: { "Content-Type": "image/jpeg" },
+      body: blob,
+    });
+    if (!res.ok) return null;
+    return (await res.json()).url ?? null;
+  } catch { return null; }
+}
+
 function formatDuration(s: number) {
   const mins = Math.floor(s / 60);
   const secs = Math.floor(s % 60);
@@ -117,11 +156,20 @@ function SessionCard({
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
           >
+            {/* Static thumbnail — instant, no network wait */}
+            {s.thumbnailUrl && (
+              <img
+                src={s.thumbnailUrl}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
+            {/* Video — loads on hover, scrubs with mouse */}
             {s.videoUrl ? (
               <video
                 ref={videoRef}
                 src={s.videoUrl}
-                className="absolute inset-0 w-full h-full object-cover"
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${videoReady ? "opacity-100" : "opacity-0"}`}
                 preload="none"
                 muted
                 playsInline
@@ -130,11 +178,11 @@ function SessionCard({
                   if (videoRef.current && s.durationS) videoRef.current.currentTime = s.durationS * 0.15;
                 }}
               />
-            ) : (
+            ) : !s.thumbnailUrl ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Video size={36} strokeWidth={1} className="text-white/10" />
               </div>
-            )}
+            ) : null}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
         </Link>
@@ -338,6 +386,9 @@ export default function ProjectPage() {
     setUploadPercent(0);
     speedRef.current = { lastLoaded: 0, lastTime: Date.now() };
 
+    // Start thumbnail generation immediately (local file, fast)
+    const thumbnailBlobPromise = selectedFile ? generateVideoThumbnail(selectedFile) : Promise.resolve(null);
+
     try {
       let videoUrl: string | null = null;
       let durationS: number | null = null;
@@ -415,10 +466,16 @@ export default function ProjectPage() {
 
       setUploadStage("saving");
       setUploadPercent(100);
+
+      // Upload thumbnail (thumbnail generation is likely already done; upload is small/fast)
+      let thumbnailUrl: string | null = null;
+      const thumbBlob = await thumbnailBlobPromise;
+      if (thumbBlob) thumbnailUrl = await uploadThumbnail(thumbBlob);
+
       const res = await fetch(`/api/feedback/projects/${projectSlug}/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle.trim(), videoUrl, durationS, version: newVersion.trim() || undefined }),
+        body: JSON.stringify({ title: newTitle.trim(), videoUrl, durationS, version: newVersion.trim() || undefined, thumbnailUrl }),
       });
 
       if (res.ok) {

@@ -44,7 +44,7 @@ export async function GET() {
         : Promise.resolve({ data: [] }),
       projectIds.length > 0
         ? supabase.from("feedback_sessions")
-            .select("project_id, video_url")
+            .select("project_id, video_url, thumbnail_url")
             .in("project_id", projectIds)
             .not("video_url", "is", null)
             .order("created_at", { ascending: false })
@@ -72,8 +72,10 @@ export async function GET() {
   }
 
   const thumbVideos: Record<string, string> = {};
-  for (const s of (thumbsRes.data ?? []) as { project_id: string; video_url: string }[]) {
-    if (!thumbVideos[s.project_id]) thumbVideos[s.project_id] = s.video_url;
+  const thumbThumbnails: Record<string, string> = {};
+  for (const s of (thumbsRes.data ?? []) as { project_id: string; video_url: string | null; thumbnail_url: string | null }[]) {
+    if (!thumbVideos[s.project_id] && s.video_url) thumbVideos[s.project_id] = s.video_url;
+    if (!thumbThumbnails[s.project_id] && s.thumbnail_url) thumbThumbnails[s.project_id] = s.thumbnail_url;
   }
 
   const userMap: Record<string, string> = {};
@@ -110,6 +112,7 @@ export async function GET() {
       createdAt: new Date(p.created_at).getTime(),
       sessionCount: sessionCounts[p.id] ?? 0,
       thumbVideoUrl: thumbVideos[p.id] ?? null,
+      thumbThumbnailUrl: thumbThumbnails[p.id] ?? null,
       isMember,
     };
   });
@@ -173,6 +176,7 @@ export async function POST(request: NextRequest) {
     createdAt: new Date(data.created_at).getTime(),
     sessionCount: 0,
     thumbVideoUrl: null,
+    thumbThumbnailUrl: null,
     isMember: true,
   });
 }

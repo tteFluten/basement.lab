@@ -13,6 +13,7 @@ export interface FeedbackProject {
   createdAt: number;
   sessionCount?: number;
   thumbVideoUrl?: string | null;
+  thumbThumbnailUrl?: string | null;
   isMember?: boolean;
 }
 
@@ -23,6 +24,7 @@ export interface FeedbackSession {
   description: string | null;
   version: string | null;
   videoUrl: string | null;
+  thumbnailUrl: string | null;
   durationS: number | null;
   createdAt: number;
   commentCount?: number;

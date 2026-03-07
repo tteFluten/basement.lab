@@ -99,19 +99,24 @@ function ProjectCard({
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
+        {/* Static thumbnail */}
+        {p.thumbThumbnailUrl && (
+          <img src={p.thumbThumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+        {/* Video — loads on hover */}
         {p.thumbVideoUrl ? (
           <video
             ref={videoRef}
             src={p.thumbVideoUrl}
-            className="absolute inset-0 w-full h-full object-cover"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${videoReady ? "opacity-100" : "opacity-0"}`}
             preload="none"
             muted
             playsInline
             onLoadedMetadata={() => setVideoReady(true)}
           />
-        ) : (
+        ) : !p.thumbThumbnailUrl ? (
           <FolderOpen size={40} strokeWidth={1} className="text-white/10 group-hover:text-white/20 transition-colors" />
-        )}
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
       {/* Info */}
