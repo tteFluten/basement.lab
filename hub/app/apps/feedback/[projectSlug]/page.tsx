@@ -406,19 +406,43 @@ export default function ProjectPage() {
   }
 
   async function uploadImageFile(file: File): Promise<string> {
-    const res = await fetch("/api/feedback/upload/image", {
+    // Init: check mode (R2 presigned or Blob)
+    const initRes = await fetch("/api/feedback/upload/image", {
       method: "POST",
-      headers: {
-        "Content-Type": file.type,
-        "x-filename": file.name,
-      },
-      body: file,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error ?? "Image upload failed");
+    if (!initRes.ok) {
+      const err = await initRes.json().catch(() => ({}));
+      throw new Error(err.error ?? "Failed to initialize upload");
     }
-    return (await res.json()).url as string;
+    const init = await initRes.json() as { mode: "r2" | "blob"; uploadUrl?: string; publicUrl?: string };
+
+    if (init.mode === "r2" && init.uploadUrl && init.publicUrl) {
+      // Direct PUT to R2
+      const xhr = await new Promise<XMLHttpRequest>((resolve, reject) => {
+        const x = new XMLHttpRequest();
+        x.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) setUploadPercent(Math.round((e.loaded / e.total) * 100));
+        });
+        x.addEventListener("load", () => x.status < 400 ? resolve(x) : reject(new Error(`Upload failed (${x.status})`)));
+        x.addEventListener("error", () => reject(new Error("Upload failed")));
+        x.open("PUT", init.uploadUrl!);
+        x.setRequestHeader("Content-Type", file.type);
+        x.send(file);
+      });
+      void xhr;
+      return init.publicUrl;
+    }
+
+    // Blob fallback
+    const { upload } = await import("@vercel/blob/client");
+    const blob = await upload(file.name, file, {
+      access: "public",
+      handleUploadUrl: "/api/feedback/upload/image",
+      onUploadProgress: ({ percentage }) => setUploadPercent(Math.round(percentage)),
+    });
+    return blob.url;
   }
 
   async function captureUrlScreenshot(url: string): Promise<string | null> {
