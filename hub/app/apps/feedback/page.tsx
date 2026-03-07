@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut } from "lucide-react";
 import { MonkeyIcon } from "@/components/MonkeyIcon";
 import { useSession } from "next-auth/react";
+import { getCurrentProjectId } from "@/lib/currentProject";
 import type { FeedbackProject } from "@/lib/feedback/types";
 
 type SortKey = "newest" | "oldest" | "name-az" | "name-za" | "most-videos";
@@ -163,6 +164,8 @@ export default function FeedbackPage() {
   const [sort, setSort] = useState<SortKey>("newest");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [linkedFilter, setLinkedFilter] = useState<string>("all");
+  const [workProjects, setWorkProjects] = useState<{ id: string; name: string }[]>([]);
+  const [newLinkedProjectId, setNewLinkedProjectId] = useState<string>("");
 
   const load = useCallback(async () => {
     try {
@@ -178,6 +181,20 @@ export default function FeedbackPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    // Auto-select the current work project (same logic as History)
+    const currentId = getCurrentProjectId();
+    if (currentId) {
+      setLinkedFilter(currentId);
+      setNewLinkedProjectId(currentId);
+    }
+    // Fetch all work projects for filter + create form
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((d) => setWorkProjects(Array.isArray(d?.items) ? d.items : []))
+      .catch(() => {});
+  }, []);
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newName.trim()) return;
@@ -186,7 +203,7 @@ export default function FeedbackPage() {
       const res = await fetch("/api/feedback/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), linkedProjectId: newLinkedProjectId || undefined }),
       });
       if (res.ok) {
         const project = await res.json();
@@ -204,15 +221,6 @@ export default function FeedbackPage() {
     const map = new Map<string, string>();
     for (const p of projects) {
       if (p.ownerId && p.ownerName) map.set(p.ownerId, p.ownerName);
-    }
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [projects]);
-
-  // Unique linked projects for filter dropdown
-  const linkedProjects = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of projects) {
-      if (p.linkedProjectId && p.linkedProjectName) map.set(p.linkedProjectId, p.linkedProjectName);
     }
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [projects]);
@@ -250,7 +258,13 @@ export default function FeedbackPage() {
           <MonkeyIcon size={28} className="text-fg-muted/60 shrink-0" />
           <div>
             <h1 className="text-sm font-mono uppercase tracking-widest text-fg">MonoFeedback</h1>
-            <p className="text-xs text-fg-muted mt-1">Video annotation and timestamped feedback</p>
+            {linkedFilter !== "all" && workProjects.length > 0 ? (
+              <p className="text-xs text-fg-muted mt-1">
+                {workProjects.find(p => p.id === linkedFilter)?.name ?? "Project"}
+              </p>
+            ) : (
+              <p className="text-xs text-fg-muted mt-1">Video annotation and timestamped feedback</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -265,29 +279,48 @@ export default function FeedbackPage() {
       </div>
       {/* New project form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="flex gap-2 mb-6">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Project name"
-            autoFocus
-            className="flex-1 bg-bg-muted border border-border px-3 py-2 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted"
-          />
-          <button
-            type="submit"
-            disabled={creating || !newName.trim()}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
-          >
-            {creating ? <Loader2 size={14} className="animate-spin" /> : "Create"}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShowForm(false); setNewName(""); }}
-            className="px-3 py-2 text-xs font-mono uppercase text-fg-muted hover:text-fg border border-border transition-colors"
-          >
-            Cancel
-          </button>
+        <form onSubmit={handleCreate} className="flex flex-col gap-2 mb-6 p-4 border border-border bg-bg-muted">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Project name"
+              autoFocus
+              className="flex-1 bg-bg border border-border px-3 py-2 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted"
+            />
+            {workProjects.length > 0 && (
+              <div className="relative">
+                <select
+                  value={newLinkedProjectId}
+                  onChange={(e) => setNewLinkedProjectId(e.target.value)}
+                  className="appearance-none bg-bg border border-border pl-3 pr-7 py-2 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted cursor-pointer h-full"
+                >
+                  <option value="">— No project —</option>
+                  {workProjects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={creating || !newName.trim()}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
+            >
+              {creating ? <Loader2 size={14} className="animate-spin" /> : "Create"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowForm(false); setNewName(""); }}
+              className="px-3 py-2 text-xs font-mono uppercase text-fg-muted hover:text-fg border border-border transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       )}
 
@@ -304,7 +337,7 @@ export default function FeedbackPage() {
               className="w-full bg-bg-muted border border-border pl-8 pr-3 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted"
             />
           </div>
-          {linkedProjects.length > 1 && (
+          {workProjects.length > 0 && (
             <div className="relative">
               <select
                 value={linkedFilter}
@@ -312,8 +345,8 @@ export default function FeedbackPage() {
                 className="appearance-none bg-bg-muted border border-border pl-3 pr-7 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted cursor-pointer"
               >
                 <option value="all">All projects</option>
-                {linkedProjects.map((lp) => (
-                  <option key={lp.id} value={lp.id}>{lp.name}</option>
+                {workProjects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
               <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
