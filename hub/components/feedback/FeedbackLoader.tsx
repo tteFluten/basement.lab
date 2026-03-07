@@ -1,5 +1,7 @@
 "use client";
 
+import { MonkeyIcon } from "@/components/MonkeyIcon";
+
 export function FeedbackLoader() {
   return (
     <div className="flex items-center justify-center h-full min-h-[60vh]">
@@ -11,22 +13,27 @@ export function FeedbackLoader() {
         @keyframes fb-dot-wave { 0%,60%,100% { transform: translateY(0); opacity: 0.3; } 30% { transform: translateY(-3px); opacity: 1; } }
       `}</style>
       <div className="flex flex-col items-center gap-6">
-        <svg width="80" height="80" viewBox="0 0 120 120" className="text-fg overflow-visible">
-          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin 18s linear infinite" }}>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="0.5"
-              strokeOpacity="0.15" strokeDasharray="4 6"
-              style={{ animation: "fb-dash 2s linear infinite" }} />
-          </g>
-          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin-rev 10s linear infinite" }}>
-            <circle cx="60" cy="60" r="38" fill="none" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.08" />
-          </g>
-          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin 3s linear infinite" }}>
-            <circle cx="60" cy="60" r="24" fill="none" stroke="currentColor" strokeWidth="1.5"
-              strokeOpacity="0.5" strokeDasharray="20 60" strokeLinecap="round" />
-          </g>
-          <circle cx="60" cy="60" r="4" fill="currentColor"
-            style={{ animation: "fb-pulse 2.5s ease-in-out infinite" }} />
-        </svg>
+        <div className="relative w-20 h-20">
+          <svg width="80" height="80" viewBox="0 0 120 120" className="text-fg overflow-visible absolute inset-0">
+            <g style={{ transformOrigin: "60px 60px", animation: "fb-spin 18s linear infinite" }}>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="0.5"
+                strokeOpacity="0.15" strokeDasharray="4 6"
+                style={{ animation: "fb-dash 2s linear infinite" }} />
+            </g>
+            <g style={{ transformOrigin: "60px 60px", animation: "fb-spin-rev 10s linear infinite" }}>
+              <circle cx="60" cy="60" r="38" fill="none" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.08" />
+            </g>
+            <g style={{ transformOrigin: "60px 60px", animation: "fb-spin 3s linear infinite" }}>
+              <circle cx="60" cy="60" r="24" fill="none" stroke="currentColor" strokeWidth="1.5"
+                strokeOpacity="0.5" strokeDasharray="20 60" strokeLinecap="round" />
+            </g>
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span style={{ animation: "fb-pulse 2.5s ease-in-out infinite" }} className="flex">
+              <MonkeyIcon size={28} strokeWidth={1.2} className="text-fg-muted/50" />
+            </span>
+          </div>
+        </div>
         <div className="flex flex-col items-center gap-2">
           <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-fg-muted"
             style={{ animation: "fb-pulse 2s ease-in-out infinite" }}>

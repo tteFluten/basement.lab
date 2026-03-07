@@ -268,7 +268,7 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div ref={containerRef} className="flex flex-col w-full bg-black">
+    <div ref={containerRef} className="flex flex-col w-full max-w-4xl mx-auto bg-black">
       {/* ── Video area ── */}
       <div className="relative bg-black aspect-video w-full overflow-hidden">
         <video

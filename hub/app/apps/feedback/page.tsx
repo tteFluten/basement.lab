@@ -114,9 +114,11 @@ function ProjectCard({
           <p className="text-xs text-fg-muted">{formatDate(p.createdAt)}</p>
         )}
         {p.linkedProjectName && (
-          <div className="flex items-center gap-1">
-            <Link2 size={9} className="text-fg-muted/40 shrink-0" />
-            <span className="text-[10px] font-mono text-fg-muted/50 truncate">{p.linkedProjectName}</span>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide border border-fg-muted/20 bg-fg-muted/5 text-fg-muted/70 truncate max-w-full">
+              <Link2 size={8} className="shrink-0" />
+              {p.linkedProjectName}
+            </span>
           </div>
         )}
       </div>
