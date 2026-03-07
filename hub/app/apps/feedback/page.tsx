@@ -28,6 +28,10 @@ function sortProjects(projects: FeedbackProject[], sort: SortKey): FeedbackProje
   });
 }
 
+function formatDate(ms: number) {
+  return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function ProjectCard({ p, index }: { p: FeedbackProject; index: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -175,8 +179,6 @@ export default function FeedbackPage() {
     return sortProjects(list, sort);
   }, [projects, search, sort, ownerFilter]);
 
-  const formatDate = (ms: number) =>
-    new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   return (
     <div className="min-h-full p-6">
