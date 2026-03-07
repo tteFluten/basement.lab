@@ -55,7 +55,6 @@ export async function GET(
   }
 
   // Available work projects for the linked project picker (admin only)
-  const isAdmin = (session.user as { role?: string }).role === "admin";
   const workProjectsData = isAdmin
     ? (await supabase.from("projects").select("id, name").order("name")).data ?? []
     : [];
