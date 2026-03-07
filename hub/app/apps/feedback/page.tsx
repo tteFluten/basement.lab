@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown } from "lucide-react";
+import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut } from "lucide-react";
+import { useSession } from "next-auth/react";
 import type { FeedbackProject } from "@/lib/feedback/types";
 
 type SortKey = "newest" | "oldest" | "name-az" | "name-za" | "most-videos";
@@ -31,9 +32,17 @@ function formatDate(ms: number) {
   return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function ProjectCard({ p, index }: { p: FeedbackProject; index: number }) {
+function ProjectCard({
+  p, index, showJoin, onJoin, onLeave,
+}: {
+  p: FeedbackProject; index: number;
+  showJoin?: boolean;
+  onJoin?: (slug: string) => Promise<void>;
+  onLeave?: (slug: string) => Promise<void>;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   function handleMouseEnter() {
     const v = videoRef.current;
@@ -53,6 +62,18 @@ function ProjectCard({ p, index }: { p: FeedbackProject; index: number }) {
     const v = videoRef.current;
     if (!v || !videoReady) return;
     v.currentTime = 0;
+  }
+
+  async function handleJoinLeave(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setBusy(true);
+    try {
+      if (p.isMember && onLeave) await onLeave(p.slug);
+      else if (onJoin) await onJoin(p.slug);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -91,6 +112,12 @@ function ProjectCard({ p, index }: { p: FeedbackProject; index: number }) {
         ) : (
           <p className="text-xs text-fg-muted">{formatDate(p.createdAt)}</p>
         )}
+        {p.linkedProjectName && (
+          <div className="flex items-center gap-1">
+            <Link2 size={9} className="text-fg-muted/40 shrink-0" />
+            <span className="text-[10px] font-mono text-fg-muted/50 truncate">{p.linkedProjectName}</span>
+          </div>
+        )}
       </div>
       {/* Bottom bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
@@ -102,8 +129,19 @@ function ProjectCard({ p, index }: { p: FeedbackProject; index: number }) {
         ) : (
           <span className="text-[11px] font-mono text-fg-muted/50">No sessions yet</span>
         )}
-        {p.ownerName && (
-          <span className="ml-auto text-[11px] font-mono text-fg-muted/60 truncate max-w-[120px]">{p.ownerName}</span>
+        {showJoin && (
+          <button
+            onClick={handleJoinLeave}
+            disabled={busy}
+            className={`ml-auto flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono uppercase border transition-colors disabled:opacity-40 ${
+              p.isMember
+                ? "border-border text-fg-muted hover:text-red-400 hover:border-red-400/30"
+                : "border-border text-fg-muted hover:text-fg hover:border-fg-muted"
+            }`}
+          >
+            {busy ? <Loader2 size={9} className="animate-spin" /> : p.isMember ? <LogOut size={9} /> : <UserPlus size={9} />}
+            {p.isMember ? "Leave" : "Join"}
+          </button>
         )}
       </div>
     </Link>
@@ -111,6 +149,8 @@ function ProjectCard({ p, index }: { p: FeedbackProject; index: number }) {
 }
 
 export default function FeedbackPage() {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as { role?: string })?.role === "admin";
   const [projects, setProjects] = useState<FeedbackProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -173,6 +213,19 @@ export default function FeedbackPage() {
     }
     return sortProjects(list, sort);
   }, [projects, search, sort, ownerFilter]);
+
+  const myProjects = useMemo(() => filtered.filter((p) => p.isMember), [filtered]);
+  const otherProjects = useMemo(() => filtered.filter((p) => !p.isMember), [filtered]);
+
+  const handleJoin = useCallback(async (slug: string) => {
+    const res = await fetch(`/api/feedback/projects/${slug}/join`, { method: "POST" });
+    if (res.ok) setProjects((prev) => prev.map((p) => p.slug === slug ? { ...p, isMember: true } : p));
+  }, []);
+
+  const handleLeave = useCallback(async (slug: string) => {
+    const res = await fetch(`/api/feedback/projects/${slug}/join`, { method: "DELETE" });
+    if (res.ok) setProjects((prev) => prev.map((p) => p.slug === slug ? { ...p, isMember: false } : p));
+  }, []);
 
 
   return (
@@ -302,12 +355,37 @@ export default function FeedbackPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center text-xs font-mono text-fg-muted">No results for current filters.</div>
-      ) : (
+      ) : isAdmin ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((p, index) => (
             <ProjectCard key={p.id} p={p} index={index} />
           ))}
         </div>
+      ) : (
+        <>
+          {myProjects.length > 0 && (
+            <div className="mb-8">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-fg-muted/50 mb-4">My projects</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {myProjects.map((p, index) => (
+                  <ProjectCard key={p.id} p={p} index={index} showJoin onJoin={handleJoin} onLeave={handleLeave} />
+                ))}
+              </div>
+            </div>
+          )}
+          {otherProjects.length > 0 && (
+            <div>
+              {myProjects.length > 0 && (
+                <p className="text-[10px] font-mono uppercase tracking-widest text-fg-muted/50 mb-4">All projects</p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {otherProjects.map((p, index) => (
+                  <ProjectCard key={p.id} p={p} index={index} showJoin onJoin={handleJoin} onLeave={handleLeave} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

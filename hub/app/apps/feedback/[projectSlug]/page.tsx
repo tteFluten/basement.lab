@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown, X, Clock, Pencil, Check } from "lucide-react";
+import { Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown, X, Clock, Pencil, Check, Link2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
 
@@ -210,11 +211,15 @@ function sortSessions(sessions: FeedbackSession[], sort: SortKey): FeedbackSessi
 
 export default function ProjectPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
+  const { data: authSession } = useSession();
+  const isAdmin = (authSession?.user as { role?: string })?.role === "admin";
   const [project, setProject] = useState<FeedbackProject | null>(null);
   const [sessions, setSessions] = useState<FeedbackSession[]>([]);
+  const [workProjects, setWorkProjects] = useState<{ id: string; name: string }[]>([]);
   const [editingProject, setEditingProject] = useState(false);
   const [editProjName, setEditProjName] = useState("");
   const [editProjDesc, setEditProjDesc] = useState("");
+  const [editLinkedProjectId, setEditLinkedProjectId] = useState<string>("");
   const [savingProject, setSavingProject] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -236,6 +241,7 @@ export default function ProjectPage() {
         const data = await res.json();
         setProject(data.project);
         setSessions(data.sessions ?? []);
+        setWorkProjects(data.workProjects ?? []);
       }
     } finally {
       setLoading(false);
@@ -377,11 +383,21 @@ export default function ProjectPage() {
       const res = await fetch(`/api/feedback/projects/${projectSlug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editProjName.trim(), description: editProjDesc }),
+        body: JSON.stringify({
+          name: editProjName.trim(),
+          description: editProjDesc,
+          linkedProjectId: editLinkedProjectId || null,
+        }),
       });
       if (res.ok) {
         const updated = await res.json();
-        setProject((prev) => prev ? { ...prev, name: updated.name, description: updated.description } : prev);
+        setProject((prev) => prev ? {
+          ...prev,
+          name: updated.name,
+          description: updated.description,
+          linkedProjectId: updated.linkedProjectId,
+          linkedProjectName: updated.linkedProjectName,
+        } : prev);
         setEditingProject(false);
       }
     } finally {
@@ -486,9 +502,24 @@ export default function ProjectPage() {
               <textarea
                 value={editProjDesc}
                 onChange={(e) => setEditProjDesc(e.target.value)}
-                className="w-full bg-bg border border-border px-3 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted resize-none min-h-[60px]"
+                className="w-full bg-bg border border-border px-3 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted resize-none min-h-[56px]"
                 placeholder="Description (optional)"
               />
+              {isAdmin && workProjects.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={editLinkedProjectId}
+                    onChange={(e) => setEditLinkedProjectId(e.target.value)}
+                    className="w-full appearance-none bg-bg border border-border pl-3 pr-7 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted cursor-pointer"
+                  >
+                    <option value="">— No linked project —</option>
+                    {workProjects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
+                </div>
+              )}
               <div className="flex gap-2">
                 <button type="button" onClick={() => setEditingProject(false)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase border border-border text-fg-muted hover:text-fg transition-colors">
@@ -506,13 +537,24 @@ export default function ProjectPage() {
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-mono uppercase tracking-widest text-fg truncate">{project.name}</h1>
                 <button
-                  onClick={() => { setEditingProject(true); setEditProjName(project.name); setEditProjDesc(project.description ?? ""); }}
+                  onClick={() => {
+                    setEditingProject(true);
+                    setEditProjName(project.name);
+                    setEditProjDesc(project.description ?? "");
+                    setEditLinkedProjectId(project.linkedProjectId ?? "");
+                  }}
                   className="shrink-0 p-0.5 text-fg-muted/40 hover:text-fg-muted transition-colors"
                   title="Edit project"
                 >
                   <Pencil size={11} />
                 </button>
               </div>
+              {project.linkedProjectName && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <Link2 size={10} className="text-fg-muted/50 shrink-0" />
+                  <span className="text-[11px] font-mono text-fg-muted/60 truncate">{project.linkedProjectName}</span>
+                </div>
+              )}
               {project.description && (
                 <p className="text-xs text-fg-muted mt-1">{project.description}</p>
               )}

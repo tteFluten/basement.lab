@@ -8,9 +8,12 @@ export interface FeedbackProject {
   description: string | null;
   ownerId: string | null;
   ownerName: string | null;
+  linkedProjectId: string | null;
+  linkedProjectName: string | null;
   createdAt: number;
   sessionCount?: number;
   thumbVideoUrl?: string | null;
+  isMember?: boolean;
 }
 
 export interface FeedbackSession {

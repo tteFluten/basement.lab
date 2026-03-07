@@ -20,7 +20,7 @@ export async function GET(
 
   const { data: project, error: pErr } = await supabase
     .from("feedback_projects")
-    .select("id, slug, name, description, owner_id, created_at")
+    .select("id, slug, name, description, owner_id, linked_project_id, created_at")
     .eq("slug", params.slug)
     .single();
 
@@ -48,6 +48,18 @@ export async function GET(
     }
   }
 
+  let linkedProjectName: string | null = null;
+  if (project.linked_project_id) {
+    const { data: lp } = await supabase.from("projects").select("name").eq("id", project.linked_project_id).single();
+    linkedProjectName = lp?.name ?? null;
+  }
+
+  // Available work projects for the linked project picker (admin only)
+  const isAdmin = (session.user as { role?: string }).role === "admin";
+  const workProjectsData = isAdmin
+    ? (await supabase.from("projects").select("id, name").order("name")).data ?? []
+    : [];
+
   return NextResponse.json({
     project: {
       id: project.id,
@@ -55,8 +67,11 @@ export async function GET(
       name: project.name,
       description: project.description ?? null,
       ownerId: project.owner_id ?? null,
+      linkedProjectId: project.linked_project_id ?? null,
+      linkedProjectName,
       createdAt: new Date(project.created_at).getTime(),
     },
+    workProjects: workProjectsData,
     sessions: (sessions ?? []).map((s) => ({
       id: s.id,
       projectId: s.project_id,
@@ -94,10 +109,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json() as { name?: string; description?: string };
-  const updates: Record<string, string> = {};
-  if (typeof body.name === "string" && body.name.trim()) updates.name = body.name.trim();
-  if (typeof body.description === "string") updates.description = body.description.trim();
+  const body = await request.json() as { name?: string; description?: string; linkedProjectId?: string | null };
+  const updates: Record<string, unknown> = {};
+  if (typeof body.name === "string" && body.name.trim()) updates.name = (body.name as string).trim();
+  if (typeof body.description === "string") updates.description = (body.description as string).trim();
+  if ("linkedProjectId" in body) updates.linked_project_id = (body as { linkedProjectId: string | null }).linkedProjectId ?? null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -107,10 +123,16 @@ export async function PATCH(
     .from("feedback_projects")
     .update(updates)
     .eq("id", project.id)
-    .select("id, slug, name, description, owner_id, created_at")
+    .select("id, slug, name, description, owner_id, linked_project_id, created_at")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
+
+  let lpName: string | null = null;
+  if (data.linked_project_id) {
+    const { data: lp } = await supabase.from("projects").select("name").eq("id", data.linked_project_id).single();
+    lpName = lp?.name ?? null;
+  }
 
   return NextResponse.json({
     id: data.id,
@@ -118,6 +140,8 @@ export async function PATCH(
     name: data.name,
     description: data.description ?? null,
     ownerId: data.owner_id ?? null,
+    linkedProjectId: data.linked_project_id ?? null,
+    linkedProjectName: lpName,
     createdAt: new Date(data.created_at).getTime(),
   });
 }
