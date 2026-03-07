@@ -3,17 +3,17 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown, X, Clock, Pencil, Check, Link2 } from "lucide-react";
+import {
+  Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown,
+  X, Clock, Pencil, Check, Link2, Share2, Hash, Calendar,
+} from "lucide-react";
 import { useSession } from "next-auth/react";
 import { upload } from "@vercel/blob/client";
 import type { FeedbackProject, FeedbackSession } from "@/lib/feedback/types";
+import { FeedbackLoader } from "@/components/feedback/FeedbackLoader";
 
 const MAX_VIDEO_MB = 500;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-zinc-800/60 ${className ?? ""}`} />;
-}
 
 function formatDuration(s: number) {
   const mins = Math.floor(s / 60);
@@ -25,10 +25,23 @@ function formatDate(ms: number) {
   return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function formatSpeed(bytesPerSec: number): string {
+  if (bytesPerSec >= 1024 * 1024) return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`;
+  return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(0)} KB`;
+}
+
 function SessionCard({
-  s, projectSlug, onUpdate,
+  s, projectSlug, isSelected, onToggleSelect, onUpdate,
 }: {
-  s: FeedbackSession; projectSlug: string;
+  s: FeedbackSession;
+  projectSlug: string;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
   onUpdate: (id: string, updates: Partial<FeedbackSession>) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -36,7 +49,9 @@ function SessionCard({
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(s.title);
   const [editDesc, setEditDesc] = useState(s.description ?? "");
+  const [editVersion, setEditVersion] = useState(s.version ?? "");
   const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   function handleMouseEnter() {
     const v = videoRef.current;
@@ -68,11 +83,11 @@ function SessionCard({
       const res = await fetch(`/api/feedback/sessions/${s.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: editTitle.trim(), description: editDesc }),
+        body: JSON.stringify({ title: editTitle.trim(), description: editDesc, version: editVersion }),
       });
       if (res.ok) {
         const updated = await res.json();
-        onUpdate(s.id, { title: updated.title, description: updated.description });
+        onUpdate(s.id, { title: updated.title, description: updated.description, version: updated.version });
         setEditing(false);
       }
     } finally {
@@ -80,37 +95,63 @@ function SessionCard({
     }
   }
 
+  async function handleShare(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/share/feedback/${s.id}`;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
-    <div className="block border border-border overflow-hidden bg-bg-muted group transition-colors hover:border-fg-muted">
-      {/* Cover — link to session */}
-      <Link href={`/apps/feedback/${projectSlug}/${s.id}`}>
-        <div
-          className="relative h-44 bg-[#0d0d0d] overflow-hidden"
-          onMouseEnter={handleMouseEnter}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
+    <div className={`block border overflow-hidden bg-bg-muted group transition-all duration-200 hover:border-fg-muted ${
+      isSelected ? "border-fg ring-1 ring-fg/20" : "border-border"
+    }`}>
+      {/* Cover */}
+      <div className="relative">
+        <Link href={`/apps/feedback/${projectSlug}/${s.id}`}>
+          <div
+            className="relative h-44 bg-[#0d0d0d] overflow-hidden"
+            onMouseEnter={handleMouseEnter}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          >
+            {s.videoUrl ? (
+              <video
+                ref={videoRef}
+                src={s.videoUrl}
+                className="absolute inset-0 w-full h-full object-cover"
+                preload="none"
+                muted
+                playsInline
+                onLoadedMetadata={() => {
+                  setVideoReady(true);
+                  if (videoRef.current && s.durationS) videoRef.current.currentTime = s.durationS * 0.15;
+                }}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Video size={36} strokeWidth={1} className="text-white/10" />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </div>
+        </Link>
+
+        {/* Selection checkbox */}
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect(s.id); }}
+          className={`absolute top-2.5 left-2.5 w-5 h-5 flex items-center justify-center border transition-all duration-150 ${
+            isSelected
+              ? "bg-fg border-fg text-bg opacity-100"
+              : "bg-black/50 border-white/30 text-transparent opacity-0 group-hover:opacity-100"
+          }`}
+          title={isSelected ? "Deselect" : "Select"}
         >
-          {s.videoUrl ? (
-            <video
-              ref={videoRef}
-              src={s.videoUrl}
-              className="absolute inset-0 w-full h-full object-cover"
-              preload="none"
-              muted
-              playsInline
-              onLoadedMetadata={() => {
-                setVideoReady(true);
-                if (videoRef.current && s.durationS) videoRef.current.currentTime = s.durationS * 0.15;
-              }}
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Video size={36} strokeWidth={1} className="text-white/10" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        </div>
-      </Link>
+          {isSelected && <Check size={11} strokeWidth={3} />}
+        </button>
+      </div>
 
       {/* Info */}
       {editing ? (
@@ -122,6 +163,17 @@ function SessionCard({
             className="w-full bg-bg border border-border px-2.5 py-1.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted"
             placeholder="Session title"
           />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Hash size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted/50 pointer-events-none" />
+              <input
+                value={editVersion}
+                onChange={(e) => setEditVersion(e.target.value)}
+                className="w-full bg-bg border border-border pl-6 pr-2.5 py-1.5 text-xs font-mono text-fg focus:outline-none focus:border-fg-muted"
+                placeholder="version (e.g. v2)"
+              />
+            </div>
+          </div>
           <textarea
             value={editDesc}
             onChange={(e) => setEditDesc(e.target.value)}
@@ -129,7 +181,7 @@ function SessionCard({
             placeholder="Description (optional)"
           />
           <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => { setEditing(false); setEditTitle(s.title); setEditDesc(s.description ?? ""); }}
+            <button type="button" onClick={() => { setEditing(false); setEditTitle(s.title); setEditDesc(s.description ?? ""); setEditVersion(s.version ?? ""); }}
               className="p-1 text-fg-muted hover:text-fg transition-colors">
               <X size={13} />
             </button>
@@ -141,11 +193,16 @@ function SessionCard({
         </form>
       ) : (
         <div className="p-4 space-y-1.5">
-          <p className="text-sm font-mono text-fg truncate">{s.title}</p>
-          {s.description ? (
+          <div className="flex items-start gap-2">
+            <p className="text-sm font-mono text-fg truncate flex-1">{s.title}</p>
+            {s.version && (
+              <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono border border-border text-fg-muted/60 bg-bg leading-none mt-0.5">
+                <Hash size={8} />{s.version}
+              </span>
+            )}
+          </div>
+          {s.description && (
             <p className="text-xs text-fg-muted line-clamp-2">{s.description}</p>
-          ) : (
-            <p className="text-xs text-fg-muted">{formatDate(s.createdAt)}</p>
           )}
         </div>
       )}
@@ -153,25 +210,39 @@ function SessionCard({
       {/* Bottom bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
         {s.durationS != null && (
-          <span className="flex items-center gap-1.5 text-[11px] font-mono text-fg-muted">
-            <Clock size={10} />
+          <span className="flex items-center gap-1 text-[11px] font-mono text-fg-muted">
+            <Clock size={9} />
             {formatDuration(s.durationS)}
           </span>
         )}
         {(s.commentCount ?? 0) > 0 && (
-          <span className="flex items-center gap-1.5 text-[11px] font-mono text-fg-muted">
-            <MessageSquare size={10} />
+          <span className="flex items-center gap-1 text-[11px] font-mono text-fg-muted">
+            <MessageSquare size={9} />
             {s.commentCount}
           </span>
         )}
+        <span className="flex items-center gap-1 text-[11px] font-mono text-fg-muted/40">
+          <Calendar size={9} />
+          {formatDate(s.createdAt)}
+        </span>
+
         {!editing && (
-          <button
-            onClick={(e) => { e.preventDefault(); setEditing(true); setEditTitle(s.title); setEditDesc(s.description ?? ""); }}
-            className="ml-auto p-1 text-fg-muted/40 hover:text-fg-muted transition-colors opacity-0 group-hover:opacity-100"
-            title="Edit session"
-          >
-            <Pencil size={11} />
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={handleShare}
+              className={`p-1 transition-colors ${copied ? "text-green-400" : "text-fg-muted/40 hover:text-fg-muted opacity-0 group-hover:opacity-100"}`}
+              title="Copy share link"
+            >
+              {copied ? <Check size={11} /> : <Share2 size={11} />}
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); setEditing(true); setEditTitle(s.title); setEditDesc(s.description ?? ""); setEditVersion(s.version ?? ""); }}
+              className="p-1 text-fg-muted/40 hover:text-fg-muted transition-colors opacity-0 group-hover:opacity-100"
+              title="Edit session"
+            >
+              <Pencil size={11} />
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -187,16 +258,6 @@ const SORT_LABELS: Record<SortKey, string> = {
 };
 
 type UploadStage = "idle" | "preparing" | "uploading" | "saving";
-
-function formatSpeed(bytesPerSec: number): string {
-  if (bytesPerSec >= 1024 * 1024) return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`;
-  return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024).toFixed(0)} KB`;
-}
 
 function sortSessions(sessions: FeedbackSession[], sort: SortKey): FeedbackSession[] {
   return [...sessions].sort((a, b) => {
@@ -224,6 +285,7 @@ export default function ProjectPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [newVersion, setNewVersion] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStage, setUploadStage] = useState<UploadStage>("idle");
   const [uploadPercent, setUploadPercent] = useState(0);
@@ -233,6 +295,8 @@ export default function ProjectPage() {
   const speedRef = useRef<{ lastLoaded: number; lastTime: number }>({ lastLoaded: 0, lastTime: 0 });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [copyAllDone, setCopyAllDone] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -252,6 +316,7 @@ export default function ProjectPage() {
 
   function resetForm() {
     setNewTitle("");
+    setNewVersion("");
     setSelectedFile(null);
     setUploadStage("idle");
     setUploadPercent(0);
@@ -323,7 +388,7 @@ export default function ProjectPage() {
           const blob = await upload(selectedFile.name, selectedFile, {
             access: "public",
             handleUploadUrl: "/api/feedback/upload",
-            onUploadProgress: ({ loaded, total, percentage }) => {
+            onUploadProgress: ({ loaded, percentage }) => {
               setUploadStage("uploading");
               setUploadPercent(Math.round(percentage));
               const now = Date.now();
@@ -353,7 +418,7 @@ export default function ProjectPage() {
       const res = await fetch(`/api/feedback/projects/${projectSlug}/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle.trim(), videoUrl, durationS }),
+        body: JSON.stringify({ title: newTitle.trim(), videoUrl, durationS, version: newVersion.trim() || undefined }),
       });
 
       if (res.ok) {
@@ -374,6 +439,24 @@ export default function ProjectPage() {
   const handleUpdateSession = useCallback((id: string, updates: Partial<FeedbackSession>) => {
     setSessions((prev) => prev.map((s) => s.id === id ? { ...s, ...updates } : s));
   }, []);
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  async function handleCopyLinks() {
+    const links = Array.from(selectedIds)
+      .map((id) => `${window.location.origin}/share/feedback/${id}`)
+      .join("\n");
+    await navigator.clipboard.writeText(links);
+    setCopyAllDone(true);
+    setTimeout(() => setCopyAllDone(false), 2500);
+  }
 
   async function handleSaveProject(e: React.FormEvent) {
     e.preventDefault();
@@ -409,7 +492,7 @@ export default function ProjectPage() {
     let list = sessions;
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter((s) => s.title.toLowerCase().includes(q));
+      list = list.filter((s) => s.title.toLowerCase().includes(q) || s.version?.toLowerCase().includes(q));
     }
     return sortSessions(list, sort);
   }, [sessions, search, sort]);
@@ -424,58 +507,14 @@ export default function ProjectPage() {
 
   const GRID = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4";
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-full min-h-[60vh]">
-      <style>{`
-        @keyframes fb-spin     { to { transform: rotate(360deg); } }
-        @keyframes fb-spin-rev { to { transform: rotate(-360deg); } }
-        @keyframes fb-dash     { to { stroke-dashoffset: -20; } }
-        @keyframes fb-pulse    { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
-        @keyframes fb-dot-wave { 0%,60%,100% { transform: translateY(0); opacity: 0.3; } 30% { transform: translateY(-3px); opacity: 1; } }
-      `}</style>
-      <div className="flex flex-col items-center gap-6">
-        <svg width="120" height="120" viewBox="0 0 120 120" className="text-fg overflow-visible">
-          {/* outer dashed ring — slow spin */}
-          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin 18s linear infinite" }}>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="0.5"
-              strokeOpacity="0.15" strokeDasharray="4 6"
-              style={{ animation: "fb-dash 2s linear infinite" }} />
-          </g>
-          {/* mid ring — reverse */}
-          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin-rev 10s linear infinite" }}>
-            <circle cx="60" cy="60" r="38" fill="none" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.08" />
-          </g>
-          {/* inner arc — fast spin */}
-          <g style={{ transformOrigin: "60px 60px", animation: "fb-spin 3s linear infinite" }}>
-            <circle cx="60" cy="60" r="24" fill="none" stroke="currentColor" strokeWidth="1.5"
-              strokeOpacity="0.5" strokeDasharray="20 60" strokeLinecap="round" />
-          </g>
-          {/* core dot */}
-          <circle cx="60" cy="60" r="4" fill="currentColor" strokeOpacity="0.8"
-            style={{ animation: "fb-pulse 2.5s ease-in-out infinite" }} />
-        </svg>
-        <div className="flex flex-col items-center gap-2">
-          <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-fg-muted"
-            style={{ animation: "fb-pulse 2s ease-in-out infinite" }}>
-            Loading
-          </span>
-          <svg width="28" height="8" viewBox="0 0 28 8">
-            {[0, 1, 2].map(i => (
-              <circle key={i} cx={4 + i * 10} cy="4" r="1.5" fill="currentColor" className="text-fg-muted"
-                style={{ animation: "fb-dot-wave 1.2s ease-in-out infinite", animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
+  if (loading) return <FeedbackLoader />;
 
   if (!project) return (
     <div className="p-6 text-fg-muted text-sm font-mono">Project not found.</div>
   );
 
   return (
-    <div className="min-h-full p-6">
+    <div className="min-h-full p-6 pb-24">
       <style>{`
         @keyframes fb-fade-in {
           from { opacity: 0; transform: translateY(6px); }
@@ -558,7 +597,7 @@ export default function ProjectPage() {
               {project.description && (
                 <p className="text-xs text-fg-muted mt-1">{project.description}</p>
               )}
-              <p className="text-xs text-fg-muted/60 mt-0.5">{sessions.length} {sessions.length === 1 ? "session" : "sessions"}</p>
+              <p className="text-xs text-fg-muted/50 mt-0.5">{sessions.length} {sessions.length === 1 ? "session" : "sessions"}</p>
             </div>
           )}
           {!editingProject && (
@@ -577,21 +616,35 @@ export default function ProjectPage() {
       {showForm && (
         <form onSubmit={handleCreate} className="mb-8 border border-border">
           <div className="flex flex-col gap-4 p-6">
-            {/* Title */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Session title</label>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="e.g. Homepage review — March"
-                autoFocus
-                disabled={uploading}
-                className="bg-bg border border-border px-4 py-3 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/50"
-              />
+            <div className="flex gap-3">
+              <div className="flex flex-col gap-1.5 flex-1">
+                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Session title</label>
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g. Homepage review — March"
+                  autoFocus
+                  disabled={uploading}
+                  className="bg-bg border border-border px-4 py-3 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/50"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 w-36">
+                <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Version</label>
+                <div className="relative">
+                  <Hash size={11} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted/50 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={newVersion}
+                    onChange={(e) => setNewVersion(e.target.value)}
+                    placeholder="v1"
+                    disabled={uploading}
+                    className="w-full bg-bg border border-border pl-7 pr-3 py-3 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/50"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* File picker */}
             {!uploading && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-mono uppercase tracking-widest text-fg-muted">Video file</label>
@@ -647,7 +700,6 @@ export default function ProjectPage() {
               </div>
             )}
 
-            {/* Progress */}
             {uploading && (
               <div className="flex flex-col gap-4 py-2">
                 <div className="flex items-end justify-between">
@@ -756,9 +808,39 @@ export default function ProjectPage() {
         <div className={GRID}>
           {filtered.map((s, index) => (
             <div key={s.id} className="fb-card" style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}>
-              <SessionCard s={s} projectSlug={projectSlug} onUpdate={handleUpdateSession} />
+              <SessionCard
+                s={s}
+                projectSlug={projectSlug}
+                isSelected={selectedIds.has(s.id)}
+                onToggleSelect={handleToggleSelect}
+                onUpdate={handleUpdateSession}
+              />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Multi-select floating action bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-1 py-1 bg-fg text-bg shadow-2xl">
+          <span className="px-3 py-1.5 text-xs font-mono uppercase tracking-widest opacity-70">
+            {selectedIds.size} selected
+          </span>
+          <div className="w-px h-5 bg-bg/20 mx-1" />
+          <button
+            onClick={handleCopyLinks}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase hover:bg-bg/10 transition-colors"
+          >
+            {copyAllDone ? <Check size={12} /> : <Share2 size={12} />}
+            {copyAllDone ? "Copied!" : "Copy links"}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="p-2 hover:bg-bg/10 transition-colors"
+            title="Clear selection"
+          >
+            <X size={13} />
+          </button>
         </div>
       )}
     </div>

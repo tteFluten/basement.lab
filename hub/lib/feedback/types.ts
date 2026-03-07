@@ -21,6 +21,7 @@ export interface FeedbackSession {
   projectId: string;
   title: string;
   description: string | null;
+  version: string | null;
   videoUrl: string | null;
   durationS: number | null;
   createdAt: number;

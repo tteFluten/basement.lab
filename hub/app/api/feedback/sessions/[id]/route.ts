@@ -13,7 +13,7 @@ export async function GET(
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("feedback_sessions")
-    .select("id, project_id, title, description, video_url, duration_s, created_at")
+    .select("id, project_id, title, description, version, video_url, duration_s, created_at")
     .eq("id", params.id)
     .single();
 
@@ -24,6 +24,7 @@ export async function GET(
     projectId: data.project_id,
     title: data.title,
     description: data.description ?? null,
+    version: data.version ?? null,
     videoUrl: data.video_url ?? null,
     durationS: data.duration_s ?? null,
     createdAt: new Date(data.created_at).getTime(),
@@ -64,10 +65,11 @@ export async function PATCH(
     }
   }
 
-  const body = await request.json() as { title?: string; description?: string };
+  const body = await request.json() as { title?: string; description?: string; version?: string };
   const updates: Record<string, string> = {};
   if (typeof body.title === "string" && body.title.trim()) updates.title = body.title.trim();
   if (typeof body.description === "string") updates.description = body.description.trim();
+  if (typeof body.version === "string") updates.version = body.version.trim();
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -77,7 +79,7 @@ export async function PATCH(
     .from("feedback_sessions")
     .update(updates)
     .eq("id", params.id)
-    .select("id, project_id, title, description, video_url, duration_s, created_at")
+    .select("id, project_id, title, description, version, video_url, duration_s, created_at")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
@@ -87,6 +89,7 @@ export async function PATCH(
     projectId: data.project_id,
     title: data.title,
     description: data.description ?? null,
+    version: data.version ?? null,
     videoUrl: data.video_url ?? null,
     durationS: data.duration_s ?? null,
     createdAt: new Date(data.created_at).getTime(),

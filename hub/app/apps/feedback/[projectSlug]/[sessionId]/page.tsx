@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Loader2, Film, MessageSquare, Share2, Check, X, Pencil } from "lucide-react";
+import { ArrowLeft, Film, MessageSquare, Share2, Check, X, Pencil, Loader2, Hash } from "lucide-react";
+import { FeedbackLoader } from "@/components/feedback/FeedbackLoader";
 import { VideoPlayer } from "@/components/feedback/VideoPlayer";
 import { CommentList } from "@/components/feedback/CommentList";
 import type { FeedbackSession, FeedbackComment, DrawingPath } from "@/lib/feedback/types";
@@ -137,11 +138,7 @@ export default function SessionPage() {
     setSelectedCommentId(id);
   }, []);
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-full">
-      <Loader2 size={20} className="animate-spin text-fg-muted" />
-    </div>
-  );
+  if (loading) return <FeedbackLoader />;
 
   if (!fbSession) return (
     <div className="p-6 text-fg-muted text-sm font-mono">Session not found.</div>
@@ -174,8 +171,13 @@ export default function SessionPage() {
               </button>
             </form>
           ) : (
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               <h1 className="text-sm font-mono text-fg truncate">{fbSession.title}</h1>
+              {fbSession.version && (
+                <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono border border-border text-fg-muted/60 bg-bg-muted">
+                  <Hash size={8} />{fbSession.version}
+                </span>
+              )}
               <button
                 onClick={() => { setEditingMeta(true); setEditTitle(fbSession.title); setEditDesc(fbSession.description ?? ""); }}
                 className="shrink-0 p-0.5 text-fg-muted/30 hover:text-fg-muted transition-colors"
@@ -231,18 +233,16 @@ export default function SessionPage() {
       {fbSession.videoUrl ? (
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Video column */}
-          <div className="flex-1 overflow-y-auto bg-[#0d0d0d] flex flex-col justify-start">
-            <div className="p-4 max-w-5xl mx-auto w-full">
-              <VideoPlayer
-                src={fbSession.videoUrl}
-                commentMarkers={comments.map((c) => ({ id: c.id, timestampS: c.timestampS }))}
-                seekTo={seekTo}
-                overlayDrawing={overlayDrawing}
-                authorName={authorName}
-                onAddComment={handleAddComment}
-                onFpsDetected={setFps}
-              />
-            </div>
+          <div className="flex-1 overflow-y-auto bg-[#0d0d0d] flex flex-col">
+            <VideoPlayer
+              src={fbSession.videoUrl}
+              commentMarkers={comments.map((c) => ({ id: c.id, timestampS: c.timestampS }))}
+              seekTo={seekTo}
+              overlayDrawing={overlayDrawing}
+              authorName={authorName}
+              onAddComment={handleAddComment}
+              onFpsDetected={setFps}
+            />
           </div>
 
           {/* Comments panel */}

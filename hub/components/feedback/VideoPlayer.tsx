@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Play, Pause, PenTool, Trash2, MessageSquare, X, Send, Loader2 } from "lucide-react";
+import { Play, Pause, PenTool, Trash2, MessageSquare, X, Send, Loader2, Maximize, Minimize } from "lucide-react";
 import type { DrawingPath, Point } from "@/lib/feedback/types";
 
 interface VideoPlayerProps {
@@ -39,6 +39,8 @@ const DRAW_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#ff
 export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, authorName, onAddComment, onFpsDetected }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const currentPathRef = useRef<Point[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fpsRef = useRef<{ lastTime: number; samples: number[] }>({ lastTime: 0, samples: [] });
@@ -138,6 +140,19 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
       (video as unknown as { cancelVideoFrameCallback: (id: number) => void }).cancelVideoFrameCallback(rvcIdRef.current);
     };
   }, [onFpsDetected]);
+
+  // Fullscreen listener
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!containerRef.current) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else containerRef.current.requestFullscreen();
+  }, []);
 
   // External seek
   useEffect(() => {
@@ -253,7 +268,7 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="flex flex-col w-full max-w-4xl mx-auto">
+    <div ref={containerRef} className="flex flex-col w-full bg-black">
       {/* ── Video area ── */}
       <div className="relative bg-black aspect-video w-full overflow-hidden">
         <video
@@ -368,6 +383,13 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
             >
               <MessageSquare size={12} />
               Comment
+            </button>
+            <button
+              onClick={toggleFullscreen}
+              className="p-1.5 text-white/40 hover:text-white transition-colors"
+              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
             </button>
           </div>
         </div>
