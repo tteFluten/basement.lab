@@ -221,7 +221,7 @@ export function ImageAnnotator({
                 style={{ left: `${c.xPct * 100}%`, top: `${c.yPct * 100}%` }}
                 className={`absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[11px] font-bold transition-all z-10 select-none ${
                   isSelected
-                    ? "w-7 h-7 bg-fg text-bg shadow-[0_0_0_3px_rgba(255,255,255,0.3)]"
+                    ? "w-7 h-7 bg-white text-black shadow-[0_0_0_3px_rgba(0,0,0,0.3)]"
                     : "bg-fg/90 text-bg hover:bg-fg hover:scale-110 shadow-md"
                 }`}
                 title={c.text || `Annotation ${i + 1}`}

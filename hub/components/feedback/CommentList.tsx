@@ -100,13 +100,13 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                 <div
                   key={c.id}
                   className={`group px-4 py-3.5 transition-colors cursor-pointer ${
-                    isSelected ? "bg-bg-muted border-l-2 border-l-fg" : "hover:bg-bg-muted/50 border-l-2 border-l-transparent"
+                    isSelected ? "bg-white text-black border-l-2 border-l-black" : "hover:bg-bg-muted/50 border-l-2 border-l-transparent"
                   }`}
                   onClick={() => !isEditing && onCommentClick(c.timestampS, c.id, hasDrawing ? c.drawing : null)}
                 >
                   {/* Top row: position indicator + actions */}
                   <div className="flex items-center justify-between mb-2.5">
-                    <div className="flex items-center gap-1.5 text-xs font-mono text-fg-muted">
+                    <div className={`flex items-center gap-1.5 text-xs font-mono ${isSelected ? "text-black/70" : "text-fg-muted"}`}>
                       {sessionType === "video" ? (
                         <>
                           <Clock size={11} />
@@ -192,7 +192,7 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                         />
                       )}
                       {c.text && (
-                        <p className="text-[13px] text-fg font-mono leading-relaxed break-words mb-2.5">{c.text}</p>
+                        <p className={`text-[13px] font-mono leading-relaxed break-words mb-2.5 ${isSelected ? "text-black" : "text-fg"}`}>{c.text}</p>
                       )}
                       {!c.text && hasDrawing && (
                         <p className="text-[13px] text-fg-muted font-mono italic mb-2.5">Annotation only — click to view</p>
@@ -202,10 +202,10 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
 
                   {/* Author */}
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-bg-muted border border-border flex items-center justify-center text-[9px] font-mono text-fg-muted shrink-0">
+                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-[9px] font-mono shrink-0 ${isSelected ? "bg-black/10 border-black/30 text-black/70" : "bg-bg-muted border-border text-fg-muted"}`}>
                       {initials(c.authorName)}
                     </div>
-                    <span className="text-[11px] text-fg-muted/70 font-mono truncate">{c.authorName}</span>
+                    <span className={`text-[11px] font-mono truncate ${isSelected ? "text-black/70" : "text-fg-muted/70"}`}>{c.authorName}</span>
                   </div>
                 </div>
               );
