@@ -48,19 +48,30 @@ export async function PATCH(
   if (!comment) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await request.json() as { text?: string };
-  const text = (body.text ?? "").trim();
+  const body = await request.json() as { text?: string; completed?: boolean };
+  const text = body.text !== undefined ? (body.text ?? "").trim() : undefined;
+  const completed = typeof body.completed === "boolean" ? body.completed : undefined;
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (text !== undefined) updates.text = text;
+  if (completed !== undefined) updates.completed = completed;
 
   const { data, error } = await supabase
     .from("feedback_comments")
-    .update({ text, updated_at: new Date().toISOString() })
+    .update(updates)
     .eq("id", params.id)
-    .select("id, text, updated_at")
+    .select("id, text, updated_at, completed")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
 
-  return NextResponse.json({ id: data.id, text: data.text, updatedAt: new Date(data.updated_at).getTime() });
+  const res: { id: string; text?: string; updatedAt: number; completed?: boolean } = {
+    id: data.id,
+    updatedAt: new Date(data.updated_at).getTime(),
+  };
+  if (data.text !== undefined) res.text = data.text;
+  if ((data as { completed?: boolean }).completed !== undefined) res.completed = (data as { completed?: boolean }).completed;
+  return NextResponse.json(res);
 }
 
 /** DELETE: remove comment. */

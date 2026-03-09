@@ -8,7 +8,7 @@ import { ArrowLeft, Film, MessageSquare, Share2, Check, X, Pencil, Loader2, Hash
 import { FeedbackLoader } from "@/components/feedback/FeedbackLoader";
 import { VideoPlayer } from "@/components/feedback/VideoPlayer";
 import { ImageAnnotator } from "@/components/feedback/ImageAnnotator";
-import { UrlViewer } from "@/components/feedback/UrlViewer";
+import { ReviewViewer } from "@/components/feedback/ReviewViewer";
 import { CommentList } from "@/components/feedback/CommentList";
 import type { FeedbackSession, FeedbackComment, DrawingPath } from "@/lib/feedback/types";
 
@@ -119,6 +119,17 @@ export default function SessionPage() {
     setComments((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
+  const handleToggleCompleted = useCallback(async (id: string, completed: boolean) => {
+    const res = await fetch(`/api/feedback/comments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed }),
+    });
+    if (!res.ok) return;
+    const updated = await res.json();
+    setComments((prev) => prev.map((c) => c.id === id ? { ...c, completed: updated.completed ?? c.completed } : c));
+  }, []);
+
   const handleSaveMeta = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTitle.trim()) return;
@@ -154,7 +165,7 @@ export default function SessionPage() {
     <div className="p-6 text-fg-muted text-sm font-mono">Session not found.</div>
   );
 
-  const sessionType = fbSession.sessionType ?? "video";
+  const sessionType = (fbSession.sessionType ?? "video") as "video" | "image" | "review";
 
   // Wrap handleAddComment for VideoPlayer (which uses old signature without xPct/yPct)
   const handleVideoComment = async (data: {
@@ -220,7 +231,7 @@ export default function SessionPage() {
               {copied ? <Check size={12} className="text-green-400" /> : <Share2 size={12} />}
               {copied ? "Copied" : "Share"}
             </button>
-            {sessionType !== "url" && (
+            {sessionType !== "review" && (
               <button
                 onClick={() => setShowComments((v) => !v)}
                 className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase border transition-colors ${
@@ -262,15 +273,19 @@ export default function SessionPage() {
               onAddComment={handleAddComment}
               onSelectComment={setSelectedCommentId}
             />
-          ) : sessionType === "url" && fbSession.sourceUrl ? (
-            <UrlViewer
-              url={fbSession.sourceUrl}
+          ) : sessionType === "review" && fbSession.sourceUrl ? (
+            <ReviewViewer
+              sourceUrl={fbSession.sourceUrl}
               sessionId={sessionId}
+              sessionTitle={fbSession.title}
               comments={comments}
               selectedCommentId={selectedCommentId}
               authorName={authorName}
               onAddComment={handleAddComment}
               onSelectComment={setSelectedCommentId}
+              onEditComment={handleEdit}
+              onDeleteComment={handleDelete}
+              onToggleCompleted={handleToggleCompleted}
             />
           ) : fbSession.videoUrl ? (
             <div className="flex-1 overflow-y-auto bg-[#0d0d0d] flex flex-col">
@@ -292,8 +307,8 @@ export default function SessionPage() {
           )}
         </div>
 
-        {/* Comments panel — hidden for url sessions (toolbar handles it) */}
-        {showComments && sessionType !== "url" && (
+        {/* Comments panel — hidden for review (ReviewViewer has inline cards) */}
+        {showComments && sessionType !== "review" && (
           <CommentList
             comments={comments}
             currentUserId={currentUserId}

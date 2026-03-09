@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   Plus, Video, ArrowLeft, Loader2, MessageSquare, Search, ChevronDown,
-  X, Clock, Pencil, Check, Link2, Share2, Hash, Calendar, Image, Globe,
+  X, Clock, Pencil, Check, Link2, Share2, Hash, Calendar, Image, Globe, Trash2, ListChecks,
 } from "lucide-react";
 import type { SessionType } from "@/lib/feedback/types";
 import { useSession } from "next-auth/react";
@@ -95,7 +95,7 @@ function SessionCard({
 
   const isVideoSession = !s.sessionType || s.sessionType === "video";
   const isImageSession = s.sessionType === "image";
-  const isUrlSession = s.sessionType === "url";
+  const isReviewSession = s.sessionType === "review";
 
   function handleMouseEnter() {
     if (!isVideoSession) return;
@@ -188,16 +188,16 @@ function SessionCard({
               />
             ) : !s.thumbnailUrl ? (
               <div className="absolute inset-0 flex items-center justify-center">
-                {isUrlSession ? <Globe size={36} strokeWidth={1} className="text-white/10" /> :
+                {isReviewSession ? <ListChecks size={36} strokeWidth={1} className="text-white/10" /> :
                  isImageSession ? <Image size={36} strokeWidth={1} className="text-white/10" /> :
                  <Video size={36} strokeWidth={1} className="text-white/10" />}
               </div>
             ) : null}
             {/* Session type badge */}
-            {(isImageSession || isUrlSession) && (
+            {(isImageSession || isReviewSession) && (
               <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 border border-white/10 text-[10px] font-mono text-white/60">
-                {isImageSession ? <Image size={9} /> : <Globe size={9} />}
-                {isImageSession ? "Image" : "URL"}
+                {isImageSession ? <Image size={9} /> : <ListChecks size={9} />}
+                {isImageSession ? "Image" : "Review"}
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -274,7 +274,7 @@ function SessionCard({
 
       {/* Bottom bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border">
-        {isUrlSession && s.sourceUrl && (
+        {isReviewSession && s.sourceUrl && (
           <span className="flex items-center gap-1 text-[11px] font-mono text-fg-muted/60 truncate max-w-[120px]" title={s.sourceUrl}>
             <Globe size={9} className="shrink-0" />
             {(() => { try { return new URL(s.sourceUrl).hostname; } catch { return s.sourceUrl; } })()}
@@ -333,7 +333,7 @@ type UploadStage = "idle" | "preparing" | "uploading" | "saving";
 const SESSION_TYPE_ICONS: Record<SessionType, React.ComponentType<{ size?: string | number; strokeWidth?: string | number; className?: string }>> = {
   video: Video,
   image: Image,
-  url: Globe,
+  review: ListChecks,
 };
 
 function sortSessions(sessions: FeedbackSession[], sort: SortKey): FeedbackSession[] {
@@ -376,6 +376,7 @@ export default function ProjectPage() {
   const [sort, setSort] = useState<SortKey>("newest");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [copyAllDone, setCopyAllDone] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -461,10 +462,10 @@ export default function ProjectPage() {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    // ── URL session ──────────────────────────────────────────────────────────
-    if (sessionType === "url") {
+    // ── Review session (URL opens in new tab; add cards via paste/upload, draw, comment) ──
+    if (sessionType === "review") {
       const trimmedUrl = newUrl.trim();
-      if (!trimmedUrl) { setUploadError("URL is required"); return; }
+      if (!trimmedUrl) { setUploadError("URL is required (opens in new tab for reference)"); return; }
       try { new URL(trimmedUrl); } catch { setUploadError("Enter a valid URL"); return; }
       setUploadStage("saving");
       setUploadError(null);
@@ -472,14 +473,14 @@ export default function ProjectPage() {
         const res = await fetch(`/api/feedback/projects/${projectSlug}/sessions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: newTitle.trim(), sessionType: "url", sourceUrl: trimmedUrl, version: newVersion.trim() || undefined }),
+          body: JSON.stringify({ title: newTitle.trim(), sessionType: "review", sourceUrl: trimmedUrl, version: newVersion.trim() || undefined }),
         });
         if (!res.ok) { setUploadError("Failed to create session"); setUploadStage("idle"); return; }
         const newSession = await res.json();
         setSessions((prev) => [newSession, ...prev]);
         setShowForm(false);
         resetForm();
-        // Capture screenshot in background → patch thumbnailUrl
+        // Optional: capture screenshot in background for card thumbnail
         captureUrlScreenshot(trimmedUrl).then(async (screenshotUrl) => {
           if (!screenshotUrl) return;
           await fetch(`/api/feedback/sessions/${newSession.id}`, {
@@ -670,6 +671,22 @@ export default function ProjectPage() {
     setTimeout(() => setCopyAllDone(false), 2500);
   }
 
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} session(s)? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      for (const id of ids) {
+        const res = await fetch(`/api/feedback/sessions/${id}`, { method: "DELETE" });
+        if (res.ok) setSessions((prev) => prev.filter((s) => s.id !== id));
+      }
+      setSelectedIds(new Set());
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleSaveProject(e: React.FormEvent) {
     e.preventDefault();
     if (!editProjName.trim() || !project) return;
@@ -831,9 +848,9 @@ export default function ProjectPage() {
           {/* ── Type selector ── */}
           <div className="grid grid-cols-3 border-b border-border">
             {([
-              { type: "video" as SessionType, Icon: Video,  label: "Video",  desc: "Upload a video file"   },
-              { type: "image" as SessionType, Icon: Image,  label: "Image",  desc: "Upload an image"       },
-              { type: "url"   as SessionType, Icon: Globe,  label: "URL",    desc: "Review a live page"    },
+              { type: "video" as SessionType, Icon: Video,       label: "Video",  desc: "Upload a video file"   },
+              { type: "image" as SessionType, Icon: Image,       label: "Image",  desc: "Upload an image"       },
+              { type: "review" as SessionType, Icon: ListChecks, label: "Review", desc: "Paste/upload, draw, comment — export to Linear" },
             ]).map(({ type, Icon, label, desc }, i) => {
               const active = sessionType === type;
               return (
@@ -870,7 +887,7 @@ export default function ProjectPage() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder={
-                    sessionType === "url"   ? "e.g. Homepage — desktop review" :
+                    sessionType === "review" ? "e.g. Homepage — desktop review" :
                     sessionType === "image" ? "e.g. Landing page — hero section" :
                     "e.g. Homepage walkthrough — March"
                   }
@@ -895,10 +912,10 @@ export default function ProjectPage() {
               </div>
             </div>
 
-            {/* URL input */}
-            {!uploading && sessionType === "url" && (
+            {/* Review: URL (opens in new tab) */}
+            {!uploading && sessionType === "review" && (
               <div className="space-y-1.5">
-                <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">URL to review</label>
+                <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">Reference URL (opens in new tab)</label>
                 <div className="relative">
                   <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-fg-muted/40 pointer-events-none" />
                   <input
@@ -911,7 +928,7 @@ export default function ProjectPage() {
                   />
                 </div>
                 <p className="text-[11px] font-mono text-fg-muted/40 pt-0.5">
-                  A screenshot will be captured automatically on creation and on every feedback note.
+                  Add feedback cards with paste (Ctrl+V) or upload, draw, and comment. View as checklist or export for Linear.
                 </p>
               </div>
             )}
@@ -1042,7 +1059,7 @@ export default function ProjectPage() {
             </button>
             <button
               type="submit"
-              disabled={uploading || !newTitle.trim() || (sessionType === "url" && !newUrl.trim())}
+              disabled={uploading || !newTitle.trim() || (sessionType === "review" && !newUrl.trim())}
               className="flex-[2] flex items-center justify-center gap-2.5 py-4 text-sm font-mono uppercase tracking-widest bg-fg text-bg hover:opacity-85 disabled:opacity-30 transition-opacity"
             >
               {uploading
@@ -1050,7 +1067,7 @@ export default function ProjectPage() {
                 : <>
                     {sessionType === "video" && <Video size={14} strokeWidth={1.5} />}
                     {sessionType === "image" && <Image size={14} strokeWidth={1.5} />}
-                    {sessionType === "url"   && <Globe size={14} strokeWidth={1.5} />}
+                    {sessionType === "review" && <ListChecks size={14} strokeWidth={1.5} />}
                     Create {sessionType} session
                   </>}
             </button>
@@ -1127,6 +1144,15 @@ export default function ProjectPage() {
           >
             {copyAllDone ? <Check size={12} /> : <Share2 size={12} />}
             {copyAllDone ? "Copied!" : "Copy links"}
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            disabled={deleting}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase hover:bg-red-500/20 text-red-200 transition-colors disabled:opacity-50"
+            title="Delete selected sessions"
+          >
+            {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+            Delete
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}

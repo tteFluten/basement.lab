@@ -19,13 +19,14 @@ export async function GET(
 
   if (error || !data) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
+  const st = data.session_type ?? "video";
   return NextResponse.json({
     id: data.id,
     projectId: data.project_id,
     title: data.title,
     description: data.description ?? null,
     version: data.version ?? null,
-    sessionType: (data.session_type ?? "video") as "video" | "image" | "url",
+    sessionType: (st === "url" ? "review" : st) as "video" | "image" | "review",
     videoUrl: data.video_url ?? null,
     sourceUrl: data.source_url ?? null,
     thumbnailUrl: data.thumbnail_url ?? null,
@@ -89,13 +90,14 @@ export async function PATCH(
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
 
+  const st = data.session_type ?? "video";
   return NextResponse.json({
     id: data.id,
     projectId: data.project_id,
     title: data.title,
     description: data.description ?? null,
     version: data.version ?? null,
-    sessionType: (data.session_type ?? "video") as "video" | "image" | "url",
+    sessionType: (st === "url" ? "review" : st) as "video" | "image" | "review",
     videoUrl: data.video_url ?? null,
     sourceUrl: data.source_url ?? null,
     thumbnailUrl: data.thumbnail_url ?? null,

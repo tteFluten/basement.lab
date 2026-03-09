@@ -25,14 +25,14 @@ export async function GET(
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("feedback_comments")
-    .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at")
+    .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at, completed")
     .eq("session_id", params.id)
     .order("timestamp_s", { ascending: true })
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const comments = (data ?? []).map((c) => ({
+  const comments = (data ?? []).map((c: Record<string, unknown>) => ({
     id: c.id,
     sessionId: c.session_id,
     timestampS: c.timestamp_s,
@@ -44,8 +44,9 @@ export async function GET(
     authorName: c.author_name,
     authorId: c.author_id ?? null,
     anonToken: c.anon_token ?? null,
-    createdAt: new Date(c.created_at).getTime(),
-    updatedAt: new Date(c.updated_at).getTime(),
+    createdAt: new Date(c.created_at as string).getTime(),
+    updatedAt: new Date(c.updated_at as string).getTime(),
+    completed: Boolean((c as { completed?: boolean }).completed),
   }));
 
   return NextResponse.json({ comments });
@@ -79,8 +80,8 @@ export async function POST(
   const yPct = typeof body.yPct === "number" ? body.yPct : null;
   const screenshotUrl = body.screenshotUrl ?? null;
 
-  if (!text && !drawing) {
-    return NextResponse.json({ error: "text or drawing required" }, { status: 400 });
+  if (!text && !drawing && !screenshotUrl) {
+    return NextResponse.json({ error: "text, drawing or screenshotUrl required" }, { status: 400 });
   }
 
   let authorId: string | null = null;
@@ -125,6 +126,7 @@ export async function POST(
     anonToken: data.anon_token ?? null,
     createdAt: new Date(data.created_at).getTime(),
     updatedAt: new Date(data.updated_at).getTime(),
+    completed: false,
   };
 
   const response = NextResponse.json(comment);

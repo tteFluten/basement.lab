@@ -83,7 +83,7 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
             <p className="text-xs font-mono text-fg-muted">No feedback yet</p>
             <p className="text-[11px] text-fg-muted/60">
               {sessionType === "image" ? "Click on the image to add a pin annotation" :
-               sessionType === "url" ? "Use the floating toolbar to add notes" :
+               sessionType === "review" ? "Use Review session to add cards (paste/upload, draw, comment)" :
                "Pause the video and click Comment or Annotate"}
             </p>
           </div>
@@ -127,7 +127,7 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                             </span>
                           )}
                         </>
-                      ) : sessionType === "url" ? (
+                      ) : sessionType === "review" ? (
                         <Globe size={11} />
                       ) : null}
                       {hasDrawing && (

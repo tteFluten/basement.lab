@@ -1,7 +1,7 @@
 export interface Point { x: number; y: number }
 export interface DrawingPath { points: Point[]; color: string; width: number }
 
-export type SessionType = "video" | "image" | "url";
+export type SessionType = "video" | "image" | "review";
 
 export interface FeedbackProject {
   id: string;
@@ -48,4 +48,6 @@ export interface FeedbackComment {
   anonToken: string | null;
   createdAt: number;
   updatedAt: number;
+  /** For review checklist view */
+  completed?: boolean;
 }
