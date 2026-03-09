@@ -116,9 +116,9 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                   className={`px-2 py-0.5 text-[10px] font-mono transition-colors border-r border-border last:border-r-0 ${
                     filterMode === f ? "bg-fg text-bg" : "text-fg-muted hover:text-fg hover:bg-bg-muted"
                   }`}
-                  title={f === "all" ? "All" : f === "done" ? "Done only" : "Pending only"}
+                  title={f === "all" ? "All" : f === "done" ? "Done only" : "To do only"}
                 >
-                  {f === "all" ? "All" : f === "done" ? "Done" : "Todo"}
+                  {f === "all" ? "All" : f === "done" ? "Done" : "To Do"}
                 </button>
               ))}
             </div>
