@@ -7,7 +7,7 @@ import { SubmittedAppsSection } from "@/components/SubmittedAppsSection";
 import { AddSubmittedAppModal } from "@/components/AddSubmittedAppModal";
 
 const IMAGE_APPS = [
-  { slug: "nanobanana", label: "NanoBanana", desc: "Iterative image generation with @mention references", Icon: Banana, span: "col-span-2 row-span-2", cover: "/app-covers/cineprompt.jpg" },
+  { slug: "nanobanana", label: "NanoBanana", desc: "Iterative image generation with @mention references", Icon: Banana, span: "col-span-2 row-span-2", cover: "/bg/nanobanana.jpg" },
   { slug: "render", label: "Render", desc: "4K render from viewport previews and prompts", Icon: ImagePlus, span: "col-span-1 row-span-2", cover: "/app-covers/render.jpg" },
   { slug: "chronos", label: "Chronos", desc: "Change temporality of an image", Icon: Clock, span: "col-span-1 row-span-1", cover: "/app-covers/chronos.jpg" },
   { slug: "swag", label: "Swag", desc: "Logo placement and mockups", Icon: Shirt, span: "col-span-1 row-span-1", cover: "/app-covers/swag.jpg" },
