@@ -91,6 +91,8 @@ export function ReviewViewer({
   const sortedComments = [...comments].sort((a, b) => a.createdAt - b.createdAt);
   const selectedComment = selectedCommentId ? sortedComments.find((c) => c.id === selectedCommentId) : null;
   const isChecklistMode = viewMode === "checklist";
+  const cardPathsRef = useRef<DrawingPath[]>([]);
+  cardPathsRef.current = cardPaths;
 
   const redrawCanvas = useCallback((paths: DrawingPath[], canvas: HTMLCanvasElement | null) => {
     const ctx = canvas?.getContext("2d");
@@ -119,7 +121,7 @@ export function ReviewViewer({
     if (!wrap || !canvas) return;
     const w = wrap.clientWidth;
     const h = wrap.clientHeight;
-    if (w > 0 && h > 0) {
+    if (w > 0 && h > 0 && (canvas.width !== w || canvas.height !== h)) {
       canvas.width = w;
       canvas.height = h;
       redrawCanvas(cardPaths, canvas);
@@ -233,11 +235,15 @@ export function ReviewViewer({
   };
 
   const commitCurrentPath = useCallback(() => {
-    if (currentPathRef.current.length > 1) {
-      setCardPaths((prev) => [...prev, { points: [...currentPathRef.current], color: drawColor, width: 3 }]);
+    const canvas = canvasRef.current;
+    if (currentPathRef.current.length > 1 && canvas && canvas.width > 0) {
+      const newPath: DrawingPath = { points: [...currentPathRef.current], color: drawColor, width: 3 };
+      const nextPaths = [...cardPathsRef.current, newPath];
+      setCardPaths(nextPaths);
+      redrawCanvas(nextPaths, canvas);
     }
     currentPathRef.current = [];
-  }, [drawColor]);
+  }, [drawColor, redrawCanvas]);
 
   const handleCanvasMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;

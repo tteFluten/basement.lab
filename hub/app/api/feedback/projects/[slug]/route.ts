@@ -77,7 +77,7 @@ export async function GET(
       title: s.title,
       description: s.description ?? null,
       version: s.version ?? null,
-      sessionType: (s.session_type ?? "video") as "video" | "image" | "url",
+      sessionType: (s.session_type === "url" ? "review" : (s.session_type ?? "video")) as "video" | "image" | "review",
       videoUrl: s.video_url ?? null,
       sourceUrl: s.source_url ?? null,
       thumbnailUrl: s.thumbnail_url ?? null,
