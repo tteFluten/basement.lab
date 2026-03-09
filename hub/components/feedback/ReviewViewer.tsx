@@ -117,6 +117,7 @@ export function ReviewViewer({
   const resizeStartRef = useRef<{ x: number; w: number } | null>(null);
   const [selectedCardScreenshotUrl, setSelectedCardScreenshotUrl] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"date-newest" | "date-oldest">("date-newest");
+  const [notesSort, setNotesSort] = useState<"order" | "priority">("order");
 
   const cards = useMemo(() => buildCards(comments), [comments]);
   const sortedCards = useMemo(() => {
@@ -469,41 +470,56 @@ export function ReviewViewer({
                     </div>
                     {card.notes.length > 0 && (
                       <div className="border-t border-border/50 pl-2 pr-2 pb-2 pt-1 space-y-0.5">
-                        {card.notes.map((note, i) => (
-                          <div
-                            key={note.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => {
-                              setSelectedCardScreenshotUrl(card.screenshotUrl);
-                              onSelectComment(note.id);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
+                        {card.notes.map((note, i) => {
+                          const p = note.priority ?? "medium";
+                          return (
+                            <div
+                              key={note.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => {
                                 setSelectedCardScreenshotUrl(card.screenshotUrl);
                                 onSelectComment(note.id);
-                              }
-                            }}
-                            className={`w-full flex items-center gap-2 py-1.5 px-2 text-left rounded-none transition-colors hover:bg-bg/50 cursor-pointer ${
-                              selectedCommentId === note.id ? "bg-white text-black" : ""
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleCompleted(note.id, !note.completed);
                               }}
-                              className={`shrink-0 w-4 h-4 flex items-center justify-center border transition-colors ${selectedCommentId === note.id ? "border-black hover:border-black/80" : "border-border hover:border-fg-muted"}`}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setSelectedCardScreenshotUrl(card.screenshotUrl);
+                                  onSelectComment(note.id);
+                                }
+                              }}
+                              className={`w-full flex items-center gap-1.5 py-1.5 px-2 text-left rounded-none transition-colors hover:bg-bg/50 cursor-pointer ${
+                                selectedCommentId === note.id ? "bg-white text-black" : ""
+                              }`}
                             >
-                              {note.completed ? <Check size={10} className={selectedCommentId === note.id ? "text-black" : "text-fg"} /> : null}
-                            </button>
-                            <span className={`flex-1 min-w-0 text-[11px] font-mono truncate ${note.completed ? "line-through opacity-70" : ""} ${selectedCommentId === note.id ? "text-black" : "text-fg"}`}>
-                              {note.text || `Note ${i + 1}`}
-                            </span>
-                          </div>
-                        ))}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggleCompleted(note.id, !note.completed);
+                                }}
+                                className={`shrink-0 w-4 h-4 flex items-center justify-center border transition-colors ${selectedCommentId === note.id ? "border-black hover:border-black/80" : "border-border hover:border-fg-muted"}`}
+                              >
+                                {note.completed ? <Check size={10} className={selectedCommentId === note.id ? "text-black" : "text-fg"} /> : null}
+                              </button>
+                              <span className={`flex-1 min-w-0 text-[11px] font-mono truncate ${note.completed ? "line-through opacity-70" : ""} ${selectedCommentId === note.id ? "text-black" : "text-fg"}`}>
+                                {note.text || `Note ${i + 1}`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onSetPriority?.(note.id, p === "high" ? "medium" : p === "medium" ? "low" : "high"); }}
+                                className={`shrink-0 w-4 h-4 flex items-center justify-center text-[8px] font-bold border transition-colors ${
+                                  p === "high" ? "bg-red-500/20 text-red-500 border-red-500/40" :
+                                  p === "low" ? "bg-fg-muted/20 text-fg-muted border-border" :
+                                  "bg-amber-500/20 text-amber-600 border-amber-500/40"
+                                } ${!onSetPriority ? "cursor-default" : ""}`}
+                                title={onSetPriority ? `${p} (click)` : p}
+                              >
+                                {p === "high" ? "H" : p === "low" ? "L" : "M"}
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -567,9 +583,18 @@ export function ReviewViewer({
             <div className="flex-1 flex min-h-0 overflow-hidden">
               {/* Notes list - always on the left, fixed position */}
               <div className="shrink-0 w-56 border-r border-border bg-bg flex flex-col overflow-hidden">
-                <div className="shrink-0 px-3 py-2 border-b border-border flex items-center gap-1.5">
-                  <MessageSquare size={11} className="text-fg-muted" />
+                <div className="shrink-0 px-2 py-1.5 border-b border-border flex items-center justify-between gap-1">
                   <span className="text-[11px] font-mono text-fg-muted">Notes ({selectedCard.notes.length})</span>
+                  {selectedCard.notes.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setNotesSort((s) => s === "order" ? "priority" : "order")}
+                      className="text-[10px] font-mono text-fg-muted hover:text-fg px-1.5 py-0.5 border border-border hover:border-fg-muted/50"
+                      title={notesSort === "order" ? "Sort by priority (H first)" : "Sort by order"}
+                    >
+                      {notesSort === "order" ? "H→L" : "1→n"}
+                    </button>
+                  )}
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-border">
                   {selectedCard.notes.length === 0 ? (
@@ -577,14 +602,23 @@ export function ReviewViewer({
                       <p className="text-[11px] font-mono text-fg-muted">Click on image to add pins</p>
                     </div>
                   ) : (
-                    selectedCard.notes.map((note, i) => {
+                    [...selectedCard.notes]
+                      .sort((a, b) => {
+                        if (notesSort !== "priority") return 0;
+                        const order = { high: 0, medium: 1, low: 2 };
+                        return (order[a.priority ?? "medium"] - order[b.priority ?? "medium") || (a.createdAt - b.createdAt);
+                      })
+                      .map((note, i) => {
                       const isSelected = selectedCommentId === note.id;
+                      const p = note.priority ?? "medium";
                       return (
-                        <button
+                        <div
                           key={note.id}
-                          type="button"
+                          role="button"
+                          tabIndex={0}
                           onClick={() => onSelectComment(isSelected ? null : note.id)}
-                          className={`w-full text-left px-3 py-2.5 transition-colors flex items-start gap-2 ${
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectComment(isSelected ? null : note.id); } }}
+                          className={`w-full text-left px-2 py-2 transition-colors flex items-center gap-2 cursor-pointer ${
                             isSelected ? "bg-white text-black border-l-2 border-l-black" : "hover:bg-bg-muted/50 border-l-2 border-l-transparent"
                           }`}
                         >
@@ -601,7 +635,19 @@ export function ReviewViewer({
                               </span>
                             )}
                           </div>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onSetPriority?.(note.id, p === "high" ? "medium" : p === "medium" ? "low" : "high"); }}
+                            className={`shrink-0 w-5 h-5 flex items-center justify-center text-[9px] font-bold border transition-colors ${
+                              p === "high" ? "bg-red-500/20 text-red-500 border-red-500/40 hover:bg-red-500/30" :
+                              p === "low" ? "bg-fg-muted/20 text-fg-muted border-border hover:bg-fg-muted/30" :
+                              "bg-amber-500/20 text-amber-600 border-amber-500/40 hover:bg-amber-500/30"
+                            } ${!onSetPriority ? "cursor-default" : ""}`}
+                            title={onSetPriority ? `Priority: ${p} (click to cycle)` : `Priority: ${p}`}
+                          >
+                            {p === "high" ? "H" : p === "low" ? "L" : "M"}
+                          </button>
+                        </div>
                       );
                     })
                   )}
