@@ -185,6 +185,7 @@ export default function SessionPage() {
     timestampS: number;
     text: string;
     drawing?: DrawingPath[];
+    screenshotUrl?: string | null;
     authorName: string;
   }) => handleAddComment(data);
 

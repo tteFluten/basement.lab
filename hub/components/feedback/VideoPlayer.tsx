@@ -1,8 +1,12 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Play, Pause, PenTool, Trash2, MessageSquare, X, Send, Loader2, Maximize, Minimize } from "lucide-react";
+import { Play, Pause, PenTool, Trash2, MessageSquare, X, Send, Loader2, Maximize, Minimize, Download, Check, ClipboardPaste, Upload, Clock } from "lucide-react";
 import type { DrawingPath, Point } from "@/lib/feedback/types";
+import { resizeDataUrlForApi } from "@/lib/resizeDataUrlForApi";
+import { invalidateGenerationsCache, fetchGenerations } from "@/lib/generationsCache";
+import { uploadFeedbackImage } from "@/lib/uploadFeedbackImage";
+import { FeedbackHistoryImagePicker } from "./FeedbackHistoryImagePicker";
 
 interface VideoPlayerProps {
   src: string;
@@ -15,6 +19,7 @@ interface VideoPlayerProps {
     timestampS: number;
     text: string;
     drawing?: DrawingPath[];
+    screenshotUrl?: string | null;
     authorName: string;
   }) => Promise<void>;
   onFpsDetected?: (fps: number) => void;
@@ -60,6 +65,12 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [drawColor, setDrawColor] = useState(DRAW_COLORS[0]);
+  const [exportingFrame, setExportingFrame] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [historyPickerOpen, setHistoryPickerOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
 
   const redrawCanvas = useCallback((userPaths: DrawingPath[], overlay?: DrawingPath[] | null, hideOverlay = false) => {
@@ -241,6 +252,7 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     setIsDrawingMode(false);
     setCommentText("");
     setCurrentPaths([]);
+    setAttachedImageUrl(null);
     setSaveError(null);
     redrawCanvas([], overlayDrawing, false);
   }, [redrawCanvas, overlayDrawing]);
@@ -261,8 +273,11 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     return { x: (displayX / scale), y: (displayY / scale) };
   };
 
+  const isDrawingRef = useRef(false);
+
   const startDrawing = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawingMode) return;
+    isDrawingRef.current = true;
     setIsDrawing(true);
     currentPathRef.current = [getCanvasPoint(e)];
   }, [isDrawingMode]);
@@ -288,22 +303,71 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
   }, [isDrawing, isDrawingMode, drawColor]);
 
   const stopDrawing = useCallback(() => {
-    if (!isDrawing) return;
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
     setIsDrawing(false);
     if (currentPathRef.current.length > 0) {
       const newPath: DrawingPath = { points: [...currentPathRef.current], color: drawColor, width: 3 };
       setCurrentPaths((prev) => [...prev, newPath]);
       currentPathRef.current = [];
     }
-  }, [isDrawing, drawColor]);
+  }, [drawColor]);
+
+  // Capture mouseup outside canvas (e.g. when drawing in fullscreen and releasing outside)
+  useEffect(() => {
+    if (!isDrawing) return;
+    const onWindowMouseUp = () => stopDrawing();
+    window.addEventListener("mouseup", onWindowMouseUp);
+    return () => window.removeEventListener("mouseup", onWindowMouseUp);
+  }, [isDrawing, stopDrawing]);
 
   const clearDrawing = useCallback(() => {
     setCurrentPaths([]);
     redrawCanvas([], overlayDrawing, showPanel);
   }, [redrawCanvas, overlayDrawing, showPanel]);
 
+  const handlePasteImage = useCallback(async (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        if (!blob) return;
+        setUploadingImage(true);
+        try {
+          const url = await uploadFeedbackImage(blob, "paste.png");
+          if (url) setAttachedImageUrl(url);
+        } finally {
+          setUploadingImage(false);
+        }
+        return;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showPanel) return;
+    document.addEventListener("paste", handlePasteImage);
+    return () => document.removeEventListener("paste", handlePasteImage);
+  }, [showPanel, handlePasteImage]);
+
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    e.target.value = "";
+    setUploadingImage(true);
+    try {
+      const url = await uploadFeedbackImage(file, file.name);
+      if (url) setAttachedImageUrl(url);
+    } finally {
+      setUploadingImage(false);
+    }
+  }, []);
+
   const handleSave = useCallback(async () => {
-    if (!commentText.trim() && currentPaths.length === 0) return;
+    const hasContent = commentText.trim().length > 0 || currentPaths.length > 0 || !!attachedImageUrl;
+    if (!hasContent) return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -322,6 +386,7 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
         timestampS: currentTime,
         text: commentText,
         drawing: drawingToSave,
+        screenshotUrl: attachedImageUrl ?? undefined,
         authorName,
       });
       closePanel();
@@ -330,9 +395,62 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     } finally {
       setSaving(false);
     }
-  }, [commentText, currentPaths, currentTime, authorName, onAddComment, closePanel]);
+  }, [commentText, currentPaths, currentTime, authorName, attachedImageUrl, onAddComment, closePanel]);
 
-  const canSave = (commentText.trim().length > 0 || currentPaths.length > 0) && !saving;
+  const handleExportFrame = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2 || video.videoWidth <= 0) return;
+    setExportingFrame(true);
+    setExportSuccess(false);
+    try {
+      const c = document.createElement("canvas");
+      c.width = video.videoWidth;
+      c.height = video.videoHeight;
+      const ctx = c.getContext("2d");
+      if (!ctx) throw new Error("Canvas not available");
+      ctx.drawImage(video, 0, 0);
+      let dataUrl = c.toDataURL("image/png");
+      dataUrl = await resizeDataUrlForApi(dataUrl);
+      const thumbCanvas = document.createElement("canvas");
+      const thumbSize = 256;
+      thumbCanvas.width = thumbSize;
+      thumbCanvas.height = Math.round((video.videoHeight / video.videoWidth) * thumbSize);
+      const tctx = thumbCanvas.getContext("2d");
+      if (tctx) {
+        tctx.drawImage(c, 0, 0, thumbCanvas.width, thumbCanvas.height);
+      }
+      const thumbDataUrl = thumbCanvas.toDataURL("image/jpeg", 0.7);
+      const name = `Frame ${formatTime(currentTime)}`;
+      const res = await fetch("/api/generations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataUrl,
+          thumbDataUrl,
+          appId: "feedback",
+          name,
+          width: video.videoWidth,
+          height: video.videoHeight,
+          prompt: `Video frame at ${formatTime(currentTime)}`,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Export failed");
+      }
+      invalidateGenerationsCache();
+      fetchGenerations(true);
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 2000);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Export failed");
+      setTimeout(() => setSaveError(null), 4000);
+    } finally {
+      setExportingFrame(false);
+    }
+  }, [currentTime]);
+
+  const canSave = (commentText.trim().length > 0 || currentPaths.length > 0 || !!attachedImageUrl) && !saving;
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -451,6 +569,17 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
               Comment
             </button>
             <button
+              onClick={handleExportFrame}
+              disabled={exportingFrame || !videoRef.current || videoRef.current.readyState < 2}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono uppercase transition-colors ${
+                exportSuccess ? "text-green-400" : "text-white/50 hover:text-white disabled:opacity-40"
+              }`}
+              title="Export current frame to history (use in other apps)"
+            >
+              {exportingFrame ? <Loader2 size={12} className="animate-spin" /> : exportSuccess ? <Check size={12} /> : <Download size={12} />}
+              {exportSuccess ? "Saved" : "Export frame"}
+            </button>
+            <button
               onClick={toggleFullscreen}
               className="p-1.5 text-white/40 hover:text-white transition-colors"
               title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
@@ -514,6 +643,58 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
               className="w-full bg-bg-muted border border-border px-3 py-2.5 text-sm text-fg focus:outline-none focus:border-fg-muted min-h-[80px] resize-none font-mono placeholder:text-fg-muted/50"
             />
 
+            {/* Attach image */}
+            <div className="mt-3">
+              <span className="text-[11px] font-mono text-fg-muted uppercase tracking-wider block mb-2">Attach image</span>
+              {attachedImageUrl ? (
+                <div className="flex items-center gap-3">
+                  <img src={attachedImageUrl} alt="" className="w-16 h-16 object-cover border border-border rounded" />
+                  <button
+                    type="button"
+                    onClick={() => setAttachedImageUrl(null)}
+                    className="text-xs font-mono text-fg-muted hover:text-red-400 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-border text-fg-muted hover:text-fg hover:border-fg-muted disabled:opacity-50 transition-colors"
+                  >
+                    {uploadingImage ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                    Upload
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
+                    title="Paste (Ctrl+V) when focused"
+                  >
+                    <ClipboardPaste size={12} />
+                    Paste (Ctrl+V)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPickerOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
+                  >
+                    <Clock size={12} />
+                    From history
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+              )}
+            </div>
+
             {saveError && (
               <p className="text-xs font-mono text-red-400 mt-2">{saveError}</p>
             )}
@@ -521,6 +702,16 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
             <div className="flex items-center justify-between mt-3">
               <span className="text-xs font-mono text-fg-muted/60">⌘↵ to save</span>
               <div className="flex items-center gap-2">
+                {(currentPaths.length > 0 || commentText.trim() || attachedImageUrl) && (
+                  <button
+                    onClick={() => { setCommentText(""); clearDrawing(); setAttachedImageUrl(null); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase text-fg-muted hover:text-red-400 transition-colors"
+                    title="Clear drawing, text and image"
+                  >
+                    <Trash2 size={12} />
+                    Clear
+                  </button>
+                )}
                 <button
                   onClick={closePanel}
                   className="px-3 py-1.5 text-xs font-mono uppercase text-fg-muted hover:text-fg transition-colors"
@@ -540,6 +731,12 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
           </div>
         </div>
       )}
+
+      <FeedbackHistoryImagePicker
+        open={historyPickerOpen}
+        onClose={() => setHistoryPickerOpen(false)}
+        onSelect={(url) => { setAttachedImageUrl(url); setHistoryPickerOpen(false); }}
+      />
     </div>
   );
 }
