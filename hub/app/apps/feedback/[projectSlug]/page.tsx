@@ -373,7 +373,8 @@ export default function ProjectPage() {
   const reviewPasteRef = useRef<HTMLInputElement>(null);
   const [reviewFirstImage, setReviewFirstImage] = useState<File | null>(null);
   const [reviewFirstPreview, setReviewFirstPreview] = useState<string | null>(null);
-  const [ogPreview, setOgPreview] = useState<{ image: string; title: string | null; siteName: string | null } | null>(null);
+  const [ogPreview, setOgPreview] = useState<{ image: string | null; title: string | null; siteName: string | null } | null>(null);
+  const [ogLoading, setOgLoading] = useState(false);
   const speedRef = useRef<{ lastLoaded: number; lastTime: number }>({ lastLoaded: 0, lastTime: 0 });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
@@ -427,28 +428,45 @@ export default function ProjectPage() {
     const trimmed = newUrl.trim();
     if (!trimmed) {
       setOgPreview(null);
+      setOgLoading(false);
       return;
     }
     try {
       new URL(trimmed);
     } catch {
       setOgPreview(null);
+      setOgLoading(false);
       return;
     }
+    setOgLoading(true);
+    const urlToFetch = trimmed;
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/og-preview?url=${encodeURIComponent(trimmed)}`);
-        if (!res.ok) { setOgPreview(null); return; }
-        const data = await res.json();
-        if (data.image) {
-          setOgPreview({ image: data.image, title: data.title ?? null, siteName: data.siteName ?? null });
+        const res = await fetch(`/api/og-preview?url=${encodeURIComponent(urlToFetch)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setOgPreview(null);
+          return;
+        }
+        const hasData = data.title || data.image || data.siteName;
+        if (hasData) {
+          setOgPreview({
+            image: data.image ?? null,
+            title: data.title ?? null,
+            siteName: data.siteName ?? null,
+          });
+          if (data.title) {
+            setNewTitle((prev) => (prev.trim() ? prev : data.title.trim()));
+          }
         } else {
           setOgPreview(null);
         }
       } catch {
         setOgPreview(null);
+      } finally {
+        setOgLoading(false);
       }
-    }, 600);
+    }, 700);
     return () => clearTimeout(t);
   }, [newUrl, sessionType, showForm]);
 
@@ -462,6 +480,7 @@ export default function ProjectPage() {
     setReviewFirstPreview(null);
     reviewPreviewRef.current = null;
     setOgPreview(null);
+    setOgLoading(false);
     setUploadStage("idle");
     setUploadPercent(0);
     setUploadSpeed(null);
@@ -1019,12 +1038,23 @@ export default function ProjectPage() {
                       className="w-full bg-bg-muted border border-border pl-10 pr-4 py-3.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/40"
                     />
                   </div>
-                  {ogPreview && (
+                  {(ogLoading || ogPreview) && (
                     <div className="flex items-center gap-3 p-2.5 border border-border bg-bg-muted/50 rounded">
-                      <img src={ogPreview.image} alt="" className="w-16 h-16 object-cover border border-border shrink-0" />
+                      {ogLoading ? (
+                        <div className="w-16 h-16 flex items-center justify-center border border-border shrink-0 bg-bg-muted">
+                          <Loader2 size={20} className="animate-spin text-fg-muted" />
+                        </div>
+                      ) : ogPreview?.image ? (
+                        <img src={ogPreview.image} alt="" className="w-16 h-16 object-cover border border-border shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 flex items-center justify-center border border-border shrink-0 bg-bg-muted">
+                          <Globe size={16} className="text-fg-muted/50" />
+                        </div>
+                      )}
                       <div className="min-w-0 flex-1">
-                        {ogPreview.title && <p className="text-xs font-mono text-fg truncate">{ogPreview.title}</p>}
-                        {ogPreview.siteName && <p className="text-[11px] font-mono text-fg-muted truncate">{ogPreview.siteName}</p>}
+                        {ogPreview?.title && <p className="text-xs font-mono text-fg truncate">{ogPreview.title}</p>}
+                        {ogPreview?.siteName && <p className="text-[11px] font-mono text-fg-muted truncate">{ogPreview.siteName}</p>}
+                        {ogLoading && <p className="text-[11px] font-mono text-fg-muted/60">Fetching…</p>}
                       </div>
                     </div>
                   )}
@@ -1322,7 +1352,7 @@ export default function ProjectPage() {
           <button
             onClick={handleBulkDelete}
             disabled={deleting}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase hover:bg-red-500/20 text-red-200 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase hover:bg-red-900/30 text-red-700 transition-colors disabled:opacity-50"
             title="Delete selected sessions"
           >
             {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}

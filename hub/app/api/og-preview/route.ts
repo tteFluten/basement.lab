@@ -21,7 +21,9 @@ function extractMeta(html: string, url: string): OgData {
     ?? get(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
   const ogDesc = get(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)
     ?? get(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i);
-  const ogImage = get(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+  const ogImage = get(/<meta[^>]+property=["']og:image:secure_url["'][^>]+content=["']([^"']+)["']/i)
+    ?? get(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image:secure_url["']/i)
+    ?? get(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
     ?? get(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   const ogSiteName = get(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i)
     ?? get(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:site_name["']/i);
