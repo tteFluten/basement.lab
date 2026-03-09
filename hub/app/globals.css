@@ -47,3 +47,10 @@ body {
   background-color: var(--color-bg);
   color: var(--color-fg);
 }
+
+/* Native select/option: ensure theme colors (avoids light text on white) */
+select.select-themed,
+select.select-themed option {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+}

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import {
-  ExternalLink, Plus, Trash2, Check, Loader2, LayoutGrid, Upload, List, X, MapPin, ArrowUpDown,
+  ExternalLink, Plus, Trash2, Check, Loader2, LayoutGrid, Upload, List, X, MapPin, ArrowUpDown, ListChecks, MessageSquare,
 } from "lucide-react";
 import type { FeedbackComment, CommentPriority } from "@/lib/feedback/types";
 import { ImageAnnotator } from "@/components/feedback/ImageAnnotator";
@@ -105,7 +105,7 @@ export function ReviewViewer({
   onSetPriority,
 }: ReviewViewerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [viewMode, setViewMode] = useState<"list" | "cards">("list");
+  const [viewMode, setViewMode] = useState<"list" | "cards" | "checklist">("list");
   const [addingCard, setAddingCard] = useState(false);
   const [pasteImage, setPasteImage] = useState<string | null>(null);
   const [pasteBlob, setPasteBlob] = useState<Blob | null>(null);
@@ -327,13 +327,21 @@ export function ReviewViewer({
           >
             <LayoutGrid size={12} /> Cards
           </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("checklist")}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono ${viewMode === "checklist" ? "bg-fg text-bg" : "text-fg-muted hover:text-fg"}`}
+            title="Checklist with notes tree"
+          >
+            <ListChecks size={12} /> Checklist
+          </button>
         </div>
-        <div className="flex items-center gap-1.5 border border-border px-2 py-1">
+        <div className="flex items-center gap-1.5 border border-border px-2 py-1 bg-bg">
           <ArrowUpDown size={12} className="text-fg-muted shrink-0" />
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
-            className="bg-transparent text-xs font-mono text-fg focus:outline-none cursor-pointer"
+            className="select-themed bg-bg text-xs font-mono text-fg focus:outline-none cursor-pointer min-w-[7rem]"
             title="Sort order"
           >
             <option value="date-newest">Newest first</option>
@@ -412,7 +420,7 @@ export function ReviewViewer({
             </button>
           )}
 
-          <div className={viewMode === "list" ? "space-y-0.5" : "space-y-2"}>
+          <div className={viewMode === "list" ? "space-y-0.5" : viewMode === "checklist" ? "space-y-1" : "space-y-2"}>
             {sortedCards.map((card) => {
               const isSelected = selectedCardScreenshotUrl === card.screenshotUrl;
               if (viewMode === "list") {
@@ -433,6 +441,71 @@ export function ReviewViewer({
                     <span className="shrink-0 text-[10px] font-mono text-fg-muted/80" title={new Date(card.mainComment.createdAt).toLocaleString()}>
                       {formatCommentDate(card.mainComment.createdAt)}
                     </span>
+                  </div>
+                );
+              }
+              if (viewMode === "checklist") {
+                const doneCount = card.notes.filter((n) => n.completed).length;
+                return (
+                  <div
+                    key={card.screenshotUrl}
+                    className="border border-border bg-bg-muted overflow-hidden"
+                  >
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedCardScreenshotUrl(isSelected ? null : card.screenshotUrl)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedCardScreenshotUrl(isSelected ? null : card.screenshotUrl); } }}
+                      className={`flex items-center gap-2 p-2 cursor-pointer transition-colors hover:bg-bg-muted/80 ${isSelected ? "bg-bg-muted ring-inset ring-1 ring-fg/40" : ""}`}
+                    >
+                      <div className="shrink-0 w-8 h-6 overflow-hidden border border-border/50 flex items-center bg-black/20">
+                        <img src={card.screenshotUrl} alt="" className="w-full h-full object-cover object-top" />
+                      </div>
+                      <span className="flex-1 min-w-0 text-[11px] font-mono truncate text-fg">{card.mainComment.text || "Screenshot"}</span>
+                      <span className="flex items-center gap-1 shrink-0 text-[10px] font-mono text-fg-muted">
+                        <Check size={10} className={doneCount === card.notes.length && card.notes.length > 0 ? "text-green-500" : "opacity-40"} />
+                        {doneCount}/{card.notes.length}
+                      </span>
+                    </div>
+                    {card.notes.length > 0 && (
+                      <div className="border-t border-border/50 pl-2 pr-2 pb-2 pt-1 space-y-0.5">
+                        {card.notes.map((note, i) => (
+                          <div
+                            key={note.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              setSelectedCardScreenshotUrl(card.screenshotUrl);
+                              onSelectComment(note.id);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setSelectedCardScreenshotUrl(card.screenshotUrl);
+                                onSelectComment(note.id);
+                              }
+                            }}
+                            className={`w-full flex items-center gap-2 py-1.5 px-2 text-left rounded-none transition-colors hover:bg-bg/50 cursor-pointer ${
+                              selectedCommentId === note.id ? "bg-bg/70" : ""
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleCompleted(note.id, !note.completed);
+                              }}
+                              className="shrink-0 w-4 h-4 flex items-center justify-center border border-border hover:border-fg-muted transition-colors"
+                            >
+                              {note.completed ? <Check size={10} className="text-fg" /> : null}
+                            </button>
+                            <span className={`flex-1 min-w-0 text-[11px] font-mono truncate ${note.completed ? "line-through text-fg-muted" : "text-fg"}`}>
+                              {note.text || `Note ${i + 1}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               }
@@ -465,9 +538,15 @@ export function ReviewViewer({
             role="separator"
             aria-label="Resize list width"
             onMouseDown={handleResizeStart}
-            className={`shrink-0 w-1.5 flex items-stretch cursor-col-resize group transition-colors ${resizing ? "bg-fg/30" : "hover:bg-fg/20"}`}
+            className="shrink-0 w-1.5 flex flex-col cursor-col-resize h-full group"
           >
-            <span className="w-1 bg-transparent group-hover:bg-fg/30 group-active:bg-fg/40 transition-colors" />
+            <div className={`flex-1 min-h-[80px] transition-colors ${resizing ? "bg-fg/30" : "group-hover:bg-fg/20"}`} />
+            <div
+              className="h-24 flex-shrink-0 w-full"
+              style={{
+                background: "linear-gradient(to bottom, rgba(228,228,231,0.2) 0%, transparent 100%)",
+              }}
+            />
           </div>
         )}
 
@@ -492,6 +571,48 @@ export function ReviewViewer({
                   onAddComment={handleAddNoteOnCard}
                   onSelectComment={onSelectComment}
                 />
+              </div>
+              {/* Notes list - always visible when card selected */}
+              <div className="shrink-0 w-56 border-l border-border bg-bg flex flex-col overflow-hidden">
+                <div className="shrink-0 px-3 py-2 border-b border-border flex items-center gap-1.5">
+                  <MessageSquare size={11} className="text-fg-muted" />
+                  <span className="text-[11px] font-mono text-fg-muted">Notes ({selectedCard.notes.length})</span>
+                </div>
+                <div className="flex-1 overflow-y-auto divide-y divide-border">
+                  {selectedCard.notes.length === 0 ? (
+                    <div className="px-3 py-6 text-center">
+                      <p className="text-[11px] font-mono text-fg-muted">Click on image to add pins</p>
+                    </div>
+                  ) : (
+                    selectedCard.notes.map((note, i) => {
+                      const isSelected = selectedCommentId === note.id;
+                      return (
+                        <button
+                          key={note.id}
+                          type="button"
+                          onClick={() => onSelectComment(isSelected ? null : note.id)}
+                          className={`w-full text-left px-3 py-2.5 transition-colors flex items-start gap-2 ${
+                            isSelected ? "bg-bg-muted border-l-2 border-l-fg" : "hover:bg-bg-muted/50 border-l-2 border-l-transparent"
+                          }`}
+                        >
+                          <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-bold bg-fg text-bg">
+                            {i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-[12px] font-mono line-clamp-2 break-words ${note.completed ? "line-through text-fg-muted" : "text-fg"}`}>
+                              {note.text || "(no text)"}
+                            </p>
+                            {note.completed && (
+                              <span className="inline-flex items-center gap-0.5 mt-0.5 text-[10px] text-fg-muted">
+                                <Check size={10} /> Done
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
               {selectedNote && (
                 <div className="shrink-0 w-72 border-l border-border bg-bg flex flex-col overflow-hidden">
