@@ -193,13 +193,12 @@ function SessionCard({
                  <Video size={36} strokeWidth={1} className="text-white/10" />}
               </div>
             ) : null}
-            {/* Session type badge */}
-            {(isImageSession || isReviewSession) && (
-              <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 border border-white/10 text-[10px] font-mono text-white/60">
-                {isImageSession ? <Image size={9} /> : <ListChecks size={9} />}
-                {isImageSession ? "Image" : "Review"}
-              </div>
-            )}
+            {/* Session type badge — all types show what feedback is expected */}
+            <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 border border-white/10 text-[10px] font-mono text-white/60">
+              {isVideoSession && <><Video size={9} /> Video</>}
+              {isImageSession && <><Image size={9} /> Image</>}
+              {isReviewSession && <><ListChecks size={9} /> Review</>}
+            </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
         </Link>
@@ -363,7 +362,7 @@ export default function ProjectPage() {
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newVersion, setNewVersion] = useState("");
-  const [sessionType, setSessionType] = useState<SessionType>("video");
+  const [sessionType, setSessionType] = useState<SessionType>("review");
   const [newUrl, setNewUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStage, setUploadStage] = useState<UploadStage>("idle");
@@ -848,9 +847,9 @@ export default function ProjectPage() {
           {/* ── Type selector ── */}
           <div className="grid grid-cols-3 border-b border-border">
             {([
-              { type: "video" as SessionType, Icon: Video,       label: "Video",  desc: "Upload a video file"   },
-              { type: "image" as SessionType, Icon: Image,       label: "Image",  desc: "Upload an image"       },
               { type: "review" as SessionType, Icon: ListChecks, label: "Review", desc: "Paste/upload, draw, comment — export to Linear" },
+              { type: "image" as SessionType, Icon: Image,       label: "Image",  desc: "Upload an image"       },
+              { type: "video" as SessionType, Icon: Video,       label: "Video",  desc: "Upload a video file"   },
             ]).map(({ type, Icon, label, desc }, i) => {
               const active = sessionType === type;
               return (

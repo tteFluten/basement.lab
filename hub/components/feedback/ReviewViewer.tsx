@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import {
-  ExternalLink, Plus, PenTool, Trash2, Check, Loader2, ClipboardList, LayoutGrid, Upload,
+  ExternalLink, Plus, PenTool, Trash2, Check, Loader2, ClipboardList, LayoutGrid, Upload, List, X,
 } from "lucide-react";
 import type { FeedbackComment, DrawingPath, Point } from "@/lib/feedback/types";
 
@@ -74,7 +74,7 @@ export function ReviewViewer({
   onToggleCompleted,
 }: ReviewViewerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [viewMode, setViewMode] = useState<"cards" | "checklist">("cards");
+  const [viewMode, setViewMode] = useState<"list" | "cards" | "checklist">("list");
   const [addingCard, setAddingCard] = useState(false);
   const [pasteImage, setPasteImage] = useState<string | null>(null);
   const [pasteBlob, setPasteBlob] = useState<Blob | null>(null);
@@ -85,9 +85,12 @@ export function ReviewViewer({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageWrapRef = useRef<HTMLDivElement>(null);
   const currentPathRef = useRef<Point[]>([]);
 
   const sortedComments = [...comments].sort((a, b) => a.createdAt - b.createdAt);
+  const selectedComment = selectedCommentId ? sortedComments.find((c) => c.id === selectedCommentId) : null;
+  const isChecklistMode = viewMode === "checklist";
 
   const redrawCanvas = useCallback((paths: DrawingPath[], canvas: HTMLCanvasElement | null) => {
     const ctx = canvas?.getContext("2d");
@@ -108,6 +111,19 @@ export function ReviewViewer({
 
   useEffect(() => {
     redrawCanvas(cardPaths, canvasRef.current);
+  }, [cardPaths, redrawCanvas]);
+
+  const resizeCanvasToImage = useCallback(() => {
+    const wrap = imageWrapRef.current;
+    const canvas = canvasRef.current;
+    if (!wrap || !canvas) return;
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    if (w > 0 && h > 0) {
+      canvas.width = w;
+      canvas.height = h;
+      redrawCanvas(cardPaths, canvas);
+    }
   }, [cardPaths, redrawCanvas]);
 
   const handlePaste = useCallback((e: ClipboardEvent) => {
@@ -190,18 +206,22 @@ export function ReviewViewer({
   }, [pasteImage, pasteBlob, cardText, cardPaths, onAddComment, authorName]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas || canvas.width === 0) return;
     e.preventDefault();
+    e.stopPropagation();
     setIsDrawing(true);
-    const pt = screenToCanvas(e, canvasRef.current);
+    const pt = screenToCanvas(e, canvas);
     currentPathRef.current = [pt];
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !canvasRef.current) return;
-    const pt = screenToCanvas(e, canvasRef.current);
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas || canvas.width === 0) return;
+    const pt = screenToCanvas(e, canvas);
     currentPathRef.current.push(pt);
-    const ctx = canvasRef.current.getContext("2d");
+    const ctx = canvas.getContext("2d");
     if (!ctx || currentPathRef.current.length < 2) return;
     const pts = currentPathRef.current;
     ctx.beginPath();
@@ -212,14 +232,26 @@ export function ReviewViewer({
     ctx.stroke();
   };
 
-  const handleCanvasMouseUp = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
+  const commitCurrentPath = useCallback(() => {
     if (currentPathRef.current.length > 1) {
       setCardPaths((prev) => [...prev, { points: [...currentPathRef.current], color: drawColor, width: 3 }]);
     }
     currentPathRef.current = [];
+  }, [drawColor]);
+
+  const handleCanvasMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    setIsDrawing(false);
+    commitCurrentPath();
   };
+
+  const handleCanvasMouseLeave = useCallback(() => {
+    if (isDrawing) {
+      setIsDrawing(false);
+      commitCurrentPath();
+    }
+  }, [isDrawing, commitCurrentPath]);
 
   const handleExportLinear = useCallback(() => {
     const lines = [`# ${sessionTitle}`, "", `Reference: ${sourceUrl}`, ""];
@@ -243,22 +275,36 @@ export function ReviewViewer({
         onChange={handleFileSelect}
       />
 
-      {/* Top bar: link + view toggle + export */}
+      {/* Top bar: link + URL + view toggle + export */}
       <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-border bg-bg-muted flex-wrap">
-        <a
-          href={sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
-        >
-          <ExternalLink size={12} />
-          Open reference in new tab
-        </a>
+        <div className="flex items-center gap-2 min-w-0">
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors shrink-0"
+          >
+            <ExternalLink size={12} />
+            Open in new tab
+          </a>
+          <span className="text-[11px] font-mono text-fg-muted truncate max-w-[240px] sm:max-w-[360px]" title={sourceUrl}>
+            {sourceUrl}
+          </span>
+        </div>
         <div className="flex items-center gap-0.5 border border-border">
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono ${viewMode === "list" ? "bg-fg text-bg" : "text-fg-muted hover:text-fg"}`}
+            title="Compact list"
+          >
+            <List size={12} /> List
+          </button>
           <button
             type="button"
             onClick={() => setViewMode("cards")}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono ${viewMode === "cards" ? "bg-fg text-bg" : "text-fg-muted hover:text-fg"}`}
+            title="Cards"
           >
             <LayoutGrid size={12} /> Cards
           </button>
@@ -266,6 +312,7 @@ export function ReviewViewer({
             type="button"
             onClick={() => setViewMode("checklist")}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono ${viewMode === "checklist" ? "bg-fg text-bg" : "text-fg-muted hover:text-fg"}`}
+            title="Checklist"
           >
             <ClipboardList size={12} /> Checklist
           </button>
@@ -279,8 +326,9 @@ export function ReviewViewer({
         </button>
       </div>
 
-      {/* Content: add card + list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Content: add card + list + detail panel */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        <div className={`overflow-y-auto space-y-4 ${selectedComment ? "w-[320px] sm:w-[380px] shrink-0 border-r border-border" : "flex-1"} p-4`}>
         {addingCard && !pasteImage && !uploading && (
           <div className="border border-dashed border-fg-muted/50 bg-bg-muted/50 p-6 text-center">
             <p className="text-xs font-mono text-fg-muted mb-2">Paste (Ctrl+V) or upload a screenshot</p>
@@ -305,18 +353,25 @@ export function ReviewViewer({
               </div>
             ) : (
               <>
-                <div className="relative inline-block max-w-full">
-                  <img src={pasteImage!} alt="Paste" className="max-h-64 max-w-full object-contain border border-border" />
+                <div
+                  ref={imageWrapRef}
+                  className="relative max-w-full bg-black/20 border border-border"
+                  style={{ maxHeight: 280 }}
+                >
+                  <img
+                    src={pasteImage!}
+                    alt="Paste"
+                    className="max-h-[280px] w-full object-contain block"
+                    onLoad={resizeCanvasToImage}
+                  />
                   <canvas
                     ref={canvasRef}
-                    width={640}
-                    height={360}
-                    className="absolute inset-0 w-full h-full cursor-crosshair"
-                    style={{ maxHeight: "256px" }}
+                    className="absolute inset-0 w-full h-full cursor-crosshair touch-none select-none z-10"
+                    style={{ left: 0, top: 0, width: "100%", height: "100%" }}
                     onMouseDown={handleCanvasMouseDown}
                     onMouseMove={handleCanvasMouseMove}
                     onMouseUp={handleCanvasMouseUp}
-                    onMouseLeave={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseLeave}
                   />
                 </div>
                 <div className="flex gap-2 flex-wrap items-center">
@@ -358,49 +413,138 @@ export function ReviewViewer({
           </button>
         )}
 
-        <div className="space-y-3">
-          {sortedComments.map((c) => (
-            <div
-              key={c.id}
-              className={`border border-border bg-bg-muted overflow-hidden transition-colors ${selectedCommentId === c.id ? "ring-1 ring-fg/30" : ""} ${viewMode === "checklist" && c.completed ? "opacity-60" : ""}`}
-            >
-              <div className="flex items-start gap-3 p-3">
-                {viewMode === "checklist" && (
+        <div className={viewMode === "list" ? "space-y-0.5" : "space-y-2"}>
+          {sortedComments.map((c, index) => {
+            const isSelected = selectedCommentId === c.id;
+            if (viewMode === "list") {
+              return (
+                <div
+                  key={c.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onSelectComment(isSelected ? null : c.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectComment(isSelected ? null : c.id); } }}
+                  className={`flex items-center gap-2 py-1.5 px-2 border-b border-border/50 cursor-pointer transition-colors hover:bg-bg-muted/80 ${isSelected ? "bg-bg-muted ring-inset ring-1 ring-fg/40" : ""} ${isChecklistMode && c.completed ? "opacity-60" : ""}`}
+                >
+                  {isChecklistMode && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onToggleCompleted(c.id, !c.completed); }}
+                      className="shrink-0 w-3.5 h-3.5 flex items-center justify-center border border-border hover:border-fg-muted"
+                    >
+                      {c.completed ? <Check size={8} className="text-fg" /> : null}
+                    </button>
+                  )}
+                  <span className="shrink-0 w-5 text-[10px] font-mono text-fg-muted tabular-nums">{index + 1}</span>
+                  {c.screenshotUrl && (
+                    <div className="shrink-0 w-10 h-7 overflow-hidden border border-border/50 flex items-center bg-black/20">
+                      <img src={c.screenshotUrl} alt="" className="w-full h-full object-cover object-top" />
+                    </div>
+                  )}
+                  <span className="flex-1 min-w-0 text-[11px] font-mono text-fg truncate">{c.text || "(screenshot)"}</span>
+                  {c.drawing && c.drawing.length > 0 && <PenTool size={9} className="shrink-0 text-fg-muted" />}
                   <button
                     type="button"
-                    onClick={() => onToggleCompleted(c.id, !c.completed)}
-                    className="shrink-0 w-5 h-5 flex items-center justify-center border border-border mt-0.5 hover:border-fg-muted"
+                    onClick={(e) => { e.stopPropagation(); onDeleteComment(c.id); }}
+                    className="p-0.5 text-red-600 hover:text-red-500 hover:bg-red-500/15 border border-red-600/40 shrink-0 transition-colors"
+                    title="Delete"
                   >
-                    {c.completed ? <Check size={12} className="text-fg" /> : null}
+                    <Trash2 size={9} />
                   </button>
-                )}
-                <div
-                  className="flex-1 min-w-0 cursor-pointer"
-                  onClick={() => onSelectComment(selectedCommentId === c.id ? null : c.id)}
-                >
-                  {c.screenshotUrl && (
-                    <img src={c.screenshotUrl} alt="" className="w-full max-h-40 object-contain object-top border border-border/50 mb-2" />
-                  )}
-                  {c.drawing && c.drawing.length > 0 && (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-fg-muted mb-1">
-                      <PenTool size={10} /> Annotation
-                    </span>
-                  )}
-                  <p className="text-sm font-mono text-fg break-words">{c.text || "(No comment)"}</p>
-                  <p className="text-[11px] text-fg-muted mt-1">{c.authorName}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onDeleteComment(c.id); }}
-                  className="p-1 text-fg-muted hover:text-red-400 shrink-0"
-                  title="Delete"
-                >
-                  <Trash2 size={12} />
-                </button>
+              );
+            }
+            return (
+              <div
+                key={c.id}
+                className={`border border-border bg-bg-muted overflow-hidden transition-colors ${isSelected ? "ring-1 ring-fg/30" : ""} ${isChecklistMode && c.completed ? "opacity-60" : ""}`}
+              >
+                <div className="flex items-center gap-2 p-2">
+                  {isChecklistMode && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleCompleted(c.id, !c.completed)}
+                      className="shrink-0 w-4 h-4 flex items-center justify-center border border-border hover:border-fg-muted"
+                    >
+                      {c.completed ? <Check size={10} className="text-fg" /> : null}
+                    </button>
+                  )}
+                  {c.screenshotUrl && (
+                    <div
+                      className="shrink-0 w-16 h-12 overflow-hidden border border-border/50 cursor-pointer flex items-center bg-black/20"
+                      onClick={() => onSelectComment(isSelected ? null : c.id)}
+                    >
+                      <img src={c.screenshotUrl} alt="" className="w-full h-full object-cover object-top" />
+                    </div>
+                  )}
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer py-0.5"
+                    onClick={() => onSelectComment(isSelected ? null : c.id)}
+                  >
+                    {c.drawing && c.drawing.length > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-fg-muted">
+                        <PenTool size={8} />
+                      </span>
+                    )}
+                    <p className="text-[12px] font-mono text-fg break-words line-clamp-2">{c.text || "(No comment)"}</p>
+                    <p className="text-[10px] text-fg-muted truncate">{c.authorName}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDeleteComment(c.id); }}
+                    className="p-1 text-red-600 hover:text-red-500 hover:bg-red-500/15 border border-red-600/40 shrink-0 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+        </div>
+
+        {/* Detail panel: selected item */}
+        {selectedComment && (
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-l border-border bg-bg-muted/30">
+            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-border">
+              <span className="text-[11px] font-mono text-fg-muted">Detail</span>
+              <button
+                type="button"
+                onClick={() => onSelectComment(null)}
+                className="p-1 text-fg-muted hover:text-fg"
+                title="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {selectedComment.screenshotUrl && (
+                <div className="mb-4 border border-border overflow-hidden bg-black/20">
+                  <img
+                    src={selectedComment.screenshotUrl}
+                    alt=""
+                    className="w-full max-h-[70vh] object-contain object-top"
+                  />
+                </div>
+              )}
+              {selectedComment.drawing && selectedComment.drawing.length > 0 && (
+                <p className="text-[11px] font-mono text-fg-muted flex items-center gap-1 mb-2">
+                  <PenTool size={10} /> Has annotation
+                </p>
+              )}
+              <p className="text-sm font-mono text-fg whitespace-pre-wrap break-words">{selectedComment.text || "(No comment)"}</p>
+              <p className="text-[11px] text-fg-muted mt-2">{selectedComment.authorName}</p>
+              <button
+                type="button"
+                onClick={() => onDeleteComment(selectedComment.id)}
+                className="mt-4 flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-mono border-2 border-red-600 text-red-600 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+              >
+                <Trash2 size={10} /> Delete
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
