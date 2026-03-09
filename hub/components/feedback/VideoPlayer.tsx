@@ -61,8 +61,6 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
   const [saveError, setSaveError] = useState<string | null>(null);
   const [drawColor, setDrawColor] = useState(DRAW_COLORS[0]);
 
-  const overlaySourceSizeRef = useRef<{ w: number; h: number } | null>(null);
-  const userPathsSourceSizeRef = useRef<{ w: number; h: number } | null>(null);
 
   const redrawCanvas = useCallback((userPaths: DrawingPath[], overlay?: DrawingPath[] | null, hideOverlay = false) => {
     const canvas = canvasRef.current;
@@ -102,51 +100,44 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
           points: path.points.map((pt) => ({ x: pt.x * cw, y: pt.y * ch })),
         })), 0.9);
       } else {
-        if (!overlaySourceSizeRef.current) {
-          overlaySourceSizeRef.current = { w: cw, h: ch };
-        }
-        const srcW = overlaySourceSizeRef.current.w;
-        const srcH = overlaySourceSizeRef.current.h;
-        const scaleX = srcW > 0 ? cw / srcW : 1;
-        const scaleY = srcH > 0 ? ch / srcH : 1;
-        drawPaths(effectiveOverlay, 0.9, scaleX, scaleY);
+        drawPaths(effectiveOverlay, 0.9);
       }
-    } else {
-      overlaySourceSizeRef.current = null;
     }
-    if (userPaths.length > 0 && cw > 0 && ch > 0) {
-      if (!userPathsSourceSizeRef.current) {
-        userPathsSourceSizeRef.current = { w: cw, h: ch };
-      }
-      const srcW = userPathsSourceSizeRef.current.w;
-      const srcH = userPathsSourceSizeRef.current.h;
-      const scaleX = srcW > 0 ? cw / srcW : 1;
-      const scaleY = srcH > 0 ? ch / srcH : 1;
-      drawPaths(userPaths, 1, scaleX, scaleY);
-    } else {
-      userPathsSourceSizeRef.current = null;
-      drawPaths(userPaths);
-    }
+    drawPaths(userPaths);
   }, []);
 
-  // Sync canvas size with video element
+  // Canvas uses video's natural dimensions (exact aspect ratio) - no deformation on resize
+  const videoNaturalRef = useRef<{ w: number; h: number } | null>(null);
+
+  // Sync canvas to video's natural dimensions (keeps exact aspect ratio)
   useEffect(() => {
     const syncSize = () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       if (!video || !canvas) return;
-      canvas.width = video.clientWidth;
-      canvas.height = video.clientHeight;
+      const vw = video.videoWidth || 1920;
+      const vh = video.videoHeight || 1080;
+      if (vw > 0 && vh > 0) {
+        videoNaturalRef.current = { w: vw, h: vh };
+        if (canvas.width !== vw || canvas.height !== vh) {
+          canvas.width = vw;
+          canvas.height = vh;
+        }
+      }
       redrawCanvas(currentPaths, overlayDrawing, showPanel);
     };
     const observer = new ResizeObserver(syncSize);
     if (videoRef.current) observer.observe(videoRef.current);
-    return () => observer.disconnect();
+    videoRef.current?.addEventListener("loadedmetadata", syncSize);
+    syncSize();
+    return () => {
+      observer.disconnect();
+      videoRef.current?.removeEventListener("loadedmetadata", syncSize);
+    };
   }, [currentPaths, overlayDrawing, redrawCanvas, showPanel]);
 
-  // Redraw when overlay changes (reset source size so we use current canvas as reference)
+  // Redraw when overlay changes
   useEffect(() => {
-    overlaySourceSizeRef.current = null;
     redrawCanvas(currentPaths, overlayDrawing, showPanel);
   }, [overlayDrawing, currentPaths, redrawCanvas, showPanel]);
 
@@ -185,20 +176,19 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     };
   }, [onFpsDetected]);
 
-  // Fullscreen listener + redraw when canvas resizes (layout may update with delay)
+  // Fullscreen listener - trigger redraw (canvas keeps video aspect ratio, syncSize handles it)
   useEffect(() => {
     const onFsChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
-      const redraw = () => {
+      requestAnimationFrame(() => {
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        if (video && canvas) {
-          canvas.width = video.clientWidth;
-          canvas.height = video.clientHeight;
+        if (video && canvas && video.videoWidth > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
           redrawCanvas(currentPaths, overlayDrawing, showPanel);
         }
-      };
-      requestAnimationFrame(() => requestAnimationFrame(redraw));
+      });
     };
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
@@ -252,14 +242,23 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     setCommentText("");
     setCurrentPaths([]);
     setSaveError(null);
-    userPathsSourceSizeRef.current = null;
     redrawCanvas([], overlayDrawing, false);
   }, [redrawCanvas, overlayDrawing]);
 
-  // Canvas drawing handlers
+  // Canvas drawing handlers - convert display coords to canvas coords (canvas has object-contain)
   const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    const cw = canvas.width;
+    const ch = canvas.height;
+    const scale = Math.min(rect.width / cw, rect.height / ch);
+    const contentW = cw * scale;
+    const contentH = ch * scale;
+    const offsetX = (rect.width - contentW) / 2;
+    const offsetY = (rect.height - contentH) / 2;
+    const displayX = e.clientX - rect.left - offsetX;
+    const displayY = e.clientY - rect.top - offsetY;
+    return { x: (displayX / scale), y: (displayY / scale) };
   };
 
   const startDrawing = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -300,7 +299,6 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
 
   const clearDrawing = useCallback(() => {
     setCurrentPaths([]);
-    userPathsSourceSizeRef.current = null;
     redrawCanvas([], overlayDrawing, showPanel);
   }, [redrawCanvas, overlayDrawing, showPanel]);
 
@@ -310,10 +308,9 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     setSaveError(null);
     try {
       let drawingToSave: DrawingPath[] | undefined;
-      if (currentPaths.length > 0) {
-        const src = userPathsSourceSizeRef.current;
-        const cw = src?.w ?? canvasRef.current?.width ?? 1;
-        const ch = src?.h ?? canvasRef.current?.height ?? 1;
+      if (currentPaths.length > 0 && canvasRef.current) {
+        const cw = canvasRef.current.width;
+        const ch = canvasRef.current.height;
         const normW = cw > 0 ? cw : 1;
         const normH = ch > 0 ? ch : 1;
         drawingToSave = currentPaths.map((path) => ({
@@ -351,15 +348,13 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
             const video = e.currentTarget;
             setDuration(video.duration);
             setVideoSize({ w: video.videoWidth, h: video.videoHeight });
-            const canvas = canvasRef.current;
-            if (canvas) { canvas.width = video.clientWidth; canvas.height = video.clientHeight; }
           }}
           onEnded={() => setIsPlaying(false)}
           onClick={togglePlay}
         />
         <canvas
           ref={canvasRef}
-          className={`absolute inset-0 w-full h-full ${isDrawingMode ? "cursor-crosshair" : "pointer-events-none"}`}
+          className={`absolute inset-0 w-full h-full object-contain object-center ${isDrawingMode ? "cursor-crosshair" : "pointer-events-none"}`}
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
