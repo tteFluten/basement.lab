@@ -187,6 +187,7 @@ export default function SessionPage() {
     drawing?: DrawingPath[];
     screenshotUrl?: string | null;
     authorName: string;
+    priority?: "high" | "medium" | "low";
   }) => handleAddComment(data);
 
   return (
@@ -335,6 +336,8 @@ export default function SessionPage() {
             onCommentClick={handleCommentClick}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onToggleCompleted={handleToggleCompleted}
+            onSetPriority={handleSetPriority}
           />
         )}
       </div>

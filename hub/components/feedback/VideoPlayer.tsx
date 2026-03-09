@@ -21,6 +21,7 @@ interface VideoPlayerProps {
     drawing?: DrawingPath[];
     screenshotUrl?: string | null;
     authorName: string;
+    priority?: "high" | "medium" | "low";
   }) => Promise<void>;
   onFpsDetected?: (fps: number) => void;
 }
@@ -388,6 +389,7 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
         drawing: drawingToSave,
         screenshotUrl: attachedImageUrl ?? undefined,
         authorName,
+        priority: "medium",
       });
       closePanel();
     } catch (e) {
@@ -460,6 +462,7 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
         <video
           ref={videoRef}
           src={src}
+          crossOrigin="anonymous"
           className="w-full h-full object-contain"
           onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
           onLoadedMetadata={(e) => {

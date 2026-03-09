@@ -19,6 +19,7 @@ interface ImageAnnotatorProps {
     authorName: string;
     xPct: number;
     yPct: number;
+    priority?: "high" | "medium" | "low";
   }) => Promise<void>;
   onSelectComment: (id: string | null) => void;
 }
@@ -147,6 +148,7 @@ export function ImageAnnotator({
         authorName,
         xPct: pendingPin.xPct,
         yPct: pendingPin.yPct,
+        priority: "medium",
       });
       setPendingPin(null);
       setCommentText("");

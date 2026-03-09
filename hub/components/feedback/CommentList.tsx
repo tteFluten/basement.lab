@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Clock, Edit2, Trash2, Check, X, PenTool, MessageSquare, MapPin, Globe } from "lucide-react";
-import type { FeedbackComment, DrawingPath, SessionType } from "@/lib/feedback/types";
+import type { FeedbackComment, DrawingPath, SessionType, CommentPriority } from "@/lib/feedback/types";
 
 interface CommentListProps {
   comments: FeedbackComment[];
@@ -14,6 +14,8 @@ interface CommentListProps {
   onCommentClick: (timestampS: number, id: string, drawing?: DrawingPath[] | null) => void;
   onEdit: (id: string, text: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onToggleCompleted?: (id: string, completed: boolean) => Promise<void>;
+  onSetPriority?: (id: string, priority: CommentPriority) => Promise<void>;
 }
 
 function formatTime(s: number) {
@@ -33,7 +35,9 @@ function initials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function CommentList({ comments, currentUserId, anonToken, fps, sessionType = "video", selectedCommentId, onCommentClick, onEdit, onDelete }: CommentListProps) {
+const PRIORITY_LABELS: Record<CommentPriority, string> = { high: "H", medium: "M", low: "L" };
+
+export function CommentList({ comments, currentUserId, anonToken, fps, sessionType = "video", selectedCommentId, onCommentClick, onEdit, onDelete, onToggleCompleted, onSetPriority }: CommentListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -106,7 +110,19 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                 >
                   {/* Top row: position indicator + actions */}
                   <div className="flex items-center justify-between mb-2.5">
-                    <div className={`flex items-center gap-1.5 text-xs font-mono ${isSelected ? "text-black/70" : "text-fg-muted"}`}>
+                    <div className={`flex items-center gap-1.5 text-xs font-mono flex-wrap ${isSelected ? "text-black/70" : "text-fg-muted"}`}>
+                      {(sessionType === "video" || sessionType === "image") && onToggleCompleted && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onToggleCompleted(c.id, !c.completed); }}
+                          className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                            c.completed ? "bg-green-500/30 border-green-500/50" : "border-border hover:border-fg-muted"
+                          } ${isSelected ? "text-black" : ""}`}
+                          title={c.completed ? "Mark pending" : "Mark done"}
+                        >
+                          {c.completed && <Check size={10} strokeWidth={2.5} />}
+                        </button>
+                      )}
                       {sessionType === "video" ? (
                         <>
                           <Clock size={11} />
@@ -130,6 +146,25 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                       ) : sessionType === "review" ? (
                         <Globe size={11} />
                       ) : null}
+                      {(sessionType === "video" || sessionType === "image") && onSetPriority && (
+                        <span className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+                          {(["high", "medium", "low"] as CommentPriority[]).map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => onSetPriority(c.id, p)}
+                              className={`px-1.5 py-0 text-[10px] font-mono border transition-colors ${
+                                (c.priority ?? "medium") === p
+                                  ? "bg-fg text-bg border-fg"
+                                  : "border-border text-fg-muted/60 hover:text-fg-muted"
+                              }`}
+                              title={`Priority: ${p}`}
+                            >
+                              {PRIORITY_LABELS[p]}
+                            </button>
+                          ))}
+                        </span>
+                      )}
                       {hasDrawing && (
                         <span title="Has annotation" className={`transition-colors ${isSelected ? "text-fg" : "text-fg-muted/50"}`}>
                           <PenTool size={10} />
@@ -192,10 +227,10 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                         />
                       )}
                       {c.text && (
-                        <p className={`text-[13px] font-mono leading-relaxed break-words mb-2.5 ${isSelected ? "text-black" : "text-fg"}`}>{c.text}</p>
+                        <p className={`text-[13px] font-mono leading-relaxed break-words mb-2.5 ${c.completed ? "line-through opacity-70" : ""} ${isSelected ? "text-black" : "text-fg"}`}>{c.text}</p>
                       )}
                       {!c.text && hasDrawing && (
-                        <p className="text-[13px] text-fg-muted font-mono italic mb-2.5">Annotation only — click to view</p>
+                        <p className={`text-[13px] font-mono italic mb-2.5 ${c.completed ? "line-through opacity-70" : "text-fg-muted"}`}>Annotation only — click to view</p>
                       )}
                     </>
                   )}
