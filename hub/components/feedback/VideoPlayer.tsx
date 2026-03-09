@@ -10,6 +10,7 @@ interface VideoPlayerProps {
   seekTo?: number | null;
   overlayDrawing?: DrawingPath[] | null;
   authorName: string;
+  onOpenPanel?: () => void;
   onAddComment: (data: {
     timestampS: number;
     text: string;
@@ -36,7 +37,7 @@ function formatSmpte(s: number, fps: number) {
 
 const DRAW_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#ffffff"];
 
-export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, authorName, onAddComment, onFpsDetected }: VideoPlayerProps) {
+export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, authorName, onOpenPanel, onAddComment, onFpsDetected }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,8 +62,9 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
   const [drawColor, setDrawColor] = useState(DRAW_COLORS[0]);
 
   const overlaySourceSizeRef = useRef<{ w: number; h: number } | null>(null);
+  const userPathsSourceSizeRef = useRef<{ w: number; h: number } | null>(null);
 
-  const redrawCanvas = useCallback((userPaths: DrawingPath[], overlay?: DrawingPath[] | null) => {
+  const redrawCanvas = useCallback((userPaths: DrawingPath[], overlay?: DrawingPath[] | null, hideOverlay = false) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -89,19 +91,42 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
       ctx.globalAlpha = 1;
     };
 
-    if (overlay && overlay.length > 0 && cw > 0 && ch > 0) {
-      if (!overlaySourceSizeRef.current) {
-        overlaySourceSizeRef.current = { w: cw, h: ch };
+    const effectiveOverlay = hideOverlay ? null : overlay;
+    if (effectiveOverlay && effectiveOverlay.length > 0 && cw > 0 && ch > 0) {
+      const allCoords = effectiveOverlay.flatMap((p) => p.points.flatMap((pt) => [pt.x, pt.y]));
+      const maxCoord = allCoords.length > 0 ? Math.max(...allCoords) : 0;
+      const isNormalized = maxCoord <= 1.01;
+      if (isNormalized) {
+        drawPaths(effectiveOverlay.map((path) => ({
+          ...path,
+          points: path.points.map((pt) => ({ x: pt.x * cw, y: pt.y * ch })),
+        })), 0.9);
+      } else {
+        if (!overlaySourceSizeRef.current) {
+          overlaySourceSizeRef.current = { w: cw, h: ch };
+        }
+        const srcW = overlaySourceSizeRef.current.w;
+        const srcH = overlaySourceSizeRef.current.h;
+        const scaleX = srcW > 0 ? cw / srcW : 1;
+        const scaleY = srcH > 0 ? ch / srcH : 1;
+        drawPaths(effectiveOverlay, 0.9, scaleX, scaleY);
       }
-      const srcW = overlaySourceSizeRef.current.w;
-      const srcH = overlaySourceSizeRef.current.h;
-      const scaleX = srcW > 0 ? cw / srcW : 1;
-      const scaleY = srcH > 0 ? ch / srcH : 1;
-      drawPaths(overlay, 0.9, scaleX, scaleY);
     } else {
       overlaySourceSizeRef.current = null;
     }
-    drawPaths(userPaths);
+    if (userPaths.length > 0 && cw > 0 && ch > 0) {
+      if (!userPathsSourceSizeRef.current) {
+        userPathsSourceSizeRef.current = { w: cw, h: ch };
+      }
+      const srcW = userPathsSourceSizeRef.current.w;
+      const srcH = userPathsSourceSizeRef.current.h;
+      const scaleX = srcW > 0 ? cw / srcW : 1;
+      const scaleY = srcH > 0 ? ch / srcH : 1;
+      drawPaths(userPaths, 1, scaleX, scaleY);
+    } else {
+      userPathsSourceSizeRef.current = null;
+      drawPaths(userPaths);
+    }
   }, []);
 
   // Sync canvas size with video element
@@ -112,18 +137,18 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
       if (!video || !canvas) return;
       canvas.width = video.clientWidth;
       canvas.height = video.clientHeight;
-      redrawCanvas(currentPaths, overlayDrawing);
+      redrawCanvas(currentPaths, overlayDrawing, showPanel);
     };
     const observer = new ResizeObserver(syncSize);
     if (videoRef.current) observer.observe(videoRef.current);
     return () => observer.disconnect();
-  }, [currentPaths, overlayDrawing, redrawCanvas]);
+  }, [currentPaths, overlayDrawing, redrawCanvas, showPanel]);
 
   // Redraw when overlay changes (reset source size so we use current canvas as reference)
   useEffect(() => {
     overlaySourceSizeRef.current = null;
-    redrawCanvas(currentPaths, overlayDrawing);
-  }, [overlayDrawing, currentPaths, redrawCanvas]);
+    redrawCanvas(currentPaths, overlayDrawing, showPanel);
+  }, [overlayDrawing, currentPaths, redrawCanvas, showPanel]);
 
   // FPS detection via requestVideoFrameCallback
   useEffect(() => {
@@ -170,14 +195,14 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
         if (video && canvas) {
           canvas.width = video.clientWidth;
           canvas.height = video.clientHeight;
-          redrawCanvas(currentPaths, overlayDrawing);
+          redrawCanvas(currentPaths, overlayDrawing, showPanel);
         }
       };
       requestAnimationFrame(() => requestAnimationFrame(redraw));
     };
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, [currentPaths, overlayDrawing, redrawCanvas]);
+  }, [currentPaths, overlayDrawing, redrawCanvas, showPanel]);
 
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
@@ -215,10 +240,11 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
       videoRef.current.pause();
       setIsPlaying(false);
     }
+    onOpenPanel?.();
     setShowPanel(true);
     if (withDraw) setIsDrawingMode(true);
     setTimeout(() => textareaRef.current?.focus(), 50);
-  }, [isPlaying]);
+  }, [isPlaying, onOpenPanel]);
 
   const closePanel = useCallback(() => {
     setShowPanel(false);
@@ -226,7 +252,8 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     setCommentText("");
     setCurrentPaths([]);
     setSaveError(null);
-    redrawCanvas([], overlayDrawing);
+    userPathsSourceSizeRef.current = null;
+    redrawCanvas([], overlayDrawing, false);
   }, [redrawCanvas, overlayDrawing]);
 
   // Canvas drawing handlers
@@ -273,18 +300,31 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
 
   const clearDrawing = useCallback(() => {
     setCurrentPaths([]);
-    redrawCanvas([], overlayDrawing);
-  }, [redrawCanvas, overlayDrawing]);
+    userPathsSourceSizeRef.current = null;
+    redrawCanvas([], overlayDrawing, showPanel);
+  }, [redrawCanvas, overlayDrawing, showPanel]);
 
   const handleSave = useCallback(async () => {
     if (!commentText.trim() && currentPaths.length === 0) return;
     setSaving(true);
     setSaveError(null);
     try {
+      let drawingToSave: DrawingPath[] | undefined;
+      if (currentPaths.length > 0) {
+        const src = userPathsSourceSizeRef.current;
+        const cw = src?.w ?? canvasRef.current?.width ?? 1;
+        const ch = src?.h ?? canvasRef.current?.height ?? 1;
+        const normW = cw > 0 ? cw : 1;
+        const normH = ch > 0 ? ch : 1;
+        drawingToSave = currentPaths.map((path) => ({
+          ...path,
+          points: path.points.map((pt) => ({ x: pt.x / normW, y: pt.y / normH })),
+        }));
+      }
       await onAddComment({
         timestampS: currentTime,
         text: commentText,
-        drawing: currentPaths.length > 0 ? currentPaths : undefined,
+        drawing: drawingToSave,
         authorName,
       });
       closePanel();

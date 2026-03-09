@@ -309,6 +309,7 @@ export default function SessionPage() {
                 seekTo={seekTo}
                 overlayDrawing={overlayDrawing}
                 authorName={authorName}
+                onOpenPanel={() => { setSelectedCommentId(null); setOverlayDrawing(null); }}
                 onAddComment={handleVideoComment}
                 onFpsDetected={setFps}
               />
