@@ -60,14 +60,20 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
   const [saveError, setSaveError] = useState<string | null>(null);
   const [drawColor, setDrawColor] = useState(DRAW_COLORS[0]);
 
+  const overlaySourceSizeRef = useRef<{ w: number; h: number } | null>(null);
+
   const redrawCanvas = useCallback((userPaths: DrawingPath[], overlay?: DrawingPath[] | null) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const cw = canvas.width;
+    const ch = canvas.height;
 
-    const drawPaths = (paths: DrawingPath[], alpha = 1) => {
+    const drawPaths = (paths: DrawingPath[], alpha = 1, scaleX = 1, scaleY = 1) => {
       ctx.globalAlpha = alpha;
+      ctx.save();
+      if (scaleX !== 1 || scaleY !== 1) ctx.scale(scaleX, scaleY);
       paths.forEach((path) => {
         if (path.points.length < 2) return;
         ctx.beginPath();
@@ -79,10 +85,23 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
         ctx.lineJoin = "round";
         ctx.stroke();
       });
+      ctx.restore();
       ctx.globalAlpha = 1;
     };
 
-    if (overlay && overlay.length > 0) drawPaths(overlay, 0.9);
+    if (overlay && overlay.length > 0 && cw > 0 && ch > 0) {
+      const src = overlaySourceSizeRef.current;
+      if (!src || src.w !== cw || src.h !== ch) {
+        overlaySourceSizeRef.current = { w: cw, h: ch };
+      }
+      const srcW = overlaySourceSizeRef.current!.w;
+      const srcH = overlaySourceSizeRef.current!.h;
+      const scaleX = srcW > 0 ? cw / srcW : 1;
+      const scaleY = srcH > 0 ? ch / srcH : 1;
+      drawPaths(overlay, 0.9, scaleX, scaleY);
+    } else {
+      overlaySourceSizeRef.current = null;
+    }
     drawPaths(userPaths);
   }, []);
 
@@ -101,8 +120,9 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     return () => observer.disconnect();
   }, [currentPaths, overlayDrawing, redrawCanvas]);
 
-  // Redraw when overlay changes
+  // Redraw when overlay changes (reset source size so we use current canvas as reference)
   useEffect(() => {
+    overlaySourceSizeRef.current = null;
     redrawCanvas(currentPaths, overlayDrawing);
   }, [overlayDrawing, currentPaths, redrawCanvas]);
 
