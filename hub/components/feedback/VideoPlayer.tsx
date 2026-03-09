@@ -90,12 +90,11 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     };
 
     if (overlay && overlay.length > 0 && cw > 0 && ch > 0) {
-      const src = overlaySourceSizeRef.current;
-      if (!src || src.w !== cw || src.h !== ch) {
+      if (!overlaySourceSizeRef.current) {
         overlaySourceSizeRef.current = { w: cw, h: ch };
       }
-      const srcW = overlaySourceSizeRef.current!.w;
-      const srcH = overlaySourceSizeRef.current!.h;
+      const srcW = overlaySourceSizeRef.current.w;
+      const srcH = overlaySourceSizeRef.current.h;
       const scaleX = srcW > 0 ? cw / srcW : 1;
       const scaleY = srcH > 0 ? ch / srcH : 1;
       drawPaths(overlay, 0.9, scaleX, scaleY);
@@ -161,12 +160,24 @@ export function VideoPlayer({ src, commentMarkers, seekTo, overlayDrawing, autho
     };
   }, [onFpsDetected]);
 
-  // Fullscreen listener
+  // Fullscreen listener + redraw when canvas resizes (layout may update with delay)
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      const redraw = () => {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (video && canvas) {
+          canvas.width = video.clientWidth;
+          canvas.height = video.clientHeight;
+          redrawCanvas(currentPaths, overlayDrawing);
+        }
+      };
+      requestAnimationFrame(() => requestAnimationFrame(redraw));
+    };
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
+  }, [currentPaths, overlayDrawing, redrawCanvas]);
 
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
