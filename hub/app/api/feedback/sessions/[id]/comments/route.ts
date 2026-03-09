@@ -25,7 +25,7 @@ export async function GET(
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("feedback_comments")
-    .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at, completed")
+    .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at, completed, priority")
     .eq("session_id", params.id)
     .order("timestamp_s", { ascending: true })
     .order("created_at", { ascending: true });
@@ -47,6 +47,7 @@ export async function GET(
     createdAt: new Date(c.created_at as string).getTime(),
     updatedAt: new Date(c.updated_at as string).getTime(),
     completed: Boolean((c as { completed?: boolean }).completed),
+    priority: ((c as { priority?: string }).priority === "high" || (c as { priority?: string }).priority === "medium" || (c as { priority?: string }).priority === "low") ? (c as { priority: "high" | "medium" | "low" }).priority : "medium",
   }));
 
   return NextResponse.json({ comments });
@@ -70,6 +71,7 @@ export async function POST(
     xPct?: number | null;
     yPct?: number | null;
     screenshotUrl?: string | null;
+    priority?: string | null;
   };
 
   const timestampS = typeof body.timestampS === "number" ? body.timestampS : 0;
@@ -79,6 +81,7 @@ export async function POST(
   const xPct = typeof body.xPct === "number" ? body.xPct : null;
   const yPct = typeof body.yPct === "number" ? body.yPct : null;
   const screenshotUrl = body.screenshotUrl ?? null;
+  const priority = (body.priority === "high" || body.priority === "medium" || body.priority === "low") ? body.priority : "medium";
 
   if (!text && !drawing && !screenshotUrl) {
     return NextResponse.json({ error: "text, drawing or screenshotUrl required" }, { status: 400 });
@@ -106,8 +109,9 @@ export async function POST(
       author_name: authorName,
       author_id: authorId,
       anon_token: anonToken,
+      priority,
     })
-    .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at")
+    .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at, completed, priority")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
@@ -126,7 +130,8 @@ export async function POST(
     anonToken: data.anon_token ?? null,
     createdAt: new Date(data.created_at).getTime(),
     updatedAt: new Date(data.updated_at).getTime(),
-    completed: false,
+    completed: Boolean((data as { completed?: boolean }).completed),
+    priority: ((data as { priority?: string }).priority === "high" || (data as { priority?: string }).priority === "medium" || (data as { priority?: string }).priority === "low") ? (data as { priority: "high" | "medium" | "low" }).priority : "medium",
   };
 
   const response = NextResponse.json(comment);

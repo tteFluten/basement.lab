@@ -48,29 +48,32 @@ export async function PATCH(
   if (!comment) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await request.json() as { text?: string; completed?: boolean };
+  const body = await request.json() as { text?: string; completed?: boolean; priority?: string };
   const text = body.text !== undefined ? (body.text ?? "").trim() : undefined;
   const completed = typeof body.completed === "boolean" ? body.completed : undefined;
+  const priority = (body.priority === "high" || body.priority === "medium" || body.priority === "low") ? body.priority : undefined;
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (text !== undefined) updates.text = text;
   if (completed !== undefined) updates.completed = completed;
+  if (priority !== undefined) updates.priority = priority;
 
   const { data, error } = await supabase
     .from("feedback_comments")
     .update(updates)
     .eq("id", params.id)
-    .select("id, text, updated_at, completed")
+    .select("id, text, updated_at, completed, priority")
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
 
-  const res: { id: string; text?: string; updatedAt: number; completed?: boolean } = {
+  const res: { id: string; text?: string; updatedAt: number; completed?: boolean; priority?: "high" | "medium" | "low" } = {
     id: data.id,
     updatedAt: new Date(data.updated_at).getTime(),
   };
   if (data.text !== undefined) res.text = data.text;
   if ((data as { completed?: boolean }).completed !== undefined) res.completed = (data as { completed?: boolean }).completed;
+  if ((data as { priority?: string }).priority !== undefined) res.priority = (data as { priority?: "high" | "medium" | "low" }).priority;
   return NextResponse.json(res);
 }
 

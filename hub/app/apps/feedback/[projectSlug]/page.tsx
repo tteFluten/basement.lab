@@ -370,6 +370,9 @@ export default function ProjectPage() {
   const [uploadSpeed, setUploadSpeed] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const reviewPasteRef = useRef<HTMLInputElement>(null);
+  const [reviewFirstImage, setReviewFirstImage] = useState<File | null>(null);
+  const [reviewFirstPreview, setReviewFirstPreview] = useState<string | null>(null);
   const speedRef = useRef<{ lastLoaded: number; lastTime: number }>({ lastLoaded: 0, lastTime: 0 });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
@@ -393,16 +396,45 @@ export default function ProjectPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const reviewPreviewRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!showForm || sessionType !== "review") return;
+    const onPaste = (e: ClipboardEvent) => {
+      const item = e.clipboardData?.items?.[0];
+      if (!item || !item.type.startsWith("image/")) return;
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) return;
+      if (reviewPreviewRef.current) URL.revokeObjectURL(reviewPreviewRef.current);
+      const url = URL.createObjectURL(file);
+      reviewPreviewRef.current = url;
+      setReviewFirstImage(file);
+      setReviewFirstPreview(url);
+      setUploadError(null);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("paste", onPaste);
+      if (reviewPreviewRef.current) URL.revokeObjectURL(reviewPreviewRef.current);
+      reviewPreviewRef.current = null;
+    };
+  }, [showForm, sessionType]);
+
   function resetForm() {
     setNewTitle("");
     setNewVersion("");
     setNewUrl("");
     setSelectedFile(null);
+    setReviewFirstImage(null);
+    if (reviewFirstPreview) URL.revokeObjectURL(reviewFirstPreview);
+    setReviewFirstPreview(null);
+    reviewPreviewRef.current = null;
     setUploadStage("idle");
     setUploadPercent(0);
     setUploadSpeed(null);
     setUploadError(null);
     if (fileRef.current) fileRef.current.value = "";
+    if (reviewPasteRef.current) reviewPasteRef.current.value = "";
   }
 
   async function uploadImageFile(file: File): Promise<string> {
@@ -476,10 +508,27 @@ export default function ProjectPage() {
         });
         if (!res.ok) { setUploadError("Failed to create session"); setUploadStage("idle"); return; }
         const newSession = await res.json();
+        if (reviewFirstImage) {
+          setUploadStage("uploading");
+          setUploadPercent(50);
+          try {
+            const screenshotUrl = await uploadImageFile(reviewFirstImage);
+            const commentRes = await fetch(`/api/feedback/sessions/${newSession.id}/comments`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                text: "Screenshot",
+                screenshotUrl,
+                authorName: authSession?.user?.name ?? "Anonymous",
+              }),
+            });
+            if (!commentRes.ok) { /* ignore */ }
+          } catch { /* ignore first card error */ }
+        }
+        setUploadStage("idle");
         setSessions((prev) => [newSession, ...prev]);
         setShowForm(false);
         resetForm();
-        // Optional: capture screenshot in background for card thumbnail
         captureUrlScreenshot(trimmedUrl).then(async (screenshotUrl) => {
           if (!screenshotUrl) return;
           await fetch(`/api/feedback/sessions/${newSession.id}`, {
@@ -856,7 +905,17 @@ export default function ProjectPage() {
                 <button
                   key={type}
                   type="button"
-                  onClick={() => { setSessionType(type); setSelectedFile(null); setNewUrl(""); setUploadError(null); if (fileRef.current) fileRef.current.value = ""; }}
+                  onClick={() => {
+                    setSessionType(type);
+                    setSelectedFile(null);
+                    setNewUrl("");
+                    setUploadError(null);
+                    setReviewFirstImage(null);
+                    if (reviewFirstPreview) URL.revokeObjectURL(reviewFirstPreview);
+                    setReviewFirstPreview(null);
+                    if (fileRef.current) fileRef.current.value = "";
+                    if (reviewPasteRef.current) reviewPasteRef.current.value = "";
+                  }}
                   className={`relative flex flex-col items-center justify-center gap-3 py-8 transition-all ${
                     i < 2 ? "border-r border-border" : ""
                   } ${active ? "bg-fg text-bg" : "bg-bg-muted text-fg-muted hover:text-fg hover:bg-bg-muted/60"}`}
@@ -911,25 +970,99 @@ export default function ProjectPage() {
               </div>
             </div>
 
-            {/* Review: URL (opens in new tab) */}
+            {/* Review: URL (opens in new tab) + paste/drop zone */}
             {!uploading && sessionType === "review" && (
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">Reference URL (opens in new tab)</label>
-                <div className="relative">
-                  <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-fg-muted/40 pointer-events-none" />
-                  <input
-                    type="url"
-                    value={newUrl}
-                    onChange={(e) => setNewUrl(e.target.value)}
-                    placeholder="https://staging.example.com/page"
-                    disabled={uploading}
-                    className="w-full bg-bg-muted border border-border pl-10 pr-4 py-3.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/40"
-                  />
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">Reference URL (opens in new tab)</label>
+                  <div className="relative">
+                    <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-fg-muted/40 pointer-events-none" />
+                    <input
+                      type="url"
+                      value={newUrl}
+                      onChange={(e) => setNewUrl(e.target.value)}
+                      placeholder="https://staging.example.com/page"
+                      disabled={uploading}
+                      className="w-full bg-bg-muted border border-border pl-10 pr-4 py-3.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/40"
+                    />
+                  </div>
                 </div>
-                <p className="text-[11px] font-mono text-fg-muted/40 pt-0.5">
-                  Add feedback cards with paste (Ctrl+V) or upload, draw, and comment. View as checklist or export for Linear.
-                </p>
-              </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">First screenshot (optional)</label>
+                  <div
+                    tabIndex={0}
+                    role="button"
+                    onPaste={(e) => {
+                      const item = e.clipboardData?.items?.[0];
+                      if (!item || !item.type.startsWith("image/")) return;
+                      e.preventDefault();
+                      const file = item.getAsFile();
+                      if (!file) return;
+                      if (reviewFirstPreview) URL.revokeObjectURL(reviewFirstPreview);
+                      setReviewFirstImage(file);
+                      setReviewFirstPreview(URL.createObjectURL(file));
+                      setUploadError(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer?.files?.[0];
+                      if (!file || !file.type.startsWith("image/")) return;
+                      if (reviewFirstPreview) URL.revokeObjectURL(reviewFirstPreview);
+                      setReviewFirstImage(file);
+                      setReviewFirstPreview(URL.createObjectURL(file));
+                      setUploadError(null);
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() => reviewPasteRef.current?.click()}
+                    className={`relative flex flex-col items-center justify-center gap-3 py-10 border border-dashed cursor-pointer transition-all outline-none focus:ring-2 focus:ring-fg-muted/30 ${
+                      reviewFirstImage
+                        ? "border-fg-muted bg-bg-muted"
+                        : "border-border hover:border-fg-muted hover:bg-bg-muted/40"
+                    }`}
+                  >
+                    <input
+                      ref={reviewPasteRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        if (!file) return;
+                        if (reviewFirstPreview) URL.revokeObjectURL(reviewFirstPreview);
+                        setReviewFirstImage(file);
+                        setReviewFirstPreview(URL.createObjectURL(file));
+                        setUploadError(null);
+                        e.target.value = "";
+                      }}
+                    />
+                    {reviewFirstImage ? (
+                      <>
+                        <div className="w-20 h-20 flex items-center justify-center border border-fg-muted/30 bg-bg overflow-hidden">
+                          {reviewFirstPreview && (
+                            <img src={reviewFirstPreview} alt="" className="max-w-full max-h-full object-contain" />
+                          )}
+                        </div>
+                        <p className="text-xs font-mono text-fg-muted truncate max-w-xs px-2">{reviewFirstImage.name}</p>
+                        <button
+                          type="button"
+                          onClick={(ev) => { ev.stopPropagation(); setReviewFirstImage(null); if (reviewFirstPreview) URL.revokeObjectURL(reviewFirstPreview); setReviewFirstPreview(null); }}
+                          className="absolute top-3 right-3 p-1.5 text-fg-muted hover:text-fg border border-border hover:border-fg-muted transition-colors bg-bg"
+                        >
+                          <X size={12} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <ListChecks size={28} strokeWidth={1} className="text-fg-muted/50" />
+                        <p className="text-sm font-mono text-fg-muted text-center px-4">
+                          Paste (Ctrl+V) or drop image here
+                        </p>
+                        <p className="text-[11px] font-mono text-fg-muted/40">Optional — add more cards after creating the session</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
 
             {/* File drop zone */}

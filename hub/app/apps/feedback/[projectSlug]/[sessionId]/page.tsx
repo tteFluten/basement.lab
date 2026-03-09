@@ -78,6 +78,7 @@ export default function SessionPage() {
     xPct?: number | null;
     yPct?: number | null;
     screenshotUrl?: string | null;
+    priority?: "high" | "medium" | "low";
   }) => {
     const resolvedName = currentUserId ? data.authorName : getOrPromptAnonName();
     const res = await fetch(`/api/feedback/sessions/${sessionId}/comments`, {
@@ -91,6 +92,7 @@ export default function SessionPage() {
         xPct: data.xPct ?? null,
         yPct: data.yPct ?? null,
         screenshotUrl: data.screenshotUrl ?? null,
+        priority: data.priority ?? "medium",
       }),
     });
     if (!res.ok) throw new Error("Failed to save comment");
@@ -128,6 +130,17 @@ export default function SessionPage() {
     if (!res.ok) return;
     const updated = await res.json();
     setComments((prev) => prev.map((c) => c.id === id ? { ...c, completed: updated.completed ?? c.completed } : c));
+  }, []);
+
+  const handleSetPriority = useCallback(async (id: string, priority: "high" | "medium" | "low") => {
+    const res = await fetch(`/api/feedback/comments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priority }),
+    });
+    if (!res.ok) return;
+    const updated = await res.json();
+    setComments((prev) => prev.map((c) => c.id === id ? { ...c, priority: updated.priority ?? c.priority } : c));
   }, []);
 
   const handleSaveMeta = useCallback(async (e: React.FormEvent) => {
@@ -286,6 +299,7 @@ export default function SessionPage() {
               onEditComment={handleEdit}
               onDeleteComment={handleDelete}
               onToggleCompleted={handleToggleCompleted}
+              onSetPriority={handleSetPriority}
             />
           ) : fbSession.videoUrl ? (
             <div className="flex-1 overflow-y-auto bg-[#0d0d0d] flex flex-col">

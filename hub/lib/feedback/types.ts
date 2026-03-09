@@ -34,6 +34,9 @@ export interface FeedbackSession {
   commentCount?: number;
 }
 
+/** Priority for review items */
+export type CommentPriority = "high" | "medium" | "low";
+
 export interface FeedbackComment {
   id: string;
   sessionId: string;
@@ -50,4 +53,6 @@ export interface FeedbackComment {
   updatedAt: number;
   /** For review checklist view */
   completed?: boolean;
+  /** For review: high, medium, low */
+  priority?: CommentPriority | null;
 }
