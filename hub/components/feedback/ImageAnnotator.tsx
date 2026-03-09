@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { PenTool, Trash2, Send, X, Loader2, ZoomIn } from "lucide-react";
+import { PenTool, Trash2, Send, X, Loader2, ZoomIn, ClipboardPaste, Upload, Clock } from "lucide-react";
 import type { DrawingPath, Point, FeedbackComment } from "@/lib/feedback/types";
+import { uploadFeedbackImage } from "@/lib/uploadFeedbackImage";
+import { FeedbackHistoryImagePicker } from "./FeedbackHistoryImagePicker";
 
 const DRAW_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#ffffff"];
 
@@ -20,6 +22,7 @@ interface ImageAnnotatorProps {
     xPct: number;
     yPct: number;
     priority?: "high" | "medium" | "low";
+    screenshotUrl?: string | null;
   }) => Promise<void>;
   onSelectComment: (id: string | null) => void;
 }
@@ -49,6 +52,10 @@ export function ImageAnnotator({
   const [currentPaths, setCurrentPaths] = useState<DrawingPath[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawColor, setDrawColor] = useState(DRAW_COLORS[0]);
+  const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [historyPickerOpen, setHistoryPickerOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const redrawCanvas = useCallback((paths: DrawingPath[]) => {
     const canvas = canvasRef.current;
@@ -88,6 +95,7 @@ export function ImageAnnotator({
     setPendingPin({ xPct, yPct });
     setCommentText("");
     setCurrentPaths([]);
+    setAttachedImageUrl(null);
     redrawCanvas([]);
     onSelectComment(null);
   }
@@ -138,7 +146,8 @@ export function ImageAnnotator({
 
   async function handleSaveComment() {
     if (!pendingPin) return;
-    if (!commentText.trim() && currentPaths.length === 0) return;
+    const hasContent = commentText.trim().length > 0 || currentPaths.length > 0 || !!attachedImageUrl;
+    if (!hasContent) return;
     setSaving(true);
     try {
       await onAddComment({
@@ -149,10 +158,12 @@ export function ImageAnnotator({
         xPct: pendingPin.xPct,
         yPct: pendingPin.yPct,
         priority: "medium",
+        screenshotUrl: attachedImageUrl ?? undefined,
       });
       setPendingPin(null);
       setCommentText("");
       setCurrentPaths([]);
+      setAttachedImageUrl(null);
       redrawCanvas([]);
       setIsDrawingMode(false);
     } finally {
@@ -164,9 +175,50 @@ export function ImageAnnotator({
     setPendingPin(null);
     setCommentText("");
     setCurrentPaths([]);
+    setAttachedImageUrl(null);
     redrawCanvas([]);
     setIsDrawingMode(false);
   }
+
+  const handlePasteImage = useCallback(async (e: ClipboardEvent) => {
+    if (!pendingPin) return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        if (!blob) return;
+        setUploadingImage(true);
+        try {
+          const url = await uploadFeedbackImage(blob, "paste.png");
+          if (url) setAttachedImageUrl(url);
+        } finally {
+          setUploadingImage(false);
+        }
+        return;
+      }
+    }
+  }, [pendingPin]);
+
+  useEffect(() => {
+    if (!pendingPin) return;
+    document.addEventListener("paste", handlePasteImage);
+    return () => document.removeEventListener("paste", handlePasteImage);
+  }, [pendingPin, handlePasteImage]);
+
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    e.target.value = "";
+    setUploadingImage(true);
+    try {
+      const url = await uploadFeedbackImage(file, file.name);
+      if (url) setAttachedImageUrl(url);
+    } finally {
+      setUploadingImage(false);
+    }
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#0d0d0d]">
@@ -289,6 +341,57 @@ export function ImageAnnotator({
               )}
               <span className="text-[10px] text-fg-muted/50 font-mono ml-auto">Click image to move pin</span>
             </div>
+            {/* Attach image */}
+            <div>
+              <span className="text-[11px] font-mono text-fg-muted uppercase tracking-wider block mb-2">Attach image</span>
+              {attachedImageUrl ? (
+                <div className="flex items-center gap-3">
+                  <img src={attachedImageUrl} alt="" className="w-16 h-16 object-cover border border-border rounded" />
+                  <button
+                    type="button"
+                    onClick={() => setAttachedImageUrl(null)}
+                    className="text-xs font-mono text-fg-muted hover:text-red-400 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-border text-fg-muted hover:text-fg hover:border-fg-muted disabled:opacity-50 transition-colors"
+                  >
+                    {uploadingImage ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                    Upload
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
+                    title="Paste (Ctrl+V) when focused"
+                  >
+                    <ClipboardPaste size={12} />
+                    Paste (Ctrl+V)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPickerOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
+                  >
+                    <Clock size={12} />
+                    From history
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+              )}
+            </div>
             {/* Text + actions */}
             <div className="flex gap-2 items-end">
               <textarea
@@ -303,7 +406,7 @@ export function ImageAnnotator({
               <div className="flex flex-col gap-1.5">
                 <button
                   onClick={handleSaveComment}
-                  disabled={saving || (!commentText.trim() && currentPaths.length === 0)}
+                  disabled={saving || (!commentText.trim() && currentPaths.length === 0 && !attachedImageUrl)}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-mono uppercase bg-fg text-bg hover:opacity-80 disabled:opacity-40 transition-opacity"
                 >
                   {saving ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
@@ -325,6 +428,12 @@ export function ImageAnnotator({
           </div>
         )}
       </div>
+
+      <FeedbackHistoryImagePicker
+        open={historyPickerOpen}
+        onClose={() => setHistoryPickerOpen(false)}
+        onSelect={(url) => { setAttachedImageUrl(url); setHistoryPickerOpen(false); }}
+      />
     </div>
   );
 }

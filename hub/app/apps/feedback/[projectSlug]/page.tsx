@@ -373,6 +373,7 @@ export default function ProjectPage() {
   const reviewPasteRef = useRef<HTMLInputElement>(null);
   const [reviewFirstImage, setReviewFirstImage] = useState<File | null>(null);
   const [reviewFirstPreview, setReviewFirstPreview] = useState<string | null>(null);
+  const [ogPreview, setOgPreview] = useState<{ image: string; title: string | null; siteName: string | null } | null>(null);
   const speedRef = useRef<{ lastLoaded: number; lastTime: number }>({ lastLoaded: 0, lastTime: 0 });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
@@ -420,6 +421,37 @@ export default function ProjectPage() {
     };
   }, [showForm, sessionType]);
 
+  // Fetch OG preview when URL changes (debounced)
+  useEffect(() => {
+    if (sessionType !== "review" || !showForm) return;
+    const trimmed = newUrl.trim();
+    if (!trimmed) {
+      setOgPreview(null);
+      return;
+    }
+    try {
+      new URL(trimmed);
+    } catch {
+      setOgPreview(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/og-preview?url=${encodeURIComponent(trimmed)}`);
+        if (!res.ok) { setOgPreview(null); return; }
+        const data = await res.json();
+        if (data.image) {
+          setOgPreview({ image: data.image, title: data.title ?? null, siteName: data.siteName ?? null });
+        } else {
+          setOgPreview(null);
+        }
+      } catch {
+        setOgPreview(null);
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [newUrl, sessionType, showForm]);
+
   function resetForm() {
     setNewTitle("");
     setNewVersion("");
@@ -429,6 +461,7 @@ export default function ProjectPage() {
     if (reviewFirstPreview) URL.revokeObjectURL(reviewFirstPreview);
     setReviewFirstPreview(null);
     reviewPreviewRef.current = null;
+    setOgPreview(null);
     setUploadStage("idle");
     setUploadPercent(0);
     setUploadSpeed(null);
@@ -986,6 +1019,15 @@ export default function ProjectPage() {
                       className="w-full bg-bg-muted border border-border pl-10 pr-4 py-3.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/40"
                     />
                   </div>
+                  {ogPreview && (
+                    <div className="flex items-center gap-3 p-2.5 border border-border bg-bg-muted/50 rounded">
+                      <img src={ogPreview.image} alt="" className="w-16 h-16 object-cover border border-border shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        {ogPreview.title && <p className="text-xs font-mono text-fg truncate">{ogPreview.title}</p>}
+                        {ogPreview.siteName && <p className="text-[11px] font-mono text-fg-muted truncate">{ogPreview.siteName}</p>}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-mono uppercase tracking-[0.15em] text-fg-muted">First screenshot (optional)</label>
