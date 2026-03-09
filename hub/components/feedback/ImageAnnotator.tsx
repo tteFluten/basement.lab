@@ -192,6 +192,12 @@ export function ImageAnnotator({
               if (canvasRef.current) {
                 canvasRef.current.width = w;
                 canvasRef.current.height = h;
+                // Redraw overlay after canvas resize (setting width/height clears it)
+                if (!pendingPin && overlayDrawing) {
+                  redrawCanvas(overlayDrawing);
+                } else if (!pendingPin && !overlayDrawing) {
+                  redrawCanvas([]);
+                }
               }
             }}
             draggable={false}
