@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Clock, Edit2, Trash2, Check, X, PenTool, MessageSquare, MapPin, Globe } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Clock, Edit2, Trash2, Check, X, PenTool, MessageSquare, MapPin, Globe, ListChecks, ArrowUpDown } from "lucide-react";
 import type { FeedbackComment, DrawingPath, SessionType, CommentPriority } from "@/lib/feedback/types";
+
+type FilterMode = "all" | "done" | "pending";
+type SortMode = "order" | "priority";
 
 interface CommentListProps {
   comments: FeedbackComment[];
@@ -37,10 +40,23 @@ function initials(name: string): string {
 
 const PRIORITY_LABELS: Record<CommentPriority, string> = { high: "H", medium: "M", low: "L" };
 
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+function priorityBadgeClass(p: CommentPriority, isActive: boolean): string {
+  if (isActive) return "bg-fg text-bg border-fg";
+  if (p === "high") return "bg-red-500/20 text-red-500 border-red-500/40 hover:bg-red-500/30";
+  if (p === "low") return "bg-fg-muted/20 text-fg-muted border-border hover:bg-fg-muted/30";
+  return "bg-amber-500/20 text-amber-600 border-amber-500/40 hover:bg-amber-500/30";
+}
+
 export function CommentList({ comments, currentUserId, anonToken, fps, sessionType = "video", selectedCommentId, onCommentClick, onEdit, onDelete, onToggleCompleted, onSetPriority }: CommentListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("order");
+
+  const hasFilterSort = (sessionType === "video" || sessionType === "image") && (onToggleCompleted || onSetPriority);
 
   function isOwner(c: FeedbackComment) {
     if (currentUserId && c.authorId === currentUserId) return true;
@@ -60,28 +76,70 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
     finally { setBusyId(null); }
   }
 
-  const sorted = [...comments].sort((a, b) =>
-    sessionType === "video" ? a.timestampS - b.timestampS : a.createdAt - b.createdAt
-  );
+  const filteredAndSorted = useMemo(() => {
+    let list = [...comments];
+    if (filterMode === "done") list = list.filter((c) => c.completed);
+    if (filterMode === "pending") list = list.filter((c) => !c.completed);
+    list.sort((a, b) => {
+      if (sortMode === "priority" && onSetPriority) {
+        const diff = PRIORITY_ORDER[a.priority ?? "medium"] - PRIORITY_ORDER[b.priority ?? "medium"];
+        if (diff !== 0) return diff;
+      }
+      return sessionType === "video" ? a.timestampS - b.timestampS : a.createdAt - b.createdAt;
+    });
+    return list;
+  }, [comments, filterMode, sortMode, sessionType, onSetPriority]);
 
   // Map comment id → 1-based pin index (image sessions only)
   const pinIndex = sessionType === "image"
-    ? new Map(sorted.map((c, i) => [c.id, i + 1]))
+    ? new Map(filteredAndSorted.map((c, i) => [c.id, i + 1]))
     : null;
 
   return (
     <div className="flex flex-col w-80 shrink-0 border-l border-border bg-bg h-full">
       {/* Header */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-bg-muted">
-        <span className="text-xs font-mono uppercase tracking-widest text-fg-muted">Feedback</span>
-        {comments.length > 0 && (
-          <span className="text-xs font-mono bg-bg border border-border text-fg px-2 py-0.5">{comments.length}</span>
+      <div className="shrink-0 flex flex-col gap-2 px-4 py-3 border-b border-border bg-bg-muted">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-mono uppercase tracking-widest text-fg-muted">Feedback</span>
+          {comments.length > 0 && (
+            <span className="text-xs font-mono bg-bg border border-border text-fg px-2 py-0.5">{comments.length}</span>
+          )}
+        </div>
+        {hasFilterSort && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex border border-border">
+              {(["all", "pending", "done"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilterMode(f)}
+                  className={`px-2 py-0.5 text-[10px] font-mono transition-colors border-r border-border last:border-r-0 ${
+                    filterMode === f ? "bg-fg text-bg" : "text-fg-muted hover:text-fg hover:bg-bg-muted"
+                  }`}
+                  title={f === "all" ? "All" : f === "done" ? "Done only" : "Pending only"}
+                >
+                  {f === "all" ? "All" : f === "done" ? "Done" : "Todo"}
+                </button>
+              ))}
+            </div>
+            {onSetPriority && (
+              <button
+                type="button"
+                onClick={() => setSortMode((s) => (s === "order" ? "priority" : "order"))}
+                className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono border border-border text-fg-muted hover:text-fg transition-colors"
+                title={sortMode === "order" ? "Sort by priority (H first)" : "Sort by order"}
+              >
+                {sortMode === "order" ? <ArrowUpDown size={10} /> : <ListChecks size={10} />}
+                {sortMode === "order" ? "1→n" : "H→L"}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">
-        {sorted.length === 0 ? (
+        {filteredAndSorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
             <MessageSquare size={28} strokeWidth={1} className="text-fg-muted opacity-40" />
             <p className="text-xs font-mono text-fg-muted">No feedback yet</p>
@@ -93,7 +151,7 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {sorted.map((c) => {
+            {filteredAndSorted.map((c) => {
               const owner = isOwner(c);
               const isEditing = editingId === c.id;
               const isBusy = busyId === c.id;
@@ -153,11 +211,7 @@ export function CommentList({ comments, currentUserId, anonToken, fps, sessionTy
                               key={p}
                               type="button"
                               onClick={() => onSetPriority(c.id, p)}
-                              className={`px-1.5 py-0 text-[10px] font-mono border transition-colors ${
-                                (c.priority ?? "medium") === p
-                                  ? "bg-fg text-bg border-fg"
-                                  : "border-border text-fg-muted/60 hover:text-fg-muted"
-                              }`}
+                              className={`shrink-0 w-5 h-5 flex items-center justify-center text-[9px] font-bold border transition-colors ${priorityBadgeClass(p, (c.priority ?? "medium") === p)}`}
                               title={`Priority: ${p}`}
                             >
                               {PRIORITY_LABELS[p]}
