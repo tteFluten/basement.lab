@@ -606,7 +606,7 @@ export function ReviewViewer({
                       .sort((a, b) => {
                         if (notesSort !== "priority") return 0;
                         const order = { high: 0, medium: 1, low: 2 };
-                        return (order[a.priority ?? "medium"] - order[b.priority ?? "medium") || (a.createdAt - b.createdAt);
+                        return (order[a.priority ?? "medium"] - order[b.priority ?? "medium"]) || (a.createdAt - b.createdAt);
                       })
                       .map((note, i) => {
                       const isSelected = selectedCommentId === note.id;
