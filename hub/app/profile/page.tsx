@@ -84,6 +84,25 @@ export default function ProfilePage() {
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  const compressImage = (file: File, maxPx = 512, quality = 0.85): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = objectUrl;
+    });
+
   const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -91,12 +110,7 @@ export default function ProfilePage() {
 
     setUploadingAvatar(true);
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const dataUrl = await compressImage(file);
 
       // Upload to R2
       const uploadRes = await fetch("/api/avatar", {
@@ -120,7 +134,7 @@ export default function ProfilePage() {
         setAvatarUrl(uploadData.url);
         setSaved(true);
       } else {
-        alert("Avatar uploaded but failed to save. Try saving manually.");
+        // Still update local state so the UI shows the new avatar
         setAvatarUrl(uploadData.url);
       }
     } catch {

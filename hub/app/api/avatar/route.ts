@@ -28,12 +28,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const mimeMatch = dataUrl.match(/^data:(image\/\w+);base64,/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const ext = mime === "image/png" ? "png" : "jpg";
   const b64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
   const buffer = Buffer.from(b64, "base64");
-  const key = `avatars/${session.user.id}/${Date.now()}.png`;
+  const key = `avatars/${session.user.id}/${Date.now()}.${ext}`;
 
   try {
-    const url = await uploadBuffer(key, buffer, "image/png");
+    const url = await uploadBuffer(key, buffer, mime);
     return NextResponse.json({ url });
   } catch (e) {
     console.error("Avatar upload failed:", e);

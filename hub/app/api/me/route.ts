@@ -80,9 +80,9 @@ export async function PATCH(request: NextRequest) {
     .select("id, email, full_name, nickname, avatar_url, role")
     .single();
 
-  if (error) {
+  if (error || !data) {
     console.error("users update:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error?.message ?? "User not found" }, { status: 500 });
   }
 
   return NextResponse.json({
