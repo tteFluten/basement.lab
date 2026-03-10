@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       const sql = neon(process.env.DATABASE_URL ?? process.env.NEON_DATABASE_URL ?? "");
       const rows = await sql`
         SELECT p.id, p.name, p.client, p.thumbnail_url, p.links, p.start_date, p.end_date, p.created_at,
-               (pm.user_id IS NOT NULL) AS "isMember"
+               (pm.user_id IS NOT NULL) AS is_member
         FROM projects p
         LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ${session.user.id}
         ORDER BY p.name
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       const items = rows.map((p) => ({
         ...p,
         links: p.links ?? {},
-        isMember: Boolean(p.isMember),
+        isMember: Boolean(p.is_member),
       }));
       return NextResponse.json({ items });
     }
