@@ -76,6 +76,7 @@ export default function ProfilePage() {
         const d = await res.json();
         setProfile(d);
         setSaved(true);
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("basement-profile-updated"));
       }
     } finally {
       setSaving(false);
@@ -133,6 +134,7 @@ export default function ProfilePage() {
       if (saveRes.ok) {
         setAvatarUrl(uploadData.url);
         setSaved(true);
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("basement-profile-updated"));
       } else {
         // Still update local state so the UI shows the new avatar
         setAvatarUrl(uploadData.url);

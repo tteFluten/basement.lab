@@ -146,11 +146,11 @@ function ProjectSelector() {
           className="scrollbar-menu absolute right-0 top-full mt-1 min-w-[220px] border border-border bg-bg-muted py-1 z-50 max-h-[360px] overflow-auto"
           role="menu"
         >
-          {/* My projects — selectable as active */}
+          {/* My projects — selectable as active, minus to leave */}
           {myProjects.length > 0 && (
             <>
               <p className="px-3 pt-1 pb-0.5 text-[10px] uppercase tracking-wider text-fg-muted select-none">
-                Mis proyectos
+                My projects
               </p>
               {myProjects.map((p) => (
                 <div key={p.id} className="flex items-center gap-1 px-2 py-1">
@@ -183,11 +183,11 @@ function ProjectSelector() {
             </>
           )}
 
-          {/* All other projects — joinable */}
+          {/* Other projects — plus to join */}
           {otherProjects.length > 0 && (
             <>
               <p className={`px-3 pb-0.5 text-[10px] uppercase tracking-wider text-fg-muted select-none ${myProjects.length > 0 ? "pt-3 border-t border-border mt-1" : "pt-1"}`}>
-                Todos los proyectos
+                Other projects (click + to join)
               </p>
               {otherProjects.map((p) => (
                 <div key={p.id} className="flex items-center gap-1 px-2 py-1">
@@ -412,10 +412,16 @@ function UserMenu() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then((d) => { if (d?.avatarUrl) setAvatarUrl(d.avatarUrl); })
-      .catch(() => {});
+    const fetchMe = () => {
+      fetch("/api/me")
+        .then((r) => r.json())
+        .then((d) => { if (d?.avatarUrl) setAvatarUrl(d.avatarUrl); else setAvatarUrl(null); })
+        .catch(() => {});
+    };
+    fetchMe();
+    const onProfileUpdated = () => fetchMe();
+    window.addEventListener("basement-profile-updated", onProfileUpdated);
+    return () => window.removeEventListener("basement-profile-updated", onProfileUpdated);
   }, [status]);
 
   useEffect(() => {
