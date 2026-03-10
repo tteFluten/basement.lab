@@ -375,6 +375,7 @@ export default function ProjectPage() {
   const [reviewFirstPreview, setReviewFirstPreview] = useState<string | null>(null);
   const [ogPreview, setOgPreview] = useState<{ image: string | null; title: string | null; siteName: string | null } | null>(null);
   const [ogLoading, setOgLoading] = useState(false);
+  const [ogError, setOgError] = useState(false);
   const speedRef = useRef<{ lastLoaded: number; lastTime: number }>({ lastLoaded: 0, lastTime: 0 });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
@@ -429,23 +430,27 @@ export default function ProjectPage() {
     if (!trimmed) {
       setOgPreview(null);
       setOgLoading(false);
+      setOgError(false);
       return;
     }
+    let urlToFetch: string;
     try {
-      new URL(trimmed);
+      urlToFetch = new URL(trimmed).href;
     } catch {
       setOgPreview(null);
       setOgLoading(false);
+      setOgError(false);
       return;
     }
     setOgLoading(true);
-    const urlToFetch = trimmed;
+    setOgError(false);
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`/api/og-preview?url=${encodeURIComponent(urlToFetch)}`);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           setOgPreview(null);
+          setOgError(true);
           return;
         }
         const hasData = data.title || data.image || data.siteName;
@@ -455,14 +460,17 @@ export default function ProjectPage() {
             title: data.title ?? null,
             siteName: data.siteName ?? null,
           });
+          setOgError(false);
           if (data.title) {
             setNewTitle((prev) => (prev.trim() ? prev : data.title.trim()));
           }
         } else {
           setOgPreview(null);
+          setOgError(true);
         }
       } catch {
         setOgPreview(null);
+        setOgError(true);
       } finally {
         setOgLoading(false);
       }
@@ -481,6 +489,7 @@ export default function ProjectPage() {
     reviewPreviewRef.current = null;
     setOgPreview(null);
     setOgLoading(false);
+    setOgError(false);
     setUploadStage("idle");
     setUploadPercent(0);
     setUploadSpeed(null);
@@ -1038,14 +1047,24 @@ export default function ProjectPage() {
                       className="w-full bg-bg-muted border border-border pl-10 pr-4 py-3.5 text-sm font-mono text-fg focus:outline-none focus:border-fg-muted disabled:opacity-50 placeholder:text-fg-muted/40"
                     />
                   </div>
-                  {(ogLoading || ogPreview) && (
+                  {(ogLoading || ogPreview || ogError) && (
                     <div className="flex items-center gap-3 p-2.5 border border-border bg-bg-muted/50 rounded">
                       {ogLoading ? (
                         <div className="w-16 h-16 flex items-center justify-center border border-border shrink-0 bg-bg-muted">
                           <Loader2 size={20} className="animate-spin text-fg-muted" />
                         </div>
+                      ) : ogError ? (
+                        <div className="w-16 h-16 flex items-center justify-center border border-border shrink-0 bg-bg-muted" title="Preview unavailable">
+                          <Globe size={16} className="text-fg-muted/50" />
+                        </div>
                       ) : ogPreview?.image ? (
-                        <img src={ogPreview.image} alt="" className="w-16 h-16 object-cover border border-border shrink-0" />
+                        <img
+                          src={ogPreview.image}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          className="w-16 h-16 object-cover border border-border shrink-0"
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        />
                       ) : (
                         <div className="w-16 h-16 flex items-center justify-center border border-border shrink-0 bg-bg-muted">
                           <Globe size={16} className="text-fg-muted/50" />
@@ -1055,6 +1074,7 @@ export default function ProjectPage() {
                         {ogPreview?.title && <p className="text-xs font-mono text-fg truncate">{ogPreview.title}</p>}
                         {ogPreview?.siteName && <p className="text-[11px] font-mono text-fg-muted truncate">{ogPreview.siteName}</p>}
                         {ogLoading && <p className="text-[11px] font-mono text-fg-muted/60">Fetching…</p>}
+                        {ogError && !ogLoading && <p className="text-[11px] font-mono text-fg-muted/60">Preview unavailable</p>}
                       </div>
                     </div>
                   )}
