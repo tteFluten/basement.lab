@@ -31,7 +31,7 @@ type Listener = () => void;
 
 const LS_KEY = "bl_gen_cache";
 const LS_TS_KEY = "bl_gen_cache_ts";
-const STALE_MS = 120_000;
+const STALE_MS = 300_000;
 const PHASE1_LIMIT = 20;
 const FAST_LIMIT = 50;
 const FULL_LIMIT = 150;
@@ -168,36 +168,24 @@ async function apiFetch(limit: number): Promise<CachedGeneration[] | null> {
 
 async function doFetch(full: boolean): Promise<void> {
   setRefreshing(true);
-  const staleItems = [...cachedItems]; // snapshot before any mutation
+  const staleItems = [...cachedItems];
   let didNotify = false;
   try {
     if (full) {
-      // Phase 1: small fetch — merge with stale cache, removing ghosts
       const phase1 = await apiFetch(PHASE1_LIMIT);
       if (phase1 && phase1.length > 0) {
         const phase1Ids = new Set(phase1.map((i) => i.id));
         const minPhase1Time = phase1.reduce((m, i) => Math.min(m, i.createdAt), Infinity);
-        // Keep stale items that are older than phase1's range (weren't queried yet)
-        // Items inside phase1's range that aren't in phase1 were deleted → drop them
-        // Cap at FULL_LIMIT so items beyond DB range don't haunt us
         const olderStale = staleItems
           .filter((i) => i.createdAt < minPhase1Time && !phase1Ids.has(i.id))
           .slice(0, FULL_LIMIT - phase1.length);
         cachedItems = [...phase1, ...olderStale];
         lastFetchTime = Date.now();
-        persistToStorage(); // persist merged result so next load starts clean
-        didNotify = true;
-        notify();
-      }
-      // Phase 2: full replace
-      const data = await apiFetch(FULL_LIMIT);
-      if (data && data.length >= 0) {
-        cachedItems = data;
-        lastFetchTime = Date.now();
         persistToStorage();
         didNotify = true;
         notify();
       }
+      // Skip phase 2 full fetch — phase 1 merge is enough to stay fresh
     } else {
       const data = await apiFetch(FAST_LIMIT);
       if (data && data.length >= 0) {
@@ -209,9 +197,8 @@ async function doFetch(full: boolean): Promise<void> {
       }
     }
   } catch {
-    // Keep existing cache on failure; don't clear
+    // Keep existing cache on failure
   } finally {
-    // Always notify so subscribers can dismiss their loading state even on failure
     if (!didNotify) notify();
     setRefreshing(false);
   }
@@ -253,7 +240,7 @@ export async function fetchGenerations(force = false, full = false): Promise<Cac
  *  Pauses when the tab is hidden. Returns a cleanup function.
  *  Safe to call multiple times — subsequent calls are no-ops until the previous one is stopped. */
 let _bgTimer: ReturnType<typeof setTimeout> | null = null;
-export function startBackgroundSync(intervalMs = 60_000): () => void {
+export function startBackgroundSync(intervalMs = 300_000): () => void {
   if (typeof window === "undefined" || _bgTimer !== null) return () => {};
   const tick = () => {
     if (!document.hidden) fetchGenerations(true, false).catch(() => {});

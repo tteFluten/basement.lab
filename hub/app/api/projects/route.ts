@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
 
   const projectColumns = "id, name, client, thumbnail_url, links, start_date, end_date, created_at";
 
+  const wantMembers = request.nextUrl.searchParams.get("members") === "1";
+
   if (isAdmin) {
     const { data, error } = await supabase
       .from("projects")
@@ -36,22 +38,24 @@ export async function GET(request: NextRequest) {
     }
     type ProjectRow = { id: string; links?: object };
     const projects = (data ?? []) as ProjectRow[];
-    const ids = projects.map((p) => p.id);
-    let membersData: { project_id: string; user_id: string }[] | null = null;
-    if (ids.length > 0) {
-      const res = await supabase
-        .from("project_members")
-        .select("project_id, user_id")
-        .in("project_id", ids);
-      membersData = res.data;
+
+    let membersByProject = new Map<string, string[]>();
+    if (wantMembers) {
+      const ids = projects.map((p) => p.id);
+      if (ids.length > 0) {
+        const res = await supabase
+          .from("project_members")
+          .select("project_id, user_id")
+          .in("project_id", ids);
+        for (const row of res.data ?? []) {
+          if (!row?.project_id || !row?.user_id) continue;
+          const arr = membersByProject.get(row.project_id) ?? [];
+          arr.push(row.user_id);
+          membersByProject.set(row.project_id, arr);
+        }
+      }
     }
-    const membersByProject = new Map<string, string[]>();
-    for (const row of membersData ?? []) {
-      if (!row?.project_id || !row?.user_id) continue;
-      const arr = membersByProject.get(row.project_id) ?? [];
-      arr.push(row.user_id);
-      membersByProject.set(row.project_id, arr);
-    }
+
     const items = projects.map((p) => ({
       ...p,
       links: p.links ?? {},
@@ -82,16 +86,20 @@ export async function GET(request: NextRequest) {
   }
   type ProjectRow = { id: string; links?: object };
   const projects = (data ?? []) as ProjectRow[];
-  const { data: membersData } = await supabase
-    .from("project_members")
-    .select("project_id, user_id")
-    .in("project_id", projectIds);
-  const membersByProject = new Map<string, string[]>();
-  for (const row of membersData ?? []) {
-    const arr = membersByProject.get(row.project_id) ?? [];
-    arr.push(row.user_id);
-    membersByProject.set(row.project_id, arr);
+
+  let membersByProject = new Map<string, string[]>();
+  if (wantMembers && projectIds.length > 0) {
+    const { data: membersData } = await supabase
+      .from("project_members")
+      .select("project_id, user_id")
+      .in("project_id", projectIds);
+    for (const row of membersData ?? []) {
+      const arr = membersByProject.get(row.project_id) ?? [];
+      arr.push(row.user_id);
+      membersByProject.set(row.project_id, arr);
+    }
   }
+
   const items = projects.map((p) => ({
     ...p,
     links: p.links ?? {},

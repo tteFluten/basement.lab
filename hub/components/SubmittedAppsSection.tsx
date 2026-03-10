@@ -90,12 +90,15 @@ export function SubmittedAppsSection({ onAddClick, refreshTrigger = 0 }: Props) 
   const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState("");
 
+  const [fetched, setFetched] = useState(false);
+
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/submitted-apps");
       const json = await res.json().catch(() => ({}));
       setItems(parseItems(json));
+      setFetched(true);
     } catch {
       setItems([]);
     } finally {
@@ -104,8 +107,12 @@ export function SubmittedAppsSection({ onAddClick, refreshTrigger = 0 }: Props) 
   }, []);
 
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems, refreshTrigger]);
+    if (open && !fetched) fetchItems();
+  }, [open, fetched, fetchItems]);
+
+  useEffect(() => {
+    if (refreshTrigger > 0) fetchItems();
+  }, [refreshTrigger, fetchItems]);
 
   const filtered = useMemo(() => {
     let list = items;

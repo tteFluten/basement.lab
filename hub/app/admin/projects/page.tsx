@@ -283,22 +283,27 @@ export default function AdminProjectsPage() {
   const [savingMembers, setSavingMembers] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
 
-  const fetchProjects = useCallback(async () => {
-    const res = await fetch("/api/projects");
+  const [usersLoaded, setUsersLoaded] = useState(false);
+
+  const fetchProjects = useCallback(async (withMembers = false) => {
+    const url = withMembers ? "/api/projects?members=1" : "/api/projects";
+    const res = await fetch(url);
     const data = await res.json().catch(() => ({}));
     setProjects(Array.isArray(data?.items) ? data.items : []);
   }, []);
 
   const fetchUsers = useCallback(async () => {
+    if (usersLoaded) return;
     const res = await fetch("/api/users");
     const data = await res.json().catch(() => ({}));
     setUsers(Array.isArray(data?.items) ? data.items : []);
-  }, []);
+    setUsersLoaded(true);
+  }, [usersLoaded]);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchProjects(), fetchUsers()]).finally(() => setLoading(false));
-  }, [fetchProjects, fetchUsers]);
+    fetchProjects(true).finally(() => setLoading(false));
+  }, [fetchProjects]);
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
@@ -366,6 +371,7 @@ export default function AdminProjectsPage() {
   const openMembers = async (projectId: string, name: string) => {
     setMembersModal({ projectId, name });
     setMemberSearch("");
+    fetchUsers();
     const res = await fetch(`/api/projects/${projectId}/members`);
     const data = await res.json().catch(() => ({}));
     setMemberIds(Array.isArray(data?.userIds) ? data.userIds : []);
