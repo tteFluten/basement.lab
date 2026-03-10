@@ -47,9 +47,13 @@
       "Bash(unzip:*)",
       "Bash(npm install:*)",
       "Bash(rm:*)",
+<<<<<<< Updated upstream
       "Bash(git add:*)",
       "Bash(git -c user.name=\"Juan Lautaro Martin\" -c user.email=\"lautaro@basement.studio\" commit -m \"$\\(cat <<'EOF'\nfix: password_hash field mapping on first login\n\nrawQuery\\(\\) was splitting the SQL on $N placeholders and passing params\npositionally, ignoring the actual $N numbers. For UPDATE queries, filters\nlike .eq\\(\\) add their param first \\($1\\), then execUpdate\\(\\) adds SET params\n\\($2, $3...\\), producing \"SET col = $2 WHERE id = $1\". The neon template\nreceived params in array order, so values ended up in the wrong columns\n\\(password_hash got the id, updated_at got the hash, etc.\\).\n\nFix: extract $N indices in textual order and reorder queryParams to match.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)"
+=======
+      "Bash(git log --all --oneline --grep=\"project\" -i | head -20)"
+>>>>>>> Stashed changes
     ]
   }
 }

@@ -34,10 +34,11 @@ function formatDate(ms: number) {
 }
 
 function ProjectCard({
-  p, index, showJoin, onJoin, onLeave,
+  p, index, showJoin, showLeave, onJoin, onLeave,
 }: {
   p: FeedbackProject; index: number;
   showJoin?: boolean;
+  showLeave?: boolean;
   onJoin?: (slug: string) => Promise<void>;
   onLeave?: (slug: string) => Promise<void>;
 }) {
@@ -65,16 +66,21 @@ function ProjectCard({
     v.currentTime = 0;
   }
 
-  async function handleJoinLeave(e: React.MouseEvent) {
+  async function handleJoin(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!onJoin) return;
     setBusy(true);
-    try {
-      if (p.isMember && onLeave) await onLeave(p.slug);
-      else if (onJoin) await onJoin(p.slug);
-    } finally {
-      setBusy(false);
-    }
+    try { await onJoin(p.slug); } finally { setBusy(false); }
+  }
+
+  async function handleLeave(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!onLeave) return;
+    if (!confirm(`Leave "${p.name}"?`)) return;
+    setBusy(true);
+    try { await onLeave(p.slug); } finally { setBusy(false); }
   }
 
   return (
@@ -138,18 +144,24 @@ function ProjectCard({
         ) : (
           <span className="text-[11px] font-mono text-fg-muted/50">No sessions yet</span>
         )}
-        {showJoin && (
+        {showJoin && !p.isMember && (
           <button
-            onClick={handleJoinLeave}
+            onClick={handleJoin}
             disabled={busy}
-            className={`ml-auto flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono uppercase border transition-colors disabled:opacity-40 ${
-              p.isMember
-                ? "border-border text-fg-muted hover:text-red-400 hover:border-red-400/30"
-                : "border-border text-fg-muted hover:text-fg hover:border-fg-muted"
-            }`}
+            className="ml-auto flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono uppercase border border-border text-fg-muted hover:text-fg hover:border-fg-muted transition-colors disabled:opacity-40"
           >
-            {busy ? <Loader2 size={9} className="animate-spin" /> : p.isMember ? <LogOut size={9} /> : <UserPlus size={9} />}
-            {p.isMember ? "Leave" : "Join"}
+            {busy ? <Loader2 size={9} className="animate-spin" /> : <UserPlus size={9} />}
+            Join
+          </button>
+        )}
+        {showLeave && p.isMember && (
+          <button
+            onClick={handleLeave}
+            disabled={busy}
+            className="ml-auto flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono uppercase border border-border text-fg-muted hover:text-red-400 hover:border-red-400/30 transition-colors disabled:opacity-40"
+          >
+            {busy ? <Loader2 size={9} className="animate-spin" /> : <LogOut size={9} />}
+            Leave
           </button>
         )}
       </div>
@@ -440,7 +452,7 @@ export default function FeedbackPage() {
               <p className="text-[10px] font-mono uppercase tracking-widest text-fg-muted/50 mb-4">My projects</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {myProjects.map((p, index) => (
-                  <ProjectCard key={p.id} p={p} index={index} showJoin onJoin={handleJoin} onLeave={handleLeave} />
+                  <ProjectCard key={p.id} p={p} index={index} showLeave onLeave={handleLeave} />
                 ))}
               </div>
             </div>
@@ -452,7 +464,7 @@ export default function FeedbackPage() {
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {otherProjects.map((p, index) => (
-                  <ProjectCard key={p.id} p={p} index={index} showJoin onJoin={handleJoin} onLeave={handleLeave} />
+                  <ProjectCard key={p.id} p={p} index={index} showJoin onJoin={handleJoin} />
                 ))}
               </div>
             </div>

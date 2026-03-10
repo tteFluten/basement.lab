@@ -274,7 +274,7 @@ export default function AdminProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window === "undefined") return "list";
-    return (localStorage.getItem(VIEW_KEY) as ViewMode) || "list";
+    return (localStorage.getItem(VIEW_KEY) as ViewMode) || "table";
   });
   const [formProject, setFormProject] = useState<Project | null | "new">(null);
   const [formSaving, setFormSaving] = useState(false);
@@ -573,12 +573,17 @@ export default function AdminProjectsPage() {
                     </td>
                     <td className="py-2 px-3 text-fg-muted">{p.client ?? "—"}</td>
                     <td className="py-2 px-3">
-                      <div className="flex items-center gap-0.5">
-                        {members.slice(0, 3).map((u) => (
-                          <span key={u.id} title={u.full_name || u.email}><Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" /></span>
-                        ))}
-                        {members.length > 3 && <span className="text-[10px] text-fg-muted">+{members.length - 3}</span>}
-                      </div>
+                      {members.length === 0 ? (
+                        <span className="text-[11px] text-fg-muted/40">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {members.map((u) => (
+                            <span key={u.id} className="text-[11px] text-fg-muted bg-bg-muted border border-border px-1.5 py-0.5 whitespace-nowrap">
+                              {u.nickname || u.full_name || u.email}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="py-2 px-3">
                       <div className="flex gap-1">
