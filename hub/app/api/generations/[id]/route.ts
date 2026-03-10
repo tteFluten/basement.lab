@@ -24,8 +24,8 @@ export async function PATCH(
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const supabase = getDb();
-  const { data: row, error: fetchError } = await supabase
+  const db = getDb();
+  const { data: row, error: fetchError } = await db
     .from("generations")
     .select("id, user_id")
     .eq("id", id)
@@ -63,7 +63,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await db
     .from("generations")
     .update(updates)
     .eq("id", id);
@@ -98,8 +98,8 @@ export async function DELETE(
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const supabase = getDb();
-  const { data: row, error: fetchError } = await supabase
+  const db = getDb();
+  const { data: row, error: fetchError } = await db
     .from("generations")
     .select("id, user_id")
     .eq("id", id)
@@ -114,7 +114,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await db
     .from("generations")
     .delete()
     .eq("id", id);

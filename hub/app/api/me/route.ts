@@ -23,8 +23,8 @@ export async function GET() {
     });
   }
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("users")
     .select("id, email, full_name, nickname, avatar_url, role")
     .eq("id", session.user.id)
@@ -72,8 +72,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Profile persistence not configured" }, { status: 503 });
   }
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("users")
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", session.user.id)
@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest) {
     .single();
 
   if (error) {
-    console.error("Supabase users update:", error);
+    console.error("users update:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

@@ -9,8 +9,8 @@ export const runtime = "nodejs";
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   if (!hasDb()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("submitted_apps")
     .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at, external")
     .eq("id", params.id)
@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   let submittedBy: string | null = null;
   if (data.user_id) {
-    const { data: u } = await supabase.from("users").select("full_name, email").eq("id", data.user_id).single();
+    const { data: u } = await db.from("users").select("full_name, email").eq("id", data.user_id).single();
     if (u) submittedBy = u.full_name?.trim() || u.email || null;
   }
 
@@ -69,8 +69,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    const supabase = getDb();
-    const { error } = await supabase.from("submitted_apps").update(updates).eq("id", params.id);
+    const db = getDb();
+    const { error } = await db.from("submitted_apps").update(updates).eq("id", params.id);
 
     if (error) {
       console.error("PATCH /api/submitted-apps/[id]:", error);
@@ -92,8 +92,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   }
   if (!hasDb()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
 
-  const supabase = getDb();
-  const { error } = await supabase.from("submitted_apps").delete().eq("id", params.id);
+  const db = getDb();
+  const { error } = await db.from("submitted_apps").delete().eq("id", params.id);
 
   if (error) {
     console.error("DELETE /api/submitted-apps/[id]:", error);

@@ -22,8 +22,8 @@ export async function GET(
 ) {
   if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("feedback_comments")
     .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at, completed, priority")
     .eq("session_id", params.id)
@@ -60,7 +60,7 @@ export async function POST(
 ) {
   if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const supabase = getDb();
+  const db = getDb();
   const session = await getServerSession(authOptions);
 
   const body = await request.json() as {
@@ -96,7 +96,7 @@ export async function POST(
     anonToken = getOrCreateAnonToken();
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("feedback_comments")
     .insert({
       session_id: params.id,

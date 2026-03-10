@@ -94,7 +94,6 @@ export function DownloadActionModal({
     img.onload = async () => {
       const width = img.naturalWidth;
       const height = img.naturalHeight;
-
       const thumbDataUrl = await generateThumbnail(assetDataUrl).catch(() => "");
 
       const memItem = addToHistory({
@@ -109,7 +108,92 @@ export function DownloadActionModal({
         ...(prompt?.trim() ? { prompt: prompt.trim() } : {}),
       });
       triggerDownload();
+
       const projectId = getCurrentProjectId();
+      const commonMeta = {
+        appId,
+        name,
+        width,
+        height,
+        ...(projectId ? { projectId } : {}),
+        ...(prompt?.trim() ? { prompt: prompt.trim() } : {}),
+        isPublic: defaultIsPublic,
+      };
+
+      const saveToCache = (imageUrl: string | undefined, thumbUrl: string | null, tags: string[], id: string, created_at?: string) => {
+        removeFromHistory(memItem.id);
+        addToCachedGenerations({
+          id,
+          appId,
+          dataUrl: assetDataUrl,
+          imageUrl: imageUrl,
+          thumbUrl: thumbUrl ?? thumbDataUrl ?? null,
+          width,
+          height,
+          name,
+          createdAt: created_at ? new Date(created_at).getTime() : Date.now(),
+          tags,
+          projectId: projectId ?? null,
+          userId: null,
+          prompt: prompt?.trim() || null,
+          note: null,
+          isPublic: defaultIsPublic,
+        });
+      };
+
+      try {
+        // Try presigned upload: client → R2 directly, server only saves metadata
+        const presignRes = await fetch("/api/generations/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ appId }),
+        }).then((r) => r.json()).catch(() => null);
+
+        if (presignRes?.imageUploadUrl) {
+          const dataUrlForUpload = await resizeDataUrlForApi(assetDataUrl).catch(() => assetDataUrl);
+          const toBlob = (du: string, type: string): Blob => {
+            const b64 = du.includes(",") ? du.split(",")[1] : du;
+            const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+            return new Blob([bytes], { type });
+          };
+          // Upload full image and thumbnail to R2 in parallel
+          await Promise.all([
+            fetch(presignRes.imageUploadUrl, {
+              method: "PUT",
+              body: toBlob(dataUrlForUpload, "image/png"),
+              headers: { "Content-Type": "image/png" },
+            }),
+            thumbDataUrl && presignRes.thumbUploadUrl
+              ? fetch(presignRes.thumbUploadUrl, {
+                  method: "PUT",
+                  body: toBlob(thumbDataUrl, "image/jpeg"),
+                  headers: { "Content-Type": "image/jpeg" },
+                })
+              : Promise.resolve(),
+          ]);
+
+          // Save metadata + pass thumbnail for tagging (small payload)
+          const r = await fetch("/api/generations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              imageUrl: presignRes.imageUrl,
+              thumbUrl: thumbDataUrl ? presignRes.thumbUrl : undefined,
+              thumbDataUrl: thumbDataUrl || undefined,
+              ...commonMeta,
+            }),
+          });
+          if (r.ok) {
+            const json = await r.json().catch(() => ({}));
+            saveToCache(presignRes.imageUrl, thumbDataUrl ? presignRes.thumbUrl : null, json.tags ?? [], json.id ?? memItem.id, json.created_at);
+          }
+          return;
+        }
+      } catch {
+        // fall through to legacy path
+      }
+
+      // Legacy fallback: send base64 to server, server uploads to R2
       const dataUrlForApi = await resizeDataUrlForApi(assetDataUrl).catch(() => assetDataUrl);
       fetch("/api/generations", {
         method: "POST",
@@ -117,47 +201,18 @@ export function DownloadActionModal({
         body: JSON.stringify({
           dataUrl: dataUrlForApi,
           thumbDataUrl: thumbDataUrl || undefined,
-          appId,
-          name,
-          width,
-          height,
-          ...(projectId ? { projectId } : {}),
-          ...(prompt?.trim() ? { prompt: prompt.trim() } : {}),
-          isPublic: defaultIsPublic,
+          ...commonMeta,
         }),
       })
         .then(async (r) => {
           if (!r.ok) return;
           const json = await r.json().catch(() => ({}));
-          removeFromHistory(memItem.id);
-          addToCachedGenerations({
-            id: json.id ?? memItem.id,
-            appId,
-            dataUrl: assetDataUrl,
-            blobUrl: json.blob_url ?? undefined,
-            thumbUrl: json.thumb_url ?? thumbDataUrl ?? null,
-            width,
-            height,
-            name,
-            createdAt: json.created_at ? new Date(json.created_at).getTime() : Date.now(),
-            tags: Array.isArray(json.tags) ? json.tags : [],
-            projectId: projectId ?? null,
-            userId: null,
-            prompt: prompt?.trim() || null,
-            note: null,
-            isPublic: defaultIsPublic,
-          });
+          saveToCache(json.image_url ?? undefined, json.thumb_url ?? null, json.tags ?? [], json.id ?? memItem.id, json.created_at);
         })
         .catch(() => {});
     };
     img.onerror = () => {
-      addToHistory({
-        dataUrl: assetDataUrl,
-        appId,
-        name,
-        fileName: computedFileName,
-        mimeType: inferredMimeType,
-      });
+      addToHistory({ dataUrl: assetDataUrl, appId, name, fileName: computedFileName, mimeType: inferredMimeType });
       triggerDownload();
     };
     img.src = assetDataUrl;

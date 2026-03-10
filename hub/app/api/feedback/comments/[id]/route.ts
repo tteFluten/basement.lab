@@ -9,12 +9,12 @@ export const runtime = "nodejs";
 const ANON_COOKIE = "fb_anon";
 
 async function checkOwnership(
-  supabase: ReturnType<typeof getDb>,
+  db: ReturnType<typeof getDb>,
   commentId: string,
   userId: string | null,
   isAdmin: boolean
 ): Promise<{ allowed: boolean; comment: Record<string, unknown> | null }> {
-  const { data } = await supabase
+  const { data } = await db
     .from("feedback_comments")
     .select("id, author_id, anon_token")
     .eq("id", commentId)
@@ -43,8 +43,8 @@ export async function PATCH(
   const userId = session?.user?.id ?? null;
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
 
-  const supabase = getDb();
-  const { allowed, comment } = await checkOwnership(supabase, params.id, userId, isAdmin);
+  const db = getDb();
+  const { allowed, comment } = await checkOwnership(db, params.id, userId, isAdmin);
   if (!comment) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -58,7 +58,7 @@ export async function PATCH(
   if (completed !== undefined) updates.completed = completed;
   if (priority !== undefined) updates.priority = priority;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("feedback_comments")
     .update(updates)
     .eq("id", params.id)
@@ -88,11 +88,11 @@ export async function DELETE(
   const userId = session?.user?.id ?? null;
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
 
-  const supabase = getDb();
-  const { allowed, comment } = await checkOwnership(supabase, params.id, userId, isAdmin);
+  const db = getDb();
+  const { allowed, comment } = await checkOwnership(db, params.id, userId, isAdmin);
   if (!comment) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  await supabase.from("feedback_comments").delete().eq("id", params.id);
+  await db.from("feedback_comments").delete().eq("id", params.id);
   return NextResponse.json({ ok: true });
 }

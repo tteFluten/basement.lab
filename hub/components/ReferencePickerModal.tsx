@@ -42,7 +42,7 @@ function LazyThumb({ src: s, thumb, appId }: { src: string; thumb?: string; appI
 }
 
 function toHistoryItem(row: {
-  id: string; appId: string; dataUrl?: string | null; blobUrl?: string; thumbUrl?: string | null;
+  id: string; appId: string; dataUrl?: string | null; imageUrl?: string; thumbUrl?: string | null;
   width?: number | null; height?: number | null; name?: string | null;
   createdAt: number; tags?: string[]; userId?: string | null;
 }): HistoryItem {
@@ -52,7 +52,7 @@ function toHistoryItem(row: {
     height: row.height ?? undefined, mimeType: "image/png",
     createdAt: row.createdAt,
     tags: Array.isArray(row.tags) ? row.tags : undefined,
-    blobUrl: row.blobUrl,
+    imageUrl: row.imageUrl,
     thumbUrl: row.thumbUrl ?? undefined,
     userId: row.userId ?? undefined,
   };
@@ -144,7 +144,7 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
   };
 
   const handleHistoryPick = (item: HistoryItem) => {
-    const url = item.dataUrl || item.blobUrl || "";
+    const url = item.dataUrl || item.imageUrl || "";
     if (!url) return;
 
     if (url.startsWith("data:") || url.startsWith("blob:")) {
@@ -273,7 +273,7 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
               ) : (
                 <div className="p-3 grid grid-cols-4 sm:grid-cols-5 gap-2">
                   {filtered.map((item) => {
-                    const url = item.dataUrl || item.blobUrl || "";
+                    const url = item.dataUrl || item.imageUrl || "";
                     const Icon = getAppIcon(item.appId);
                     const isSelected = selectedId === item.id;
                     if (!url) return null;

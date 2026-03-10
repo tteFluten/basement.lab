@@ -25,8 +25,8 @@ export async function GET(
   const projectId = (await params).id;
   if (!projectId) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("project_members")
     .select("user_id")
     .eq("project_id", projectId);
@@ -61,14 +61,14 @@ export async function POST(
   const body = await request.json().catch(() => ({}));
   const userIds = Array.isArray(body.userIds) ? body.userIds.filter((u: unknown) => typeof u === "string") : [];
 
-  const supabase = getDb();
-  await supabase.from("project_members").delete().eq("project_id", projectId);
+  const db = getDb();
+  await db.from("project_members").delete().eq("project_id", projectId);
   if (userIds.length > 0) {
-    const { error } = await supabase.from("project_members").insert(
+    const { error } = await db.from("project_members").insert(
       userIds.map((user_id: string) => ({ project_id: projectId, user_id }))
     );
     if (error) {
-      console.error("Supabase project_members insert:", error);
+      console.error("project_members insert:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
   }

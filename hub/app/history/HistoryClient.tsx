@@ -17,7 +17,7 @@ import { Avatar } from "@/components/Avatar";
 /* ─── helpers ─── */
 
 function toItem(row: {
-  id: string; appId: string; dataUrl?: string | null; blobUrl?: string; thumbUrl?: string | null;
+  id: string; appId: string; dataUrl?: string | null; imageUrl?: string; thumbUrl?: string | null;
   width?: number | null; height?: number | null; name?: string | null;
   createdAt: number; tags?: string[]; projectId?: string | null;
   user?: { fullName?: string | null; avatarUrl?: string | null };
@@ -31,7 +31,7 @@ function toItem(row: {
     height: row.height ?? undefined, mimeType: "image/png",
     createdAt: row.createdAt,
     tags: Array.isArray(row.tags) ? row.tags : undefined,
-    blobUrl: row.blobUrl, thumbUrl: row.thumbUrl ?? undefined,
+    imageUrl: row.imageUrl, thumbUrl: row.thumbUrl ?? undefined,
     projectId: row.projectId ?? undefined,
     userName: row.user?.fullName ?? undefined,
     userAvatarUrl: row.user?.avatarUrl ?? undefined,
@@ -42,7 +42,7 @@ function toItem(row: {
   };
 }
 
-function imgUrl(item: HistoryItem) { return item.dataUrl || item.blobUrl || ""; }
+function imgUrl(item: HistoryItem) { return item.dataUrl || item.imageUrl || ""; }
 
 function fmtDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, {
@@ -98,23 +98,16 @@ type GroupMode = "none" | "date" | "project" | "app";
 type Proj = { id: string; name: string };
 type Usr = { id: string; email: string; full_name: string | null };
 
-/* ─── LazyImg with loading indicator and blob URL fallback ─── */
+/* ─── LazyImg with loading indicator ─── */
 
 function LazyImg({ src: s, thumb, appId, className }: { src: string; thumb?: string; appId: string; className?: string }) {
   const [fullLoaded, setFullLoaded] = useState(false);
   const [imgSrc, setImgSrc] = useState(s);
-  const [retried, setRetried] = useState(false);
   const Icon = getAppIcon(appId);
-  useEffect(() => { setImgSrc(s); setRetried(false); }, [s]);
+  useEffect(() => { setImgSrc(s); }, [s]);
 
-  const handleError = useCallback(() => {
-    if (retried || !imgSrc.includes("blob.vercel-storage.com")) return;
-    setRetried(true);
-    fetch(`/api/generations/resolve-url?url=${encodeURIComponent(imgSrc)}`)
-      .then((r) => r.json())
-      .then((j) => { if (j?.url) setImgSrc(j.url); })
-      .catch(() => {});
-  }, [imgSrc, retried]);
+  // R2 URLs are public — no resolution needed. Show placeholder on error.
+  const handleError = useCallback(() => { setImgSrc(""); }, []);
 
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: APP_BG[appId] ?? "#151515" }}>
@@ -845,11 +838,17 @@ export function HistoryClient() {
     return () => { cancelled = true; };
   }, [hasApiFilters, filterQs]);
 
-  useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setProjects(Array.isArray(d?.items) ? d.items : [])).catch(() => {}); }, []);
-  useEffect(() => { fetch("/api/users").then((r) => r.json()).then((d) => { if (Array.isArray(d?.items)) { setUsers(d.items); setIsAdmin(true); } }).catch(() => {}); }, []);
   useEffect(() => {
-    setMemoryItems(getHistory());
+    const c = new AbortController();
+    fetch("/api/projects", { signal: c.signal }).then((r) => r.json()).then((d) => setProjects(Array.isArray(d?.items) ? d.items : [])).catch(() => {});
+    return () => c.abort();
   }, []);
+  useEffect(() => {
+    const c = new AbortController();
+    fetch("/api/users", { signal: c.signal }).then((r) => r.json()).then((d) => { if (Array.isArray(d?.items)) { setUsers(d.items); setIsAdmin(true); } }).catch(() => {});
+    return () => c.abort();
+  }, []);
+  useEffect(() => { setMemoryItems(getHistory()); }, []);
 
   const items = useMemo(() => {
     const base = hasApiFilters ? filteredApiItems : cachedItems;
@@ -899,20 +898,10 @@ export function HistoryClient() {
     setBatchActionLoading(true);
     try {
       const zip = new JSZip();
-      const resolveUrl = async (url: string): Promise<string> => {
-        if (!url || url.startsWith("data:")) return url;
-        if (url.includes("blob.vercel-storage.com")) {
-          const r = await fetch(`/api/generations/resolve-url?url=${encodeURIComponent(url)}`);
-          const j = await r.json().catch(() => ({}));
-          if (j?.url) return j.url;
-        }
-        return url;
-      };
       await Promise.all(
         toZip.map(async (item, idx) => {
           const url = imgUrl(item);
-          const resolved = await resolveUrl(url);
-          const res = await fetch(resolved);
+          const res = await fetch(url);
           const blob = await res.blob();
           const ext = extFromMime(item.mimeType);
           const name = item.name?.replace(/[^\w.-]/g, "_") || item.id;

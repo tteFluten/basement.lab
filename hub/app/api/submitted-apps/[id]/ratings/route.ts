@@ -10,9 +10,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!hasDb()) return NextResponse.json({ average: 0, count: 0, userScore: null });
 
   const session = await getServerSession(authOptions);
-  const supabase = getDb();
+  const db = getDb();
 
-  const { data: ratings } = await supabase
+  const { data: ratings } = await db
     .from("app_ratings")
     .select("score, user_id")
     .eq("app_id", params.id);
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const score = Number(body.score);
   if (!score || score < 1 || score > 5) return NextResponse.json({ error: "score must be 1-5" }, { status: 400 });
 
-  const supabase = getDb();
-  const { error } = await supabase
+  const db = getDb();
+  const { error } = await db
     .from("app_ratings")
     .upsert(
       { app_id: params.id, user_id: session.user.id, score },

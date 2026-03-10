@@ -7,32 +7,27 @@ import { generateImageTags } from "@/lib/generateImageTags";
 
 export const runtime = "nodejs";
 
-/** POST: save a generation (upload image to Blob, insert row in Supabase). Requires session; user_id from session. */
+/**
+ * POST: save a generation. Two modes:
+ *   Presigned (preferred): client already uploaded to R2 → body has { imageUrl, thumbUrl, thumbDataUrl? }
+ *   Legacy fallback:       client sends base64     → body has { dataUrl, thumbDataUrl? }
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!hasDb()) {
-      const body = await request.json();
-      const { dataUrl, appId } = body as { dataUrl?: string; appId?: string };
-      if (!dataUrl || !appId) {
-        return NextResponse.json(
-          { error: "dataUrl and appId required" },
-          { status: 400 }
-        );
-      }
-      return NextResponse.json(
-        { ok: true, saved: false, message: "Database not configured" }
-      );
+      return NextResponse.json({ ok: true, saved: false, message: "Database not configured" });
     }
-
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const {
-      dataUrl,
-      thumbDataUrl,
+      imageUrl,   // presigned path: already-uploaded R2 URL
+      thumbUrl,   // presigned path: thumbnail R2 URL
+      dataUrl,    // legacy path: base64 image
+      thumbDataUrl, // used for AI tagging (small); also legacy upload target
       appId,
       name,
       width,
@@ -41,7 +36,9 @@ export async function POST(request: NextRequest) {
       prompt,
       isPublic,
     } = body as {
-      dataUrl: string;
+      imageUrl?: string;
+      thumbUrl?: string;
+      dataUrl?: string;
       thumbDataUrl?: string;
       appId: string;
       name?: string;
@@ -52,45 +49,40 @@ export async function POST(request: NextRequest) {
       isPublic?: boolean;
     };
 
-    if (!dataUrl || !appId) {
-      return NextResponse.json(
-        { error: "dataUrl and appId required" },
-        { status: 400 }
-      );
+    if (!appId) {
+      return NextResponse.json({ error: "appId required" }, { status: 400 });
     }
 
-    const ts = Date.now();
-    let uploadedUrl: string | null = null;
-    let thumbUrl: string | null = null;
+    let finalImageUrl: string | null = imageUrl ?? null;
+    let finalThumbUrl: string | null = thumbUrl ?? null;
 
-    if (hasR2()) {
+    // Legacy path: client sent base64 → upload to R2 server-side
+    if (!finalImageUrl) {
+      if (!dataUrl) {
+        return NextResponse.json({ error: "imageUrl or dataUrl required" }, { status: 400 });
+      }
+      if (!hasR2()) {
+        return NextResponse.json({ error: "File storage (R2) not configured" }, { status: 503 });
+      }
+      const ts = Date.now();
       const toBuffer = (du: string): Buffer => {
         const b64 = du.includes(",") ? du.split(",")[1] : du;
         return Buffer.from(b64, "base64");
       };
-      const [fullResult, thumbResult] = await Promise.all([
+      const [full, thumb] = await Promise.all([
         uploadBuffer(`generations/${appId}/${ts}.png`, toBuffer(dataUrl), "image/png"),
         thumbDataUrl
           ? uploadBuffer(`generations/${appId}/${ts}_thumb.jpg`, toBuffer(thumbDataUrl), "image/jpeg")
           : Promise.resolve(null),
       ]);
-      uploadedUrl = fullResult;
-      thumbUrl = thumbResult;
+      finalImageUrl = full;
+      finalThumbUrl = thumb;
     }
 
-    if (!uploadedUrl) {
-      return NextResponse.json(
-        { error: "File storage (R2) not configured" },
-        { status: 503 }
-      );
-    }
-
-    const storedUrl = uploadedUrl;
-    const supabase = getDb();
-
+    const db = getDb();
     const row: Record<string, unknown> = {
       app_id: appId,
-      blob_url: storedUrl,
+      image_url: finalImageUrl,
       width: width ?? null,
       height: height ?? null,
       name: name ?? null,
@@ -98,51 +90,48 @@ export async function POST(request: NextRequest) {
       project_id: projectId ?? null,
       is_public: Boolean(isPublic),
     };
-    if (thumbUrl) row.thumb_url = thumbUrl;
+    if (finalThumbUrl) row.thumb_url = finalThumbUrl;
     if (typeof prompt === "string" && prompt.trim()) row.prompt = prompt.trim();
 
-    let { data, error } = await supabase
+    let { data, error } = await db
       .from("generations")
       .insert(row)
       .select("id, created_at")
       .single();
 
-    if (error && thumbUrl && /thumb_url/i.test(error.message)) {
+    if (error && finalThumbUrl && /thumb_url/i.test(error.message)) {
       delete row.thumb_url;
-      const fb = await supabase.from("generations").insert(row).select("id, created_at").single();
-      data = fb.data;
-      error = fb.error;
+      const fb = await db.from("generations").insert(row).select("id, created_at").single();
+      data = fb.data; error = fb.error;
     }
     if (error && /is_public|column/i.test(error.message)) {
       delete row.is_public;
-      const fb = await supabase.from("generations").insert(row).select("id, created_at").single();
-      data = fb.data;
-      error = fb.error;
+      const fb = await db.from("generations").insert(row).select("id, created_at").single();
+      data = fb.data; error = fb.error;
     }
     if (error && row.prompt !== undefined && /prompt|column/i.test(error.message)) {
       delete row.prompt;
-      const fb = await supabase
-        .from("generations")
-        .insert(row)
-        .select("id, created_at")
-        .single();
-      data = fb.data;
-      error = fb.error;
+      const fb = await db.from("generations").insert(row).select("id, created_at").single();
+      data = fb.data; error = fb.error;
     }
 
     if (error || !data) {
-      console.error("Supabase generations insert:", error);
+      console.error("generations insert:", error);
       return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
     }
 
+    // Use thumbnail for tagging (much smaller payload to Gemini)
     let tags: string[] = [];
-    try {
-      tags = await generateImageTags(dataUrl);
-      if (tags.length > 0) {
-        await supabase.from("generations").update({ tags }).eq("id", data.id);
+    const tagSource = thumbDataUrl || dataUrl;
+    if (tagSource) {
+      try {
+        tags = await generateImageTags(tagSource);
+        if (tags.length > 0) {
+          await db.from("generations").update({ tags }).eq("id", data.id);
+        }
+      } catch (tagErr) {
+        console.warn("Tag generation skipped:", tagErr);
       }
-    } catch (tagErr) {
-      console.warn("Tag generation skipped:", tagErr);
     }
 
     return NextResponse.json({
@@ -150,16 +139,13 @@ export async function POST(request: NextRequest) {
       saved: true,
       id: data.id,
       created_at: data.created_at,
-      blob_url: uploadedUrl,
-      thumb_url: thumbUrl,
+      image_url: finalImageUrl,
+      thumb_url: finalThumbUrl,
       tags,
     });
   } catch (e) {
     console.error("POST /api/generations:", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Server error" }, { status: 500 });
   }
 }
 
@@ -190,12 +176,12 @@ export async function GET(request: NextRequest) {
     const light = searchParams.get("light") === "1";
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
-    const supabase = getDb();
-    const selectWithTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note, is_public";
-    const selectWithoutTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, prompt, note, is_public";
+    const db = getDb();
+    const selectWithTags = "id, app_id, image_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note, is_public";
+    const selectWithoutTags = "id, app_id, image_url, thumb_url, width, height, name, created_at, user_id, project_id, prompt, note, is_public";
 
     const buildQuery = (selectColumns: string, includeTagFilter: boolean) => {
-      let q = supabase
+      let q = db
         .from("generations")
         .select(selectColumns)
         .order("created_at", { ascending: false })
@@ -215,7 +201,7 @@ export async function GET(request: NextRequest) {
       return q;
     };
 
-    let data: (Record<string, unknown> & { blob_url: string; created_at: string })[] | null = null;
+    let data: (Record<string, unknown> & { image_url: string; created_at: string })[] | null = null;
     let error: { message: string } | null = null;
     let hasTagsColumn = true;
 
@@ -225,14 +211,14 @@ export async function GET(request: NextRequest) {
 
     if (error && /does not exist|column.*(tags|thumb_url|prompt|note)/i.test(error.message)) {
       hasTagsColumn = false;
-      const fallbackCols = "id, app_id, blob_url, width, height, name, created_at, user_id, project_id";
+      const fallbackCols = "id, app_id, image_url, width, height, name, created_at, user_id, project_id";
       const fallback1 = await buildQuery(fallbackCols, false);
       data = fallback1.data as typeof data;
       error = fallback1.error;
     }
     if (error && /is_public/i.test(error.message)) {
-      const colsNoPublic = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note";
-      let q = supabase.from("generations").select(colsNoPublic).order("created_at", { ascending: false }).limit(limit);
+      const colsNoPublic = "id, app_id, image_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note";
+      let q = db.from("generations").select(colsNoPublic).order("created_at", { ascending: false }).limit(limit);
       if (ids?.length) q = q.in("id", ids);
       if (visibility === "mine") q = q.eq("user_id", session.user.id);
       else if (!isAdmin) q = q.eq("user_id", session.user.id);
@@ -246,14 +232,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (error) {
-      console.error("Supabase generations select:", error);
+      console.error("generations select:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     type GenRow = {
       id: string;
       app_id: string;
-      blob_url: string;
+      image_url: string;
       thumb_url?: string | null;
       width: number;
       height: number;
@@ -272,7 +258,7 @@ export async function GET(request: NextRequest) {
     if (!light) {
       const userIds = Array.from(new Set((rows.map((r) => r.user_id).filter(Boolean) as string[])));
       if (userIds.length > 0) {
-        const { data: userRows } = await supabase
+        const { data: userRows } = await db
           .from("users")
           .select("id, full_name, avatar_url")
           .in("id", userIds);
@@ -292,7 +278,7 @@ export async function GET(request: NextRequest) {
         id: row.id,
         appId: row.app_id,
         dataUrl: null as string | null,
-        blobUrl: row.blob_url ?? null,
+        imageUrl: row.image_url ?? null,
         thumbUrl: row.thumb_url ?? null,
         width: row.width ?? null,
         height: row.height ?? null,

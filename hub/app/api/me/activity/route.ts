@@ -11,16 +11,16 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!hasDb()) return NextResponse.json({ bugs: [], ratings: [] });
 
-  const supabase = getDb();
+  const db = getDb();
 
-  const { data: bugs } = await supabase
+  const { data: bugs } = await db
     .from("bug_reports")
     .select("id, app_id, title, status, created_at")
     .eq("user_id", session.user.id)
     .order("created_at", { ascending: false })
     .limit(50);
 
-  const { data: ratings } = await supabase
+  const { data: ratings } = await db
     .from("app_ratings")
     .select("id, app_id, score, created_at")
     .eq("user_id", session.user.id)
@@ -34,7 +34,7 @@ export async function GET() {
 
   const appMap: Map<string, string> = new Map();
   if (appIds.length > 0) {
-    const { data: apps } = await supabase.from("submitted_apps").select("id, title").in("id", appIds);
+    const { data: apps } = await db.from("submitted_apps").select("id, title").in("id", appIds);
     for (const a of apps ?? []) appMap.set(a.id, a.title);
   }
 

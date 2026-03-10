@@ -8,7 +8,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, ImageIcon } from "lucide-react";
 
 function toItem(row: {
-  id: string; appId: string; blobUrl?: string; thumbUrl?: string | null;
+  id: string; appId: string; imageUrl?: string; thumbUrl?: string | null;
   width?: number | null; height?: number | null; name?: string | null;
   createdAt: number; tags?: string[]; projectId?: string | null;
   isPublic?: boolean;
@@ -23,7 +23,7 @@ function toItem(row: {
     height: row.height ?? undefined,
     mimeType: "image/png",
     createdAt: Number.isFinite(created) ? created : Date.now(),
-    blobUrl: row.blobUrl,
+    imageUrl: row.imageUrl,
     thumbUrl: row.thumbUrl ?? undefined,
     projectId: row.projectId ?? undefined,
     tags: Array.isArray(row.tags) ? row.tags : undefined,
@@ -32,27 +32,15 @@ function toItem(row: {
 }
 
 function ShareImage({ item }: { item: HistoryItem }) {
-  const [src, setSrc] = useState(item.blobUrl || item.dataUrl || "");
+  const [src, setSrc] = useState(item.imageUrl || item.dataUrl || "");
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  const handleError = useCallback(() => {
-    if (error || !src.includes("blob.vercel-storage.com")) return;
-    setError(true);
-    fetch(`/api/generations/resolve-url?url=${encodeURIComponent(src)}`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (j?.url) {
-          setSrc(j.url);
-          setError(false);
-        }
-      })
-      .catch(() => {});
-  }, [src, error]);
+  const handleError = useCallback(() => { setError(true); }, []);
 
   useEffect(() => {
-    setSrc(item.blobUrl || item.dataUrl || "");
-  }, [item.blobUrl, item.dataUrl]);
+    setSrc(item.imageUrl || item.dataUrl || "");
+  }, [item.imageUrl, item.dataUrl]);
 
   if (!src) return null;
   return (

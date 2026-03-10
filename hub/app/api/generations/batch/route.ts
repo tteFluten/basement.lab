@@ -34,9 +34,9 @@ export async function PATCH(request: NextRequest) {
   }
 
   const isAdmin = (session.user as { role?: string }).role === "admin";
-  const supabase = getDb();
+  const db = getDb();
 
-  const { data: rows, error: fetchError } = await supabase
+  const { data: rows, error: fetchError } = await db
     .from("generations")
     .select("id, user_id, tags")
     .in("id", ids);
@@ -68,7 +68,7 @@ export async function PATCH(request: NextRequest) {
 
     if (Object.keys(updates).length === 0) continue;
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from("generations")
       .update(updates)
       .eq("id", row.id);
@@ -104,9 +104,9 @@ export async function DELETE(request: NextRequest) {
   }
 
   const isAdmin = (session.user as { role?: string }).role === "admin";
-  const supabase = getDb();
+  const db = getDb();
 
-  const { data: rows, error: fetchError } = await supabase
+  const { data: rows, error: fetchError } = await db
     .from("generations")
     .select("id, user_id")
     .in("id", ids);
@@ -124,7 +124,7 @@ export async function DELETE(request: NextRequest) {
   let deleted = 0;
 
   for (const id of toDelete) {
-    const { error: deleteError } = await supabase.from("generations").delete().eq("id", id);
+    const { error: deleteError } = await db.from("generations").delete().eq("id", id);
     if (deleteError) errors.push(`${id}: ${deleteError.message}`);
     else deleted++;
   }

@@ -22,9 +22,9 @@ export async function GET() {
 
   const userId = session.user.id;
   const isAdmin = (session.user as { role?: string }).role === "admin";
-  const supabase = getDb();
+  const db = getDb();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("feedback_projects")
     .select("id, slug, name, description, owner_id, linked_project_id, created_at")
     .order("created_at", { ascending: false });
@@ -40,26 +40,26 @@ export async function GET() {
   const [sessionCountsRes, thumbsRes, usersRes, linkedProjectsRes, workMembershipsRes, directMembershipsRes] =
     await Promise.all([
       projectIds.length > 0
-        ? supabase.from("feedback_sessions").select("project_id").in("project_id", projectIds)
+        ? db.from("feedback_sessions").select("project_id").in("project_id", projectIds)
         : Promise.resolve({ data: [] }),
       projectIds.length > 0
-        ? supabase.from("feedback_sessions")
+        ? db.from("feedback_sessions")
             .select("project_id, video_url, thumbnail_url")
             .in("project_id", projectIds)
             .not("video_url", "is", null)
             .order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
       ownerIds.length > 0
-        ? supabase.from("users").select("id, full_name, email").in("id", ownerIds)
+        ? db.from("users").select("id, full_name, email").in("id", ownerIds)
         : Promise.resolve({ data: [] }),
       linkedProjectIds.length > 0
-        ? supabase.from("projects").select("id, name").in("id", linkedProjectIds)
+        ? db.from("projects").select("id, name").in("id", linkedProjectIds)
         : Promise.resolve({ data: [] }),
       // Which work projects does this user belong to?
-      supabase.from("project_members").select("project_id").eq("user_id", userId),
+      db.from("project_members").select("project_id").eq("user_id", userId),
       // Which feedback projects has this user directly joined?
       projectIds.length > 0
-        ? supabase.from("feedback_project_members")
+        ? db.from("feedback_project_members")
             .select("feedback_project_id")
             .eq("user_id", userId)
             .in("feedback_project_id", projectIds)
@@ -131,10 +131,10 @@ export async function POST(request: NextRequest) {
   const name = body.name?.trim();
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
 
-  const supabase = getDb();
+  const db = getDb();
   let slug = toSlug(name) || "project";
 
-  const { data: existing } = await supabase
+  const { data: existing } = await db
     .from("feedback_projects")
     .select("slug")
     .like("slug", `${slug}%`);
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
   const insert: Record<string, unknown> = { name, slug, owner_id: session.user.id };
   if (body.linkedProjectId) insert.linked_project_id = body.linkedProjectId;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("feedback_projects")
     .insert(insert)
     .select("id, slug, name, description, owner_id, linked_project_id, created_at")
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
 
   let linkedProjectName: string | null = null;
   if (data.linked_project_id) {
-    const { data: lp } = await supabase.from("projects").select("name").eq("id", data.linked_project_id).single();
+    const { data: lp } = await db.from("projects").select("name").eq("id", data.linked_project_id).single();
     linkedProjectName = lp?.name ?? null;
   }
 

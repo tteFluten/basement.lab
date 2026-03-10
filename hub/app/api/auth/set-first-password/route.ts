@@ -21,15 +21,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 4 characters" }, { status: 400 });
     }
 
-    const supabase = getDb();
-    let { data: row, error: fetchErr } = await supabase
+    const db = getDb();
+    let { data: row, error: fetchErr } = await db
       .from("users")
       .select("id, password_hash, status")
       .eq("email", email)
       .single();
 
     if (fetchErr && /status/i.test(fetchErr.message)) {
-      const fb = await supabase
+      const fb = await db
         .from("users")
         .select("id, password_hash")
         .eq("email", email)
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const { error: updateErr } = await supabase
+    const { error: updateErr } = await db
       .from("users")
       .update({ password_hash: hash, updated_at: new Date().toISOString() })
       .eq("id", row.id);

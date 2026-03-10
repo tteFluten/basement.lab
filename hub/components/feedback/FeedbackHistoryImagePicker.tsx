@@ -15,8 +15,8 @@ export function FeedbackHistoryImagePicker({ open, onClose, onSelect }: Props) {
   const { items, loading } = useGenerations(50);
 
   const handlePick = useCallback(
-    async (item: { blobUrl?: string; dataUrl?: string | null; id: string }) => {
-      const url = item.blobUrl ?? item.dataUrl;
+    async (item: { imageUrl?: string; dataUrl?: string | null; id: string }) => {
+      const url = item.imageUrl ?? item.dataUrl;
       if (!url) return;
 
       if (url.startsWith("http")) {
@@ -61,7 +61,7 @@ export function FeedbackHistoryImagePicker({ open, onClose, onSelect }: Props) {
           ) : (
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
               {items.map((item) => {
-                const src = item.thumbUrl ?? item.blobUrl ?? item.dataUrl ?? "";
+                const src = item.thumbUrl ?? item.imageUrl ?? item.dataUrl ?? "";
                 if (!src) return null;
                 return (
                   <button

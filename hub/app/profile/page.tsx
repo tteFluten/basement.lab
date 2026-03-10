@@ -46,13 +46,15 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/me/activity")
+    const c = new AbortController();
+    fetch("/api/me/activity", { signal: c.signal })
       .then((r) => r.json())
       .then((d) => {
         setActivityBugs(Array.isArray(d?.bugs) ? d.bugs : []);
         setActivityRatings(Array.isArray(d?.ratings) ? d.ratings : []);
       })
       .catch(() => {});
+    return () => c.abort();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -32,8 +32,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
   updates.updated_at = new Date().toISOString();
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("users")
     .update(updates)
     .eq("id", params.id)
@@ -57,8 +57,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
   }
 
-  const supabase = getDb();
-  const { error } = await supabase.from("users").delete().eq("id", params.id);
+  const db = getDb();
+  const { error } = await db.from("users").delete().eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

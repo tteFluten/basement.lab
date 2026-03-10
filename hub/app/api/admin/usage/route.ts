@@ -23,7 +23,7 @@ export async function GET() {
     );
   }
 
-  const supabase = getDb();
+  const db = getDb();
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -41,16 +41,16 @@ export async function GET() {
       openBugsRes,
       ratingsRes,
     ] = await Promise.all([
-      supabase.from("users").select("id", { count: "exact", head: true }),
-      supabase.from("users").select("id", { count: "exact", head: true }).eq("status", "active"),
-      supabase.from("generations").select("id", { count: "exact", head: true }),
-      supabase.from("generations").select("id", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
-      supabase.from("generations").select("id", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
-      supabase.from("generations").select("app_id, user_id, created_at").order("created_at", { ascending: false }).limit(500),
-      supabase.from("submitted_apps").select("id, user_id, title, created_at"),
-      supabase.from("bug_reports").select("id", { count: "exact", head: true }),
-      supabase.from("bug_reports").select("id", { count: "exact", head: true }).eq("status", "open"),
-      supabase.from("app_ratings").select("id", { count: "exact", head: true }),
+      db.from("users").select("id", { count: "exact", head: true }),
+      db.from("users").select("id", { count: "exact", head: true }).eq("status", "active"),
+      db.from("generations").select("id", { count: "exact", head: true }),
+      db.from("generations").select("id", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
+      db.from("generations").select("id", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
+      db.from("generations").select("app_id, user_id, created_at").order("created_at", { ascending: false }).limit(500),
+      db.from("submitted_apps").select("id, user_id, title, created_at"),
+      db.from("bug_reports").select("id", { count: "exact", head: true }),
+      db.from("bug_reports").select("id", { count: "exact", head: true }).eq("status", "open"),
+      db.from("app_ratings").select("id", { count: "exact", head: true }),
     ]);
 
     const totalUsers = usersCountRes.count ?? 0;
@@ -88,7 +88,7 @@ export async function GET() {
     const activityUserIds = userActivity.map((a) => a.userId);
     const usersForActivity =
       activityUserIds.length > 0
-        ? await supabase.from("users").select("id, full_name, email").in("id", activityUserIds)
+        ? await db.from("users").select("id, full_name, email").in("id", activityUserIds)
         : { data: [] };
     const userMap = new Map(
       ((usersForActivity.data ?? []) as { id: string; full_name: string | null; email: string }[]).map((u) => [
@@ -114,7 +114,7 @@ export async function GET() {
       .slice(0, 20);
     const submitterIds = Array.from(new Set(submittedByUserList.map((s) => s.userId).filter((id) => id !== "anonymous")));
     const submittersRes = submitterIds.length
-      ? await supabase.from("users").select("id, full_name, email").in("id", submitterIds)
+      ? await db.from("users").select("id, full_name, email").in("id", submitterIds)
       : { data: [] };
     const submittersMap = new Map(
       ((submittersRes.data ?? []) as { id: string; full_name: string | null; email: string }[]).map((u) => [u.id, { fullName: u.full_name, email: u.email }])

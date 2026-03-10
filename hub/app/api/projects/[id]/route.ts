@@ -45,8 +45,8 @@ export async function PATCH(
     return NextResponse.json({ error: "no fields to update" }, { status: 400 });
   }
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("projects")
     .update(updates)
     .eq("id", id)
@@ -54,7 +54,7 @@ export async function PATCH(
     .single();
 
   if (error) {
-    console.error("Supabase projects update:", error);
+    console.error("projects update:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data);
@@ -80,10 +80,10 @@ export async function DELETE(
   const id = (await params).id;
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  const supabase = getDb();
-  const { error } = await supabase.from("projects").delete().eq("id", id);
+  const db = getDb();
+  const { error } = await db.from("projects").delete().eq("id", id);
   if (error) {
-    console.error("Supabase projects delete:", error);
+    console.error("projects delete:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({ ok: true });

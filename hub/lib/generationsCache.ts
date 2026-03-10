@@ -10,7 +10,7 @@ export interface CachedGeneration {
   id: string;
   appId: string;
   dataUrl?: string | null;
-  blobUrl?: string;
+  imageUrl?: string;
   thumbUrl?: string | null;
   width?: number | null;
   height?: number | null;
@@ -54,7 +54,7 @@ function notifyRefresh() {
 function persistToStorage() {
   try {
     const slim = cachedItems.map((g) => ({
-      id: g.id, a: g.appId, b: g.blobUrl ?? null, t: g.thumbUrl ?? null,
+      id: g.id, a: g.appId, b: g.imageUrl ?? null, t: g.thumbUrl ?? null,
       w: g.width ?? null, h: g.height ?? null, n: g.name ?? null,
       c: g.createdAt, tg: g.tags?.length ? g.tags : undefined,
       p: g.projectId ?? null, u: g.userId ?? null,
@@ -75,7 +75,7 @@ function hydrateFromStorage(): boolean {
     cachedItems = parsed.slice(0, FULL_LIMIT).map((r) => ({
       id: String(r.id ?? ""),
       appId: String(r.a ?? ""),
-      blobUrl: r.b != null ? String(r.b) : undefined,
+      imageUrl: r.b != null ? String(r.b) : undefined,
       thumbUrl: r.t != null ? String(r.t) : null,
       width: typeof r.w === "number" ? r.w : null,
       height: typeof r.h === "number" ? r.h : null,
@@ -140,7 +140,7 @@ function parseRow(row: Record<string, unknown>): CachedGeneration {
     id: String(row.id ?? ""),
     appId: String(row.appId ?? row.app_id ?? ""),
     dataUrl: row.dataUrl != null ? String(row.dataUrl) : (row.data_url != null ? String(row.data_url) : null),
-    blobUrl: row.blobUrl != null ? String(row.blobUrl) : (row.blob_url != null ? String(row.blob_url) : undefined),
+    imageUrl: row.imageUrl != null ? String(row.imageUrl) : (row.image_url != null ? String(row.image_url) : undefined),
     thumbUrl: row.thumbUrl != null ? String(row.thumbUrl) : (row.thumb_url != null ? String(row.thumb_url) : null),
     width: typeof row.width === "number" ? row.width : null,
     height: typeof row.height === "number" ? row.height : null,

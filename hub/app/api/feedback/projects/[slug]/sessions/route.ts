@@ -15,10 +15,10 @@ export async function POST(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getDb();
+  const db = getDb();
   const isAdmin = (session.user as { role?: string }).role === "admin";
 
-  const { data: project } = await supabase
+  const { data: project } = await db
     .from("feedback_projects")
     .select("id, owner_id")
     .eq("slug", params.slug)
@@ -33,7 +33,7 @@ export async function POST(
   const title = body.title?.trim();
   if (!title) return NextResponse.json({ error: "title required" }, { status: 400 });
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("feedback_sessions")
     .insert({
       project_id: project.id,

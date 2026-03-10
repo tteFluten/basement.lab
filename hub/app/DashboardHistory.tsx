@@ -8,14 +8,14 @@ import Link from "next/link";
 import { ArrowRight, Download, Loader2 } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 
-function toHistoryItem(g: { id: string; appId: string; dataUrl?: string | null; blobUrl?: string; thumbUrl?: string | null; width?: number | null; height?: number | null; name?: string | null; createdAt: number; tags?: string[] }): HistoryItem {
+function toHistoryItem(g: { id: string; appId: string; dataUrl?: string | null; imageUrl?: string; thumbUrl?: string | null; width?: number | null; height?: number | null; name?: string | null; createdAt: number; tags?: string[] }): HistoryItem {
   return {
     id: g.id, dataUrl: g.dataUrl || "", appId: g.appId,
     name: g.name ?? undefined, width: g.width ?? undefined,
     height: g.height ?? undefined, mimeType: "image/png",
     createdAt: g.createdAt,
     tags: Array.isArray(g.tags) ? g.tags : undefined,
-    blobUrl: g.blobUrl,
+    imageUrl: g.imageUrl,
     thumbUrl: g.thumbUrl ?? undefined,
   };
 }
@@ -30,7 +30,7 @@ function downloadUrl(url: string, name: string) {
 }
 
 function GalleryImage({ item }: { item: HistoryItem }) {
-  const fullUrl = item.dataUrl || item.blobUrl || "";
+  const fullUrl = item.dataUrl || item.imageUrl || "";
   const thumb = item.thumbUrl || "";
   const [fullLoaded, setFullLoaded] = useState(false);
   const label = item.name || getAppLabel(item.appId);
@@ -89,7 +89,7 @@ export function DashboardHistory() {
       if (!seen.has(m.id)) { seen.add(m.id); combined.push(m); }
     }
     combined.sort((a, b) => b.createdAt - a.createdAt);
-    return combined.slice(0, 12).filter((i) => i.dataUrl || i.blobUrl);
+    return combined.slice(0, 12).filter((i) => i.dataUrl || i.imageUrl);
   }, [apiItems, memoryItems]);
 
   if (loading && items.length === 0) {

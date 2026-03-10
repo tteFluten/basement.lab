@@ -138,15 +138,15 @@ export async function POST(request: NextRequest) {
     end_date: typeof end_date === "string" && end_date.trim() ? end_date.trim() : null,
   };
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("projects")
     .insert(insert)
     .select("id, name, client, thumbnail_url, links, start_date, end_date, created_at")
     .single();
 
   if (error) {
-    console.error("Supabase projects insert:", error);
+    console.error("projects insert:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data);

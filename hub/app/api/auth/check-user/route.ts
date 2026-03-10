@@ -15,15 +15,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "email required" }, { status: 400 });
     }
 
-    const supabase = getDb();
-    let { data: row, error } = await supabase
+    const db = getDb();
+    let { data: row, error } = await db
       .from("users")
       .select("id, password_hash, status")
       .eq("email", email)
       .single();
 
     if (error && /status/i.test(error.message)) {
-      const fb = await supabase
+      const fb = await db
         .from("users")
         .select("id, password_hash")
         .eq("email", email)

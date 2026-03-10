@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get("q") ?? undefined;
     const limit = Math.min(Number(searchParams.get("limit")) || 200, 500);
 
-    const supabase = getDb();
+    const db = getDb();
     const cols = "id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at, external";
-    let query = supabase
+    let query = db
       .from("submitted_apps")
       .select(cols)
       .order("title", { ascending: true })
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     let { data: rows, error } = await query;
 
     if (error && /icon|external/i.test(error.message)) {
-      const fallback = supabase
+      const fallback = db
         .from("submitted_apps")
         .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, version, tags, created_at")
         .order("title", { ascending: true })
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (error) {
-      console.error("Supabase submitted_apps select:", error);
+      console.error("submitted_apps select:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     const userIds = Array.from(new Set(items.map((r) => r.user_id).filter(Boolean) as string[]));
     const userMap: Map<string, string> = new Map();
     if (userIds.length > 0) {
-      const { data: userRows } = await supabase
+      const { data: userRows } = await db
         .from("users")
         .select("id, full_name, email")
         .in("id", userIds);
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getDb();
+    const db = getDb();
     const row: Record<string, unknown> = {
       user_id: session.user.id,
       title,
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       external,
     };
 
-    let { data, error } = await supabase
+    let { data, error } = await db
       .from("submitted_apps")
       .insert(row)
       .select("id, title, created_at")
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     if (error && /icon|external/i.test(error.message)) {
       delete row.icon;
       if ("external" in row) delete row.external;
-      const fb = await supabase
+      const fb = await db
         .from("submitted_apps")
         .insert(row)
         .select("id, title, created_at")
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (error || !data) {
-      console.error("Supabase submitted_apps insert:", error);
+      console.error("submitted_apps insert:", error);
       return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
     }
 

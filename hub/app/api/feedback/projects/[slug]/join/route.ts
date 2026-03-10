@@ -15,8 +15,8 @@ export async function POST(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getDb();
-  const { data: project } = await supabase
+  const db = getDb();
+  const { data: project } = await db
     .from("feedback_projects")
     .select("id")
     .eq("slug", params.slug)
@@ -24,7 +24,7 @@ export async function POST(
 
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await supabase
+  await db
     .from("feedback_project_members")
     .upsert({ feedback_project_id: project.id, user_id: session.user.id }, { onConflict: "feedback_project_id,user_id" });
 
@@ -41,8 +41,8 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getDb();
-  const { data: project } = await supabase
+  const db = getDb();
+  const { data: project } = await db
     .from("feedback_projects")
     .select("id")
     .eq("slug", params.slug)
@@ -50,7 +50,7 @@ export async function DELETE(
 
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await supabase
+  await db
     .from("feedback_project_members")
     .delete()
     .eq("feedback_project_id", project.id)

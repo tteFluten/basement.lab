@@ -15,10 +15,10 @@ export async function GET(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getDb();
+  const db = getDb();
   const isAdmin = (session.user as { role?: string }).role === "admin";
 
-  const { data: project, error: pErr } = await supabase
+  const { data: project, error: pErr } = await db
     .from("feedback_projects")
     .select("id, slug, name, description, owner_id, linked_project_id, created_at")
     .eq("slug", params.slug)
@@ -29,7 +29,7 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data: sessions } = await supabase
+  const { data: sessions } = await db
     .from("feedback_sessions")
     .select("id, project_id, title, description, version, session_type, video_url, source_url, thumbnail_url, duration_s, created_at")
     .eq("project_id", project.id)
@@ -39,7 +39,7 @@ export async function GET(
   const sessionIds = (sessions ?? []).map((s: any) => s.id);
   let commentCounts: Record<string, number> = {};
   if (sessionIds.length > 0) {
-    const { data: comments } = await supabase
+    const { data: comments } = await db
       .from("feedback_comments")
       .select("session_id")
       .in("session_id", sessionIds);
@@ -50,13 +50,13 @@ export async function GET(
 
   let linkedProjectName: string | null = null;
   if (project.linked_project_id) {
-    const { data: lp } = await supabase.from("projects").select("name").eq("id", project.linked_project_id).single();
+    const { data: lp } = await db.from("projects").select("name").eq("id", project.linked_project_id).single();
     linkedProjectName = lp?.name ?? null;
   }
 
   // Available work projects for the linked project picker (admin only)
   const workProjectsData = isAdmin
-    ? (await supabase.from("projects").select("id, name").order("name")).data ?? []
+    ? (await db.from("projects").select("id, name").order("name")).data ?? []
     : [];
 
   return NextResponse.json({
@@ -98,10 +98,10 @@ export async function PATCH(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getDb();
+  const db = getDb();
   const isAdmin = (session.user as { role?: string }).role === "admin";
 
-  const { data: project } = await supabase
+  const { data: project } = await db
     .from("feedback_projects")
     .select("id, owner_id")
     .eq("slug", params.slug)
@@ -122,7 +122,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("feedback_projects")
     .update(updates)
     .eq("id", project.id)
@@ -133,7 +133,7 @@ export async function PATCH(
 
   let lpName: string | null = null;
   if (data.linked_project_id) {
-    const { data: lp } = await supabase.from("projects").select("name").eq("id", data.linked_project_id).single();
+    const { data: lp } = await db.from("projects").select("name").eq("id", data.linked_project_id).single();
     lpName = lp?.name ?? null;
   }
 
@@ -159,10 +159,10 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getDb();
+  const db = getDb();
   const isAdmin = (session.user as { role?: string }).role === "admin";
 
-  const { data: project } = await supabase
+  const { data: project } = await db
     .from("feedback_projects")
     .select("id, owner_id")
     .eq("slug", params.slug)
@@ -173,6 +173,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await supabase.from("feedback_projects").delete().eq("id", project.id);
+  await db.from("feedback_projects").delete().eq("id", project.id);
   return NextResponse.json({ ok: true });
 }

@@ -20,14 +20,14 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const supabase = getDb();
-  let { data, error } = await supabase
+  const db = getDb();
+  let { data, error } = await db
     .from("users")
     .select("id, email, full_name, nickname, avatar_url, role, status")
     .order("email");
 
   if (error && /status/i.test(error.message)) {
-    const fb = await supabase
+    const fb = await db
       .from("users")
       .select("id, email, full_name, nickname, avatar_url, role")
       .order("email");
@@ -36,7 +36,7 @@ export async function GET() {
   }
 
   if (error) {
-    console.error("Supabase users select:", error);
+    console.error("users select:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({ items: data ?? [] });
@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
 
   const password_hash = await bcrypt.hash(password, 10);
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("users")
     .insert({ email, password_hash, full_name, nickname, role })
     .select("id, email, full_name, nickname, avatar_url, role")
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     if (error.message?.includes("duplicate")) {
       return NextResponse.json({ error: "A user with this email already exists" }, { status: 409 });
     }
-    console.error("Supabase users insert:", error);
+    console.error("users insert:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

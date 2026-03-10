@@ -9,8 +9,8 @@ export const runtime = "nodejs";
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   if (!hasDb()) return NextResponse.json({ items: [] });
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("bug_reports")
     .select("id, app_id, user_id, title, description, status, created_at")
     .eq("app_id", params.id)
@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const userIds = Array.from(new Set((data ?? []).map((r: { user_id: string | null }) => r.user_id).filter(Boolean) as string[]));
   const userMap: Map<string, string> = new Map();
   if (userIds.length > 0) {
-    const { data: users } = await supabase.from("users").select("id, full_name, email").in("id", userIds);
+    const { data: users } = await db.from("users").select("id, full_name, email").in("id", userIds);
     for (const u of users ?? []) userMap.set(u.id, u.full_name?.trim() || u.email || u.id);
   }
 
@@ -50,8 +50,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const description = typeof body.description === "string" ? body.description.trim() : null;
   if (!title) return NextResponse.json({ error: "title is required" }, { status: 400 });
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("bug_reports")
     .insert({ app_id: params.id, user_id: session.user.id, title, description: description || null })
     .select("id, created_at")

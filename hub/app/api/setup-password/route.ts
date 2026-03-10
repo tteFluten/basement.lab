@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const supabase = getDb();
+    const db = getDb();
 
-    const { data: user, error: fetchError } = await supabase
+    const { data: user, error: fetchError } = await db
       .from("users")
       .select("id")
       .eq("email", normalizedEmail)
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from("users")
       .update({
         password_hash: passwordHash,

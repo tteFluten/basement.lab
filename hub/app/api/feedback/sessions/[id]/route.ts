@@ -10,8 +10,8 @@ export async function GET(
 ) {
   if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const supabase = getDb();
-  const { data, error } = await supabase
+  const db = getDb();
+  const { data, error } = await db
     .from("feedback_sessions")
     .select("id, project_id, title, description, version, session_type, video_url, source_url, thumbnail_url, duration_s, created_at")
     .eq("id", params.id)
@@ -47,10 +47,10 @@ export async function PATCH(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getDb();
+  const db = getDb();
   const isAdmin = (session.user as { role?: string }).role === "admin";
 
-  const { data: fbSession } = await supabase
+  const { data: fbSession } = await db
     .from("feedback_sessions")
     .select("id, project_id")
     .eq("id", params.id)
@@ -59,7 +59,7 @@ export async function PATCH(
   if (!fbSession) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (!isAdmin) {
-    const { data: project } = await supabase
+    const { data: project } = await db
       .from("feedback_projects")
       .select("owner_id")
       .eq("id", fbSession.project_id)
@@ -81,7 +81,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("feedback_sessions")
     .update(updates)
     .eq("id", params.id)
@@ -118,10 +118,10 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getDb();
+  const db = getDb();
   const isAdmin = (session.user as { role?: string }).role === "admin";
 
-  const { data: fbSession } = await supabase
+  const { data: fbSession } = await db
     .from("feedback_sessions")
     .select("id, project_id")
     .eq("id", params.id)
@@ -130,7 +130,7 @@ export async function DELETE(
   if (!fbSession) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (!isAdmin) {
-    const { data: project } = await supabase
+    const { data: project } = await db
       .from("feedback_projects")
       .select("owner_id")
       .eq("id", fbSession.project_id)
@@ -140,6 +140,6 @@ export async function DELETE(
     }
   }
 
-  await supabase.from("feedback_sessions").delete().eq("id", params.id);
+  await db.from("feedback_sessions").delete().eq("id", params.id);
   return NextResponse.json({ ok: true });
 }
