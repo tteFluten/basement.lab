@@ -8,7 +8,7 @@ export const maxDuration = 30;
 
 /**
  * Captures a screenshot of a URL using Microlink API (free, no key required)
- * then stores it in R2 (primary) or Vercel Blob (fallback) for permanent reference.
+ * then stores it in Cloudflare R2 for permanent reference.
  *
  * Set MICROLINK_API_KEY env var to increase rate limits.
  */

@@ -40,7 +40,7 @@ create table if not exists public.project_members (
   primary key (project_id, user_id)
 );
 
--- Generations (history items); image stored in Blob, we keep URL + metadata
+-- Generations (history items); image URL stored (R2), we keep URL + metadata
 create table if not exists public.generations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.users(id) on delete set null,

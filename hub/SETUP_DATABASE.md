@@ -1,29 +1,25 @@
-# Conectar base de datos (Supabase) y Blob
+# Conectar base de datos y almacenamiento (Neon + R2)
 
 ## ¿Qué es .env.local y dónde configuro?
 
-- **`.env.local`** es un archivo que solo existe en **tu máquina** (desarrollo). Ahí ponés claves y URLs que el Hub necesita (Supabase, NextAuth, etc.). Ese archivo **no se sube a git** (está en `.gitignore`), así que cada desarrollador crea el suyo.
+- **`.env.local`** es un archivo que solo existe en **tu máquina** (desarrollo). Ahí ponés claves y URLs que el Hub necesita (Neon, NextAuth, R2, etc.). Ese archivo **no se sube a git** (está en `.gitignore`), así que cada desarrollador crea el suyo.
 - **Dónde va**: dentro de la carpeta del Hub, al mismo nivel que `package.json`. Ruta completa: `hub/.env.local`. Si no existe, crealo (archivo de texto, una variable por línea: `NOMBRE=valor`).
-- **¿Y en producción (Vercel, “afuera”)?** Ahí **no usás un archivo**. En el panel de Vercel (tu proyecto → **Settings** → **Environment Variables**) cargás las **mismas variables** con los **mismos nombres** (`NEXTAUTH_URL`, `NEXTAUTH_SECRET`, etc.) y los valores que correspondan para producción (por ejemplo `NEXTAUTH_URL=https://tu-dominio.vercel.app`). Vercel inyecta esas variables cuando corre el Hub; el código no cambia, solo cambia dónde se definen (archivo local vs panel).
+- **¿Y en producción (Vercel, "afuera")?** Ahí **no usás un archivo**. En el panel de Vercel (tu proyecto → **Settings** → **Environment Variables**) cargás las **mismas variables** con los **mismos nombres** (`NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `DATABASE_URL`, `R2_*`, etc.) y los valores que correspondan para producción (por ejemplo `NEXTAUTH_URL=https://tu-dominio.vercel.app`). Vercel inyecta esas variables cuando corre el Hub; el código no cambia, solo cambia dónde se definen (archivo local vs panel).
 
 **Resumen**: en tu PC → creás/editás `hub/.env.local`. En Vercel (o el host que uses) → Settings → Environment Variables, mismo nombre de variable, valor de producción.
 
 ---
 
-## 1. Supabase
+## 1. Base de datos (Neon)
 
-1. Entrá a [supabase.com](https://supabase.com) y creá un proyecto.
-2. En **Project Settings** → **API** copiá:
-   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-   - **service_role** (secret) → `SUPABASE_SERVICE_ROLE_KEY`
-3. En el Hub, creá o editá `hub/.env.local`:
+1. Entrá a [neon.tech](https://neon.tech) y creá un proyecto.
+2. En el **SQL Editor** de Neon ejecutá el contenido de `hub/supabase/neon_setup.sql` (crea todas las tablas).
+3. Opcional: ejecutá `hub/supabase/seed.sql` para usuarios iniciales.
+4. En el dashboard de Neon, copiá la **connection string** (Connect → connection string).
+5. En el Hub, creá o editá `hub/.env.local`:
    ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=eyJ...
+   DATABASE_URL=postgresql://...tu-connection-string...
    ```
-4. En Supabase, abrí **SQL Editor** y ejecutá el contenido de `hub/supabase/schema.sql` (crea tablas `users`, `projects`, `project_members`, `generations` con columna `tags`, y `submitted_apps` para aplicaciones subidas por usuarios).
-5. Si ya tenías el schema aplicado antes, ejecutá también `hub/supabase/migrations/001_add_tags_to_generations.sql` para agregar la columna `tags` a `generations`, y `hub/supabase/migrations/002_add_icon_to_submitted_apps.sql` para la columna `icon` en `submitted_apps`.
-6. Para crear el usuario admin, ejecutá también `hub/supabase/seed.sql` (define a `lautaro@basement.studio` como admin).
 
 ## 1b. Auth (NextAuth) y contraseña del admin
 
@@ -34,39 +30,43 @@
    SETUP_PASSWORD_SECRET=<otro-secreto-para-setear-contraseña>
    ```
    Para generar un secreto: en PowerShell podés usar `[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])`.
-2. Para definir la contraseña del admin `lautaro@basement.studio` (una vez por entorno), podés usar **el script** (no hace falta tener el Hub corriendo):
+2. Para definir la contraseña del admin (una vez por entorno), podés usar **el script** (no hace falta tener el Hub corriendo):
    ```powershell
    cd hub
-   node scripts/set-password.js lautaro@basement.studio LaContraseñaQueQuieras
+   node scripts/set-password.js tu-email@ejemplo.com LaContraseñaQueQuieras
    ```
-   El script lee `hub/.env.local` y usa Supabase para actualizar el `password_hash`. O bien, si preferís el endpoint: el Hub debe estar corriendo y llamar a `POST /api/setup-password` con header `Authorization: Bearer SETUP_PASSWORD_SECRET` y body `{ "email", "password" }` (ver paso anterior en la doc).
+   El script lee `hub/.env.local` y usa la base de datos para actualizar el `password_hash`. O bien, si preferís el endpoint: el Hub debe estar corriendo y llamar a `POST /api/setup-password` con header `Authorization: Bearer SETUP_PASSWORD_SECRET` y body `{ "email", "password" }`.
 3. Después de eso podés entrar con ese email y contraseña en `/login`.
 
-## 2. Vercel Blob (imágenes)
+## 2. Cloudflare R2 (imágenes y archivos)
 
-1. En [vercel.com](https://vercel.com) → tu proyecto → **Storage** → **Create Database** o **Blob**.
-2. Creá un Blob store y copiá el token.
-3. En **Settings** → **Environment Variables** del proyecto (o en `hub/.env.local` para local):
+1. En [Cloudflare Dashboard](https://dash.cloudflare.com) → **R2** → **Create bucket**.
+2. Creá un bucket y configurá **Public access** (o un custom domain) para poder servir las URLs.
+3. En **R2** → **Manage R2 API Tokens** → Create API token con permisos de lectura/escritura en el bucket.
+4. En `hub/.env.local` (o en Vercel → Environment Variables):
    ```env
-   BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...
+   CLOUDFLARE_ACCOUNT_ID=tu-account-id
+   R2_ACCESS_KEY_ID=...
+   R2_SECRET_ACCESS_KEY=...
+   R2_BUCKET_NAME=nombre-del-bucket
+   R2_PUBLIC_URL=https://... (URL pública del bucket, ej. custom domain o r2.dev)
    ```
 
 ## 3. Probar
 
-- Con Supabase y Blob configurados, al usar **"Download and add to history"** en cualquier app:
-  - La imagen se sube a Blob.
-  - Se inserta una fila en `generations` con `blob_url`, `app_id`, `width`, `height`, etc.
-- La página **History** del Hub llama a `GET /api/generations`; si falla, verás el mensaje de error y un botón "Retry". Revisá que `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` estén en `hub/.env.local` y que las tablas existan (schema.sql + seed.sql).
-- Sin Supabase: el Hub sigue funcionando; el historial en memoria sigue disponible; la API devuelve 503 en GET y no persiste en POST.
-- Sin Blob: la API puede seguir guardando en Supabase usando la data URL en `blob_url` (solo recomendable para pruebas; en producción usá Blob).
+- Con la base de datos (Neon) y R2 configurados, al usar **"Download and add to history"** en cualquier app:
+  - La imagen se sube a R2.
+  - Se inserta una fila en `generations` con `image_url`, `app_id`, `width`, `height`, etc.
+- La página **History** del Hub llama a `GET /api/generations`; si falla, verás el mensaje de error y un botón "Retry". Revisá que `DATABASE_URL` esté en `hub/.env.local` y que las tablas existan (neon_setup.sql).
+- Sin base de datos: el Hub devuelve 503 en las APIs que requieren DB.
+- Sin R2: la API de generaciones y avatares devuelve 503; no se pueden subir imágenes.
 
 ## 4. Variables en Vercel (producción)
 
 En el deployment **no hay archivo .env.local**: las variables se cargan en el panel. En tu proyecto de Vercel → **Settings** → **Environment Variables** agregá las mismas que en local (mismos nombres), con valores de producción:
 
-- `NEXT_PUBLIC_SUPABASE_URL` (mismo valor que en local si usás el mismo proyecto Supabase)
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `BLOB_READ_WRITE_TOKEN`
+- `DATABASE_URL` (connection string de Neon)
+- `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`
 - `NEXTAUTH_URL` → **acá sí cambiá**: poné la URL pública del Hub, ej. `https://tu-app.vercel.app`
 - `NEXTAUTH_SECRET` (puede ser el mismo o uno nuevo solo para producción)
 - `SETUP_PASSWORD_SECRET` (solo si querés usar el endpoint para setear contraseñas en producción)
@@ -75,7 +75,7 @@ Guardá y hacé redeploy. El Hub en Vercel va a leer estas variables igual que e
 
 ---
 
-## 4. Thumbnails de apps (opcional)
+## 5. Thumbnails de apps (opcional)
 
 - **Apps del lab (grid en Home)**: Podés agregar imágenes en `hub/public/app-covers/` con el nombre del slug de cada app: `cineprompt.jpg`, `render.jpg`, `chronos.jpg`, `swag.jpg`, `avatar.jpg`, `frame-variator.jpg`. Si no existen o fallan, se muestra el ícono por defecto.
-- **Aplicaciones subidas (Submitted)**: Al agregar una app podés subir una imagen (thumbnail) y/o elegir un ícono de la plantilla. El thumbnail se guarda en Blob; si no hay Blob o falla la imagen, se usa el ícono elegido.
+- **Aplicaciones subidas (Submitted)**: Al agregar una app podés subir una imagen (thumbnail) y/o elegir un ícono de la plantilla. El thumbnail se guarda en R2; si no hay R2 o falla la imagen, se usa el ícono elegido.

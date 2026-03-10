@@ -24,8 +24,9 @@ export async function GET(request: NextRequest) {
     const isAdmin = (session.user as { role?: string }).role === "admin";
     const db = getDb();
     const projectColumns = "id, name, client, thumbnail_url, links, start_date, end_date, created_at";
-    const wantAll = request.nextUrl.searchParams.get("all") === "1";
-    const wantMembers = request.nextUrl.searchParams.get("members") === "1";
+    const { searchParams } = new URL(request.url);
+    const wantAll = searchParams.get("all") === "1";
+    const wantMembers = searchParams.get("members") === "1";
 
     if (wantAll) {
       // Get all projects

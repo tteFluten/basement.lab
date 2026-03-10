@@ -7,7 +7,7 @@
 - **Projects**: Name, client, thumbnail; links (web, Linear, Figma, Slack client, Slack internal); start/end dates; other links. Admin panel to create and assign.
 - **Hub context**: Active user + active project. Every history save is tied to that project. History filterable by project.
 - **Visibility**: Each user sees only their history, or (if permitted) history of everyone.
-- **Storage**: Images → **Vercel Blob**. Users, projects, assignments → **Supabase**.
+- **Storage**: Images → **Cloudflare R2**. Users, projects, assignments → **Neon** (PostgreSQL).
 - **Auth**: Google login; default admin `lautaro@basement.studio`; long-lived session (no constant re-login); no email verification (intranet). Admin creates users.
 
 ---
@@ -51,13 +51,13 @@
 - `role` (optional)
 - `created_at`
 
-### Generations / History (Supabase + Blob)
+### Generations / History (Neon + R2)
 
 - `id` (uuid, PK)
 - `user_id` (FK)
 - `project_id` (FK, nullable)
 - `app_id` (e.g. `cineprompt`, `pov`)
-- `blob_url` (Vercel Blob URL — image stored in Blob)
+- `image_url` (Cloudflare R2 URL — image stored in R2)
 - `width`, `height` (for “small resolution” → show 4K upscale option)
 - `name` (optional, user or auto)
 - `created_at`
@@ -66,16 +66,17 @@
 
 ## 3. Storage
 
-- **Images**: Upload data URL → convert to blob → upload to **Vercel Blob**; store returned URL in `generations.blob_url`. Download/upscale read from this URL.
-- **Metadata**: Users, projects, project_members, generations table in **Supabase**.
+- **Images**: Upload data URL → convert to blob → upload to **Cloudflare R2**; store returned URL in `generations.image_url`. Download/upscale read from this URL.
+- **Metadata**: Users, projects, project_members, generations table in **Neon** (PostgreSQL).
 
-**Supabase setup (you will do):**
-1. Create project at [supabase.com](https://supabase.com).
-2. In Hub `.env.local`: `NEXT_PUBLIC_SUPABASE_URL=...`, `SUPABASE_SERVICE_ROLE_KEY=...` (for server-side).
-3. Run the SQL schema (tables above) in Supabase SQL editor.
+**Neon setup (you will do):**
+1. Create project at [neon.tech](https://neon.tech).
+2. In Hub `.env.local`: `DATABASE_URL=...` (connection string from Neon).
+3. Run `hub/supabase/neon_setup.sql` in Neon SQL editor.
 
-**Blob setup (you will do):**
-1. Vercel project → Storage → Blob; or use `@vercel/blob` with `BLOB_READ_WRITE_TOKEN` in `.env.local`.
+**R2 setup (you will do):**
+1. Cloudflare Dashboard → R2 → Create bucket; create API token with read/write.
+2. In Hub `.env.local`: `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`.
 
 ---
 
@@ -99,7 +100,7 @@
 ## 6. Hub context (active user + project)
 
 - **Provider**: e.g. `HubContext` with `user`, `project`, `setProject`. Session gives `user`; project selected in toolbar or dropdown.
-- **On “Download and add to history”**: Save image to Blob, insert row in `generations` with `user_id`, `project_id` (current project), `app_id`, `blob_url`, dimensions.
+- **On “Download and add to history”**: Save image to R2, insert row in `generations` with `user_id`, `project_id` (current project), `app_id`, `image_url`, dimensions.
 - **History**: Filter by `project_id` when a project is selected; optionally “All projects”.
 
 ---
@@ -123,14 +124,14 @@
 2. Authorized redirect URIs: http://localhost:3000/api/auth/callback/google (and your production URL).
 3. In Hub .env.local: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET (random), NEXTAUTH_URL.
 
-### Supabase
+### Neon
 
-1. supabase.com -> New project -> copy URL and service_role key.
-2. Hub .env.local: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
-3. In Supabase SQL Editor run hub/supabase/schema.sql.
+1. neon.tech -> New project -> copy connection string.
+2. Hub .env.local: DATABASE_URL.
+3. In Neon SQL Editor run hub/supabase/neon_setup.sql.
 
-### Vercel Blob (images)
+### Cloudflare R2 (images)
 
-1. Vercel project -> Storage -> Blob -> copy token.
-2. Hub .env.local: BLOB_READ_WRITE_TOKEN.
-3. Use @vercel/blob in API routes to upload and store URL in generations.blob_url.
+1. Cloudflare Dashboard -> R2 -> Create bucket; create API token with read/write.
+2. Hub .env.local: CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL.
+3. API routes use @/lib/r2 to upload and store URL in generations.image_url.

@@ -39,13 +39,13 @@ CREATE TABLE IF NOT EXISTS project_members (
   PRIMARY KEY (project_id, user_id)
 );
 
--- GENERATIONS (image history — stores R2 URL, not base64)
+-- GENERATIONS (image history — image URL in R2, not base64)
 CREATE TABLE IF NOT EXISTS generations (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    uuid REFERENCES users(id) ON DELETE SET NULL,
   project_id uuid REFERENCES projects(id) ON DELETE SET NULL,
   app_id     text NOT NULL,
-  blob_url   text NOT NULL,
+  image_url  text NOT NULL,
   thumb_url  text,
   width      int,
   height     int,

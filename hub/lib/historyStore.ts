@@ -18,7 +18,7 @@ export interface HistoryItem {
   projectName?: string;
   /** Descriptive tags for search (from API) */
   tags?: string[];
-  /** Blob URL from API; when set, client may resolve for display if dataUrl is empty */
+  /** Image URL from API (R2); when set, client may resolve for display if dataUrl is empty */
   imageUrl?: string;
   /** Small JPEG thumbnail for fast loading */
   thumbUrl?: string;

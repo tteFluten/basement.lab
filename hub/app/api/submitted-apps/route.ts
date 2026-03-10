@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** POST: add a submitted app. Requires session. Thumbnail uploaded to Blob. */
+/** POST: add a submitted app. Requires session. Thumbnail uploaded to R2. */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {

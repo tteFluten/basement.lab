@@ -65,10 +65,16 @@ function ProjectSelector() {
   const ref = useRef<HTMLDivElement>(null);
 
   const loadProjects = () => {
-    fetch("/api/projects?all=1")
+    fetch("/api/projects?all=1", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
-        const list: Project[] = Array.isArray(data?.items) ? data.items : [];
+        const raw = Array.isArray(data?.items) ? data.items : [];
+        const list: Project[] = raw.map((p: any) => ({
+          id: String(p?.id ?? ""),
+          name: String(p?.name ?? ""),
+          memberIds: Array.isArray(p?.memberIds) ? p.memberIds : [],
+          isMember: Boolean(p?.isMember),
+        })).filter((p) => p.id);
         setProjects(list);
         const id = getCurrentProjectId();
         setCurrentId(id);
@@ -93,11 +99,17 @@ function ProjectSelector() {
     }
   }, [open]);
 
-  const handleJoin = async (projectId: string, name: string) => {
-    if (!confirm(`¿Unirse a "${name}"?`)) return;
+  const handleJoin = async (e: React.MouseEvent, projectId: string, name: string) => {
+    e.stopPropagation();
+    if (!confirm(`Join "${name}"?`)) return;
     setJoining(projectId);
     try {
-      await fetch(`/api/projects/${projectId}/join`, { method: "POST" });
+      const res = await fetch(`/api/projects/${projectId}/join`, { method: "POST", credentials: "include" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(body?.error ?? `Join failed (${res.status})`);
+        return;
+      }
       await loadProjects();
       setCurrentProjectId(projectId);
       setCurrentId(projectId);
@@ -106,11 +118,17 @@ function ProjectSelector() {
     }
   };
 
-  const handleLeave = async (projectId: string, name: string) => {
-    if (!confirm(`¿Salir de "${name}"?`)) return;
+  const handleLeave = async (e: React.MouseEvent, projectId: string, name: string) => {
+    e.stopPropagation();
+    if (!confirm(`Leave "${name}"?`)) return;
     setJoining(projectId);
     try {
-      await fetch(`/api/projects/${projectId}/join`, { method: "DELETE" });
+      const res = await fetch(`/api/projects/${projectId}/join`, { method: "DELETE", credentials: "include" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(body?.error ?? `Leave failed (${res.status})`);
+        return;
+      }
       if (currentId === projectId) {
         setCurrentProjectId(null);
         setCurrentId(null);
@@ -172,9 +190,9 @@ function ProjectSelector() {
                   <button
                     type="button"
                     disabled={joining === p.id}
-                    onClick={() => handleLeave(p.id, p.name)}
+                    onClick={(e) => handleLeave(e, p.id, p.name)}
                     className="p-1 text-fg-muted hover:text-red-400 disabled:opacity-40 shrink-0"
-                    title="Salir del proyecto"
+                    title="Leave project"
                   >
                     {joining === p.id ? "…" : <Minus className="w-3 h-3" />}
                   </button>
@@ -195,9 +213,9 @@ function ProjectSelector() {
                   <button
                     type="button"
                     disabled={joining === p.id}
-                    onClick={() => handleJoin(p.id, p.name)}
+                    onClick={(e) => handleJoin(e, p.id, p.name)}
                     className="p-1 text-fg-muted hover:text-fg disabled:opacity-40 shrink-0"
-                    title="Unirse al proyecto"
+                    title="Join project"
                   >
                     {joining === p.id ? "…" : <Plus className="w-3 h-3" />}
                   </button>
