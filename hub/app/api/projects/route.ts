@@ -39,28 +39,19 @@ export async function GET(request: NextRequest) {
       }
       const allProjectsList = (allProjectsData ?? []) as { id: string }[];
 
-      // Get ALL project_members rows (same query the admin page uses)
-      const allProjIds = allProjectsList.map((p) => p.id);
-      const membersByProject = new Map<string, string[]>();
-      if (allProjIds.length > 0) {
-        const { data: membersData } = await db
-          .from("project_members")
-          .select("project_id, user_id")
-          .in("project_id", allProjIds);
-        for (const row of membersData ?? []) {
-          if (!row?.project_id || !row?.user_id) continue;
-          const arr = membersByProject.get(row.project_id) ?? [];
-          arr.push(row.user_id);
-          membersByProject.set(row.project_id, arr);
-        }
-      }
+      // Query only the current user's memberships (same proven query as the default path)
+      const { data: myMemberRows } = await db
+        .from("project_members")
+        .select("project_id")
+        .eq("user_id", session.user.id);
+      const myProjectIds = new Set(
+        (myMemberRows ?? []).map((r: any) => r.project_id).filter(Boolean)
+      );
 
-      // Return all projects with memberIds + server-computed isMember
       const items = allProjectsList.map((p: any) => ({
         ...p,
         links: p.links ?? {},
-        memberIds: membersByProject.get(p.id) ?? [],
-        isMember: membersByProject.get(p.id)?.includes(session.user.id) ?? false,
+        isMember: myProjectIds.has(p.id),
       }));
       return NextResponse.json({ items });
     }
