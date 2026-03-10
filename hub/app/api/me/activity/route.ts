@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -9,9 +9,9 @@ export const runtime = "nodejs";
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!hasSupabase()) return NextResponse.json({ bugs: [], ratings: [] });
+  if (!hasDb()) return NextResponse.json({ bugs: [], ratings: [] });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
 
   const { data: bugs } = await supabase
     .from("bug_reports")

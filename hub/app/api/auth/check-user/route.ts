@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "email required" }, { status: 400 });
     }
 
-    const supabase = getSupabase();
+    const supabase = getDb();
     let { data: row, error } = await supabase
       .from("users")
       .select("id, password_hash, status")

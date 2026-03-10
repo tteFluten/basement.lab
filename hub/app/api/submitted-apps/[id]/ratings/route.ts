@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 /** GET: average rating + user's own rating for a submitted app */
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  if (!hasSupabase()) return NextResponse.json({ average: 0, count: 0, userScore: null });
+  if (!hasDb()) return NextResponse.json({ average: 0, count: 0, userScore: null });
 
   const session = await getServerSession(authOptions);
-  const supabase = getSupabase();
+  const supabase = getDb();
 
   const { data: ratings } = await supabase
     .from("app_ratings")
@@ -33,13 +33,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!hasSupabase()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
 
   const body = await request.json().catch(() => ({}));
   const score = Number(body.score);
   if (!score || score < 1 || score > 5) return NextResponse.json({ error: "score must be 1-5" }, { status: 400 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { error } = await supabase
     .from("app_ratings")
     .upsert(

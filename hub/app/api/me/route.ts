@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json({
       id: session.user.id,
       email: session.user.email ?? "",
@@ -23,7 +23,7 @@ export async function GET() {
     });
   }
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data, error } = await supabase
     .from("users")
     .select("id, email, full_name, nickname, avatar_url, role")
@@ -68,11 +68,11 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
 
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json({ error: "Profile persistence not configured" }, { status: 503 });
   }
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data, error } = await supabase
     .from("users")
     .update({ ...updates, updated_at: new Date().toISOString() })

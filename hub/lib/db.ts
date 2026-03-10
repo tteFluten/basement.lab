@@ -1,5 +1,5 @@
 /**
- * Database client wrapper that mimics the Supabase query-builder API.
+ * Database client wrapper that mimics the Neon query-builder API.
  * Backed by Neon (PostgreSQL) via @neondatabase/serverless.
  *
  * Supports: select, insert, update, delete, upsert
@@ -9,15 +9,10 @@
 
 import { neon } from "@neondatabase/serverless";
 
-// Accept either DATABASE_URL (Neon standard) or the old Supabase env vars.
-// When DATABASE_URL is set, Neon is used. When only Supabase vars are present
-// the old @supabase/supabase-js client is used as fallback.
 const DATABASE_URL = process.env.DATABASE_URL ?? process.env.NEON_DATABASE_URL ?? "";
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
-export function hasSupabase(): boolean {
-  return Boolean(DATABASE_URL || (SUPABASE_URL && SUPABASE_KEY));
+export function hasDb(): boolean {
+  return Boolean(DATABASE_URL);
 }
 
 // ---------------------------------------------------------------------------
@@ -42,7 +37,7 @@ async function rawQuery(queryText: string, queryParams: unknown[]): Promise<Row[
   // Extract the $N indices in textual order so params are passed in the
   // correct position regardless of the order they were added to _params.
   // e.g. "SET col = $2 WHERE id = $1" → indices [1, 0] → reorder accordingly.
-  const indices = [...queryText.matchAll(/\$(\d+)/g)].map((m) => parseInt(m[1], 10) - 1);
+  const indices = Array.from(queryText.matchAll(/\$(\d+)/g)).map((m) => parseInt(m[1], 10) - 1);
   const orderedParams = indices.map((i) => queryParams[i]);
   const strings = Object.assign([...parts], { raw: [...parts] }) as TemplateStringsArray;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,7 +46,7 @@ async function rawQuery(queryText: string, queryParams: unknown[]): Promise<Row[
 }
 
 // ---------------------------------------------------------------------------
-// Query result shape (matches Supabase client return type)
+// Query result shape
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -200,7 +195,7 @@ class QueryBuilder {
   }
 
   /**
-   * Supabase or() filter string format: "col.op.value[,col.op.value]"
+   * or() filter string format: "col.op.value[,col.op.value]"
    * e.g. "user_id.eq.abc-123,is_public.eq.true"
    */
   or(filter: string): this {
@@ -472,14 +467,14 @@ class QueryBuilder {
 }
 
 // ---------------------------------------------------------------------------
-// Public API — matches the shape callers expect from the old Supabase client
+// Public API — Neon-backed DB client exposed to API routes
 // ---------------------------------------------------------------------------
 
 type DbClient = {
   from(table: string): QueryBuilder;
 };
 
-export function getSupabase(): DbClient {
+export function getDb(): DbClient {
   if (!DATABASE_URL) {
     throw new Error("Missing DATABASE_URL (Neon connection string)");
   }

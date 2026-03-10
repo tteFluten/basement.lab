@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { uploadBuffer, hasR2 } from "@/lib/r2";
 import { authOptions } from "@/lib/auth";
 import { generateImageTags } from "@/lib/generateImageTags";
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!hasSupabase()) {
+    if (!hasDb()) {
       const body = await request.json();
       const { dataUrl, appId } = body as { dataUrl?: string; appId?: string };
       if (!dataUrl || !appId) {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
         );
       }
       return NextResponse.json(
-        { ok: true, saved: false, message: "Supabase not configured" }
+        { ok: true, saved: false, message: "Database not configured" }
       );
     }
 
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     const storedUrl = uploadedUrl;
-    const supabase = getSupabase();
+    const supabase = getDb();
 
     const row: Record<string, unknown> = {
       app_id: appId,
@@ -165,9 +165,9 @@ export async function POST(request: NextRequest) {
 
 /** GET: list generations. Query: projectId, userId (admin), tag, appId, minWidth, maxWidth, minHeight, maxHeight, limit. Non-admins see only their own. */
 export async function GET(request: NextRequest) {
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json(
-      { error: "Supabase not configured" },
+      { error: "Database not configured" },
       { status: 503 }
     );
   }
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
     const light = searchParams.get("light") === "1";
     const isAdmin = (session.user as { role?: string }).role === "admin";
 
-    const supabase = getSupabase();
+    const supabase = getDb();
     const selectWithTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, tags, prompt, note, is_public";
     const selectWithoutTags = "id, app_id, blob_url, thumb_url, width, height, name, created_at, user_id, project_id, prompt, note, is_public";
 

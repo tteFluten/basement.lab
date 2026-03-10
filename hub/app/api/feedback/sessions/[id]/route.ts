@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -8,9 +8,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data, error } = await supabase
     .from("feedback_sessions")
     .select("id, project_id, title, description, version, session_type, video_url, source_url, thumbnail_url, duration_s, created_at")
@@ -40,14 +40,14 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const { getServerSession } = await import("next-auth");
   const { authOptions } = await import("@/lib/auth");
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const isAdmin = (session.user as { role?: string }).role === "admin";
 
   const { data: fbSession } = await supabase
@@ -111,14 +111,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const { getServerSession } = await import("next-auth");
   const { authOptions } = await import("@/lib/auth");
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const isAdmin = (session.user as { role?: string }).role === "admin";
 
   const { data: fbSession } = await supabase

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -15,14 +15,14 @@ function toSlug(name: string): string {
 
 /** GET: list all feedback projects with membership status for current user. */
 export async function GET() {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = session.user.id;
   const isAdmin = (session.user as { role?: string }).role === "admin";
-  const supabase = getSupabase();
+  const supabase = getDb();
 
   const { data, error } = await supabase
     .from("feedback_projects")
@@ -122,7 +122,7 @@ export async function GET() {
 
 /** POST: create a feedback project. */
 export async function POST(request: NextRequest) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
   const name = body.name?.trim();
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   let slug = toSlug(name) || "project";
 
   const { data: existing } = await supabase

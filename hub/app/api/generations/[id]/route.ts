@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -10,8 +10,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!hasSupabase()) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
   const session = await getServerSession(authOptions);
@@ -24,7 +24,7 @@ export async function PATCH(
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data: row, error: fetchError } = await supabase
     .from("generations")
     .select("id, user_id")
@@ -81,9 +81,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json(
-      { error: "Supabase not configured" },
+      { error: "Database not configured" },
       { status: 503 }
     );
   }
@@ -98,7 +98,7 @@ export async function DELETE(
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data: row, error: fetchError } = await supabase
     .from("generations")
     .select("id, user_id")

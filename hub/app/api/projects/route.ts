@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -8,9 +8,9 @@ export const runtime = "nodejs";
 /** GET: list projects. Members see only projects they belong to; admins see all. */
 export async function GET(request: NextRequest) {
   try {
-    if (!hasSupabase()) {
+    if (!hasDb()) {
       return NextResponse.json(
-        { error: "Supabase not configured" },
+        { error: "Database not configured" },
         { status: 503 }
       );
     }
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     const isAdmin = (session.user as { role?: string }).role === "admin";
-    const supabase = getSupabase();
+    const supabase = getDb();
 
   const projectColumns = "id, name, client, thumbnail_url, links, start_date, end_date, created_at";
 
@@ -114,9 +114,9 @@ export async function GET(request: NextRequest) {
 
 /** POST: create project. Admin only. */
 export async function POST(request: NextRequest) {
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json(
-      { error: "Supabase not configured" },
+      { error: "Database not configured" },
       { status: 503 }
     );
   }
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
     end_date: typeof end_date === "string" && end_date.trim() ? end_date.trim() : null,
   };
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data, error } = await supabase
     .from("projects")
     .insert(insert)

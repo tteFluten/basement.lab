@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 
 export const runtime = "nodejs";
 
 /** GET: single submitted app by id */
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  if (!hasSupabase()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data, error } = await supabase
     .from("submitted_apps")
     .select("id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at, external")
@@ -47,7 +47,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
-  if (!hasSupabase()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
 
   try {
     const body = await request.json().catch(() => ({}));
@@ -69,7 +69,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    const supabase = getSupabase();
+    const supabase = getDb();
     const { error } = await supabase.from("submitted_apps").update(updates).eq("id", params.id);
 
     if (error) {
@@ -90,9 +90,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
-  if (!hasSupabase()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { error } = await supabase.from("submitted_apps").delete().eq("id", params.id);
 
   if (error) {

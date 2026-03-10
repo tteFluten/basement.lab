@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -10,9 +10,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json(
-      { error: "Supabase not configured" },
+      { error: "Database not configured" },
       { status: 503 }
     );
   }
@@ -25,7 +25,7 @@ export async function GET(
   const projectId = (await params).id;
   if (!projectId) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data, error } = await supabase
     .from("project_members")
     .select("user_id")
@@ -43,9 +43,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json(
-      { error: "Supabase not configured" },
+      { error: "Database not configured" },
       { status: 503 }
     );
   }
@@ -61,7 +61,7 @@ export async function POST(
   const body = await request.json().catch(() => ({}));
   const userIds = Array.isArray(body.userIds) ? body.userIds.filter((u: unknown) => typeof u === "string") : [];
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   await supabase.from("project_members").delete().eq("project_id", projectId);
   if (userIds.length > 0) {
     const { error } = await supabase.from("project_members").insert(

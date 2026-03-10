@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { uploadBuffer, hasR2 } from "@/lib/r2";
 import { authOptions } from "@/lib/auth";
 
@@ -23,7 +23,7 @@ type SubmittedAppRow = {
 
 /** GET: list submitted apps. Sorted by title. Includes submitter name. */
 export async function GET(request: NextRequest) {
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json({ items: [] });
   }
 
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get("q") ?? undefined;
     const limit = Math.min(Number(searchParams.get("limit")) || 200, 500);
 
-    const supabase = getSupabase();
+    const supabase = getDb();
     const cols = "id, user_id, title, description, deploy_link, edit_link, thumbnail_url, icon, version, tags, created_at, external";
     let query = supabase
       .from("submitted_apps")
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!hasSupabase()) {
+  if (!hasDb()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabase();
+    const supabase = getDb();
     const row: Record<string, unknown> = {
       user_id: session.user.id,
       title,

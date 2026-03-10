@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -20,9 +20,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data, error } = await supabase
     .from("feedback_comments")
     .select("id, session_id, timestamp_s, text, drawing, x_pct, y_pct, screenshot_url, author_name, author_id, anon_token, created_at, updated_at, completed, priority")
@@ -58,9 +58,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const session = await getServerSession(authOptions);
 
   const body = await request.json() as {

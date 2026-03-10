@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 
 export const authOptions: NextAuthOptions = {
   pages: {
@@ -21,9 +21,9 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        if (!hasSupabase()) return null;
+        if (!hasDb()) return null;
 
-        const supabase = getSupabase();
+        const supabase = getDb();
         let { data: row, error } = await supabase
           .from("users")
           .select("id, email, full_name, role, password_hash, status")

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -11,8 +11,8 @@ export const runtime = "nodejs";
  * User can edit own; admin can edit any. Returns { updated: number, errors: string[] }.
  */
 export async function PATCH(request: NextRequest) {
-  if (!hasSupabase()) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
   const session = await getServerSession(authOptions);
@@ -34,7 +34,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const isAdmin = (session.user as { role?: string }).role === "admin";
-  const supabase = getSupabase();
+  const supabase = getDb();
 
   const { data: rows, error: fetchError } = await supabase
     .from("generations")
@@ -88,8 +88,8 @@ export async function PATCH(request: NextRequest) {
  * Body: { ids: string[] }. Returns { deleted: number, errors: string[] }.
  */
 export async function DELETE(request: NextRequest) {
-  if (!hasSupabase()) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
   const session = await getServerSession(authOptions);
@@ -104,7 +104,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const isAdmin = (session.user as { role?: string }).role === "admin";
-  const supabase = getSupabase();
+  const supabase = getDb();
 
   const { data: rows, error: fetchError } = await supabase
     .from("generations")

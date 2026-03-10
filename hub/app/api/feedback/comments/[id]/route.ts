@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 const ANON_COOKIE = "fb_anon";
 
 async function checkOwnership(
-  supabase: ReturnType<typeof getSupabase>,
+  supabase: ReturnType<typeof getDb>,
   commentId: string,
   userId: string | null,
   isAdmin: boolean
@@ -37,13 +37,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id ?? null;
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { allowed, comment } = await checkOwnership(supabase, params.id, userId, isAdmin);
   if (!comment) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -82,13 +82,13 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id ?? null;
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { allowed, comment } = await checkOwnership(supabase, params.id, userId, isAdmin);
   if (!comment) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

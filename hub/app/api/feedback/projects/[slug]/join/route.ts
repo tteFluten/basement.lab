@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -10,12 +10,12 @@ export async function POST(
   _request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data: project } = await supabase
     .from("feedback_projects")
     .select("id")
@@ -36,12 +36,12 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  if (!hasSupabase()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data: project } = await supabase
     .from("feedback_projects")
     .select("id")

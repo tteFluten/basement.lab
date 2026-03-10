@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getSupabase, hasSupabase } from "@/lib/supabase";
+import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
@@ -8,8 +8,8 @@ export const runtime = "nodejs";
 
 /** GET: list users. Admin only. */
 export async function GET() {
-  if (!hasSupabase()) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
   const session = await getServerSession(authOptions);
@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   let { data, error } = await supabase
     .from("users")
     .select("id, email, full_name, nickname, avatar_url, role, status")
@@ -51,8 +51,8 @@ export async function POST(request: NextRequest) {
   if ((session.user as { role?: string }).role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  if (!hasSupabase()) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!hasDb()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
   const password_hash = await bcrypt.hash(password, 10);
 
-  const supabase = getSupabase();
+  const supabase = getDb();
   const { data, error } = await supabase
     .from("users")
     .insert({ email, password_hash, full_name, nickname, role })
