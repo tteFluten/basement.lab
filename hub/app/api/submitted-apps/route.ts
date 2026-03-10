@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
-import { uploadDataUrl, hasBlob } from "@/lib/blob";
+import { uploadBuffer, hasR2 } from "@/lib/r2";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -137,9 +137,15 @@ export async function POST(request: NextRequest) {
 
     let thumbnailUrl: string | null = null;
     const thumbnailDataUrl = typeof body.thumbnailDataUrl === "string" ? body.thumbnailDataUrl : null;
-    if (thumbnailDataUrl && hasBlob()) {
-      const pathname = `submitted-apps/${Date.now()}.png`;
-      thumbnailUrl = await uploadDataUrl(thumbnailDataUrl, pathname);
+    if (thumbnailDataUrl && hasR2()) {
+      const b64 = thumbnailDataUrl.includes(",") ? thumbnailDataUrl.split(",")[1] : thumbnailDataUrl;
+      const buffer = Buffer.from(b64, "base64");
+      const key = `submitted-apps/${Date.now()}.png`;
+      try {
+        thumbnailUrl = await uploadBuffer(key, buffer, "image/png");
+      } catch (e) {
+        console.error("Submitted app thumbnail upload failed:", e);
+      }
     }
 
     if (!title || !deployLink) {

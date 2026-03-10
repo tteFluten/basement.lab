@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getSupabase, hasSupabase } from "@/lib/supabase";
-import { uploadDataUrl, hasBlob } from "@/lib/blob";
+import { uploadBuffer, hasR2 } from "@/lib/r2";
 import { authOptions } from "@/lib/auth";
 import { generateImageTags } from "@/lib/generateImageTags";
 
@@ -60,18 +60,32 @@ export async function POST(request: NextRequest) {
     }
 
     const ts = Date.now();
-    let blobUrl: string | null = null;
+    let uploadedUrl: string | null = null;
     let thumbUrl: string | null = null;
-    if (hasBlob()) {
+
+    if (hasR2()) {
+      const toBuffer = (du: string): Buffer => {
+        const b64 = du.includes(",") ? du.split(",")[1] : du;
+        return Buffer.from(b64, "base64");
+      };
       const [fullResult, thumbResult] = await Promise.all([
-        uploadDataUrl(dataUrl, `generations/${appId}/${ts}.png`),
-        thumbDataUrl ? uploadDataUrl(thumbDataUrl, `generations/${appId}/${ts}_thumb.jpg`) : Promise.resolve(null),
+        uploadBuffer(`generations/${appId}/${ts}.png`, toBuffer(dataUrl), "image/png"),
+        thumbDataUrl
+          ? uploadBuffer(`generations/${appId}/${ts}_thumb.jpg`, toBuffer(thumbDataUrl), "image/jpeg")
+          : Promise.resolve(null),
       ]);
-      blobUrl = fullResult;
+      uploadedUrl = fullResult;
       thumbUrl = thumbResult;
     }
 
-    const storedUrl = blobUrl ?? dataUrl;
+    if (!uploadedUrl) {
+      return NextResponse.json(
+        { error: "File storage (R2) not configured" },
+        { status: 503 }
+      );
+    }
+
+    const storedUrl = uploadedUrl;
     const supabase = getSupabase();
 
     const row: Record<string, unknown> = {
@@ -136,7 +150,7 @@ export async function POST(request: NextRequest) {
       saved: true,
       id: data.id,
       created_at: data.created_at,
-      blob_url: blobUrl,
+      blob_url: uploadedUrl,
       thumb_url: thumbUrl,
       tags,
     });

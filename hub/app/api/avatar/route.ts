@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { uploadDataUrl, hasBlob } from "@/lib/blob";
+import { uploadBuffer, hasR2 } from "@/lib/r2";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!hasBlob()) {
+  if (!hasR2()) {
     return NextResponse.json(
-      { error: "File storage not configured" },
+      { error: "File storage (R2) not configured" },
       { status: 503 }
     );
   }
@@ -28,14 +28,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const pathname = `avatars/${session.user.id}/${Date.now()}.png`;
-  const url = await uploadDataUrl(dataUrl, pathname);
-  if (!url) {
-    return NextResponse.json(
-      { error: "Upload failed" },
-      { status: 500 }
-    );
-  }
+  const b64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+  const buffer = Buffer.from(b64, "base64");
+  const key = `avatars/${session.user.id}/${Date.now()}.png`;
 
-  return NextResponse.json({ url });
+  try {
+    const url = await uploadBuffer(key, buffer, "image/png");
+    return NextResponse.json({ url });
+  } catch (e) {
+    console.error("Avatar upload failed:", e);
+    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+  }
 }

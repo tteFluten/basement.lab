@@ -29,12 +29,6 @@ async function uploadImageForReview(file: File | Blob, filename = "paste.png"): 
     const putRes = await fetch(init.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": contentType } });
     return putRes.ok ? init.publicUrl : null;
   }
-  if (init.mode === "blob") {
-    const { upload } = await import("@vercel/blob/client");
-    const fileToUpload = file instanceof File ? file : new File([file], filename, { type: file.type || "image/png" });
-    const blob = await upload(filename, fileToUpload, { access: "public", handleUploadUrl: "/api/feedback/upload/image" });
-    return blob.url;
-  }
   return null;
 }
 

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { uploadBuffer, hasR2 } from "@/lib/r2";
-import { put } from "@vercel/blob";
 
 export const runtime = "nodejs";
 
@@ -23,12 +22,11 @@ export async function POST(request: NextRequest) {
   const ext = contentType.includes("png") ? "png" : "jpg";
   const key = `feedback/thumbnails/thumb-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  if (hasR2()) {
-    const buffer = Buffer.from(await blob.arrayBuffer());
-    const url = await uploadBuffer(key, buffer, contentType);
-    return NextResponse.json({ url });
+  if (!hasR2()) {
+    return NextResponse.json({ error: "File storage (R2) not configured" }, { status: 503 });
   }
 
-  const result = await put(key, blob, { access: "public", addRandomSuffix: false });
-  return NextResponse.json({ url: result.url });
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const url = await uploadBuffer(key, buffer, contentType);
+  return NextResponse.json({ url });
 }

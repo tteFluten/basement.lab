@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { uploadBuffer, hasR2 } from "@/lib/r2";
-import { put } from "@vercel/blob";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -53,13 +52,10 @@ export async function POST(request: NextRequest) {
     const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
     const key = `feedback/screenshots/ss-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
 
-    let screenshotUrl: string;
-    if (hasR2()) {
-      screenshotUrl = await uploadBuffer(key, imgBuffer, "image/png");
-    } else {
-      const result = await put(key, imgBuffer, { access: "public", addRandomSuffix: false, contentType: "image/png" });
-      screenshotUrl = result.url;
+    if (!hasR2()) {
+      return NextResponse.json({ screenshotUrl: null });
     }
+    const screenshotUrl = await uploadBuffer(key, imgBuffer, "image/png");
 
     return NextResponse.json({ screenshotUrl });
   } catch (e) {
