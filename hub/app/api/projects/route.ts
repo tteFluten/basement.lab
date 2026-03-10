@@ -5,14 +5,15 @@ import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-/** GET: list projects. Members see only projects they belong to; admins see all. */
+/** GET: list projects.
+ *  Default: returns only projects the user is a member of.
+ *  ?all=1:  returns ALL projects with an `isMember` boolean on each item.
+ *  ?members=1: additionally embeds memberIds[] on each item (admin only).
+ */
 export async function GET(request: NextRequest) {
   try {
     if (!hasDb()) {
-      return NextResponse.json(
-        { error: "Database not configured" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
     const session = await getServerSession(authOptions);
@@ -21,91 +22,70 @@ export async function GET(request: NextRequest) {
     }
 
     const isAdmin = (session.user as { role?: string }).role === "admin";
-    const supabase = getDb();
+    const db = getDb();
+    const projectColumns = "id, name, client, thumbnail_url, links, start_date, end_date, created_at";
+    const wantAll = request.nextUrl.searchParams.get("all") === "1";
+    const wantMembers = request.nextUrl.searchParams.get("members") === "1";
 
-  const projectColumns = "id, name, client, thumbnail_url, links, start_date, end_date, created_at";
-
-  const wantMembers = request.nextUrl.searchParams.get("members") === "1";
-
-  if (isAdmin) {
-    const { data, error } = await supabase
+    // Fetch all projects (always needed for wantAll, or for admins)
+    const { data: allProjects, error: allErr } = await db
       .from("projects")
       .select(projectColumns)
       .order("name");
-    if (error) {
-      console.error("Supabase projects select:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (allErr) {
+      console.error("projects select:", allErr);
+      return NextResponse.json({ error: allErr.message }, { status: 500 });
     }
     type ProjectRow = { id: string; links?: object };
-    const projects = (data ?? []) as ProjectRow[];
+    const projects = (allProjects ?? []) as ProjectRow[];
+    const allIds = projects.map((p) => p.id);
 
+    // Fetch membership rows for the current user
+    const { data: myMemberRows } = allIds.length > 0
+      ? await db.from("project_members").select("project_id").eq("user_id", session.user.id)
+      : { data: [] };
+    const myProjectIds = new Set(
+      (myMemberRows ?? []).map((r: any) => r.project_id).filter(Boolean)
+    );
+
+    // Optionally embed all memberIds per project (admin feature)
     let membersByProject = new Map<string, string[]>();
-    if (wantMembers) {
-      const ids = projects.map((p) => p.id);
-      if (ids.length > 0) {
-        const res = await supabase
-          .from("project_members")
-          .select("project_id, user_id")
-          .in("project_id", ids);
-        for (const row of res.data ?? []) {
-          if (!row?.project_id || !row?.user_id) continue;
-          const arr = membersByProject.get(row.project_id) ?? [];
-          arr.push(row.user_id);
-          membersByProject.set(row.project_id, arr);
-        }
+    if (wantMembers && isAdmin && allIds.length > 0) {
+      const { data: membersData } = await db
+        .from("project_members")
+        .select("project_id, user_id")
+        .in("project_id", allIds);
+      for (const row of membersData ?? []) {
+        if (!row?.project_id || !row?.user_id) continue;
+        const arr = membersByProject.get(row.project_id) ?? [];
+        arr.push(row.user_id);
+        membersByProject.set(row.project_id, arr);
       }
     }
 
-    const items = projects.map((p) => ({
+    if (wantAll) {
+      // Return every project with isMember flag so the client can split them
+      const items = projects.map((p) => ({
+        ...p,
+        links: p.links ?? {},
+        isMember: myProjectIds.has(p.id),
+        ...(wantMembers && isAdmin ? { memberIds: membersByProject.get(p.id) ?? [] } : {}),
+      }));
+      return NextResponse.json({ items });
+    }
+
+    // Default: only the user's own projects (admin sees all as "own")
+    const filtered = isAdmin
+      ? projects
+      : projects.filter((p) => myProjectIds.has(p.id));
+
+    const items = filtered.map((p) => ({
       ...p,
       links: p.links ?? {},
-      memberIds: membersByProject.get(p.id) ?? [],
+      isMember: true,
+      ...(wantMembers && isAdmin ? { memberIds: membersByProject.get(p.id) ?? [] } : {}),
     }));
     return NextResponse.json({ items });
-  }
-
-  const { data: memberRows, error: memberError } = await supabase
-    .from("project_members")
-    .select("project_id")
-    .eq("user_id", session.user.id);
-  if (memberError) {
-    return NextResponse.json({ error: memberError.message }, { status: 500 });
-  }
-  const projectIds = (memberRows ?? []).map((r: any) => r.project_id).filter(Boolean);
-  if (projectIds.length === 0) {
-    return NextResponse.json({ items: [] });
-  }
-
-  const { data, error } = await supabase
-    .from("projects")
-    .select(projectColumns)
-    .in("id", projectIds)
-    .order("name");
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  type ProjectRow = { id: string; links?: object };
-  const projects = (data ?? []) as ProjectRow[];
-
-  let membersByProject = new Map<string, string[]>();
-  if (wantMembers && projectIds.length > 0) {
-    const { data: membersData } = await supabase
-      .from("project_members")
-      .select("project_id, user_id")
-      .in("project_id", projectIds);
-    for (const row of membersData ?? []) {
-      const arr = membersByProject.get(row.project_id) ?? [];
-      arr.push(row.user_id);
-      membersByProject.set(row.project_id, arr);
-    }
-  }
-
-  const items = projects.map((p) => ({
-    ...p,
-    links: p.links ?? {},
-    memberIds: membersByProject.get(p.id) ?? [],
-  }));
-  return NextResponse.json({ items });
   } catch (e) {
     console.error("GET /api/projects:", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

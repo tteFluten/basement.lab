@@ -24,6 +24,8 @@ import {
   X,
   Banana,
   ListChecks,
+  UserPlus,
+  Check,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
@@ -51,29 +53,33 @@ const PROJECT_APP_LINKS = [
 
 const iconSize = 18;
 
-type Project = { id: string; name: string };
+type Project = { id: string; name: string; isMember: boolean };
 
 function ProjectSelector() {
   const [open, setOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [joining, setJoining] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch("/api/projects")
+  const loadProjects = () => {
+    fetch("/api/projects?all=1")
       .then((r) => r.json())
       .then((data) => {
-        const list = Array.isArray(data?.items) ? data.items : [];
+        const list: Project[] = Array.isArray(data?.items) ? data.items : [];
         setProjects(list);
         const id = getCurrentProjectId();
         setCurrentId(id);
-        if (list.length === 1 && !id) {
-          setCurrentProjectId(list[0].id);
-          setCurrentId(list[0].id);
+        const myProjects = list.filter((p) => p.isMember);
+        if (myProjects.length === 1 && !id) {
+          setCurrentProjectId(myProjects[0].id);
+          setCurrentId(myProjects[0].id);
         }
       })
       .catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => { loadProjects(); }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -85,6 +91,20 @@ function ProjectSelector() {
     }
   }, [open]);
 
+  const handleJoin = async (projectId: string) => {
+    setJoining(projectId);
+    try {
+      await fetch(`/api/projects/${projectId}/join`, { method: "POST" });
+      await loadProjects();
+      setCurrentProjectId(projectId);
+      setCurrentId(projectId);
+    } finally {
+      setJoining(null);
+    }
+  };
+
+  const myProjects = projects.filter((p) => p.isMember);
+  const otherProjects = projects.filter((p) => !p.isMember);
   const currentName = projects.find((p) => p.id === currentId)?.name ?? "Project";
 
   return (
@@ -104,20 +124,21 @@ function ProjectSelector() {
         <ChevronDown className="h-3.5 w-3.5 shrink-0" />
       </button>
       {open && (
-        <ul
-          className="scrollbar-menu absolute right-0 top-full mt-1 min-w-[200px] border border-border bg-bg-muted py-1 z-50 max-h-[280px] overflow-auto"
+        <div
+          className="scrollbar-menu absolute right-0 top-full mt-1 min-w-[220px] border border-border bg-bg-muted py-1 z-50 max-h-[360px] overflow-auto"
           role="menu"
         >
-          {projects.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-fg-muted">
-              No projects. Admin can create in Dashboard.
-            </li>
-          ) : (
-            projects.map((p) => (
-              <li key={p.id} role="none">
+          {/* My projects — selectable as active */}
+          {myProjects.length > 0 && (
+            <>
+              <p className="px-3 pt-1 pb-0.5 text-[10px] uppercase tracking-wider text-fg-muted select-none">
+                Mis proyectos
+              </p>
+              {myProjects.map((p) => (
                 <button
+                  key={p.id}
                   type="button"
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-bg ${
+                  className={`w-full flex items-center gap-2 text-left px-3 py-2 text-sm hover:bg-bg ${
                     currentId === p.id ? "text-fg font-medium" : "text-fg-muted"
                   }`}
                   role="menuitem"
@@ -127,12 +148,42 @@ function ProjectSelector() {
                     setOpen(false);
                   }}
                 >
-                  {p.name}
+                  {currentId === p.id && <Check className="w-3 h-3 shrink-0" />}
+                  <span className={`truncate ${currentId === p.id ? "" : "pl-5"}`}>{p.name}</span>
                 </button>
-              </li>
-            ))
+              ))}
+            </>
           )}
-        </ul>
+
+          {/* All other projects — joinable */}
+          {otherProjects.length > 0 && (
+            <>
+              <p className={`px-3 pb-0.5 text-[10px] uppercase tracking-wider text-fg-muted select-none ${myProjects.length > 0 ? "pt-3 border-t border-border mt-1" : "pt-1"}`}>
+                Todos los proyectos
+              </p>
+              {otherProjects.map((p) => (
+                <div key={p.id} className="flex items-center gap-1 px-2 py-1.5">
+                  <span className="flex-1 text-sm text-fg-muted truncate pl-1">{p.name}</span>
+                  <button
+                    type="button"
+                    disabled={joining === p.id}
+                    onClick={() => handleJoin(p.id)}
+                    className="flex items-center gap-1 px-2 py-0.5 text-xs border border-border text-fg-muted hover:text-fg hover:border-fg disabled:opacity-40 shrink-0"
+                  >
+                    <UserPlus className="w-3 h-3" />
+                    {joining === p.id ? "…" : "Unirse"}
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+
+          {projects.length === 0 && (
+            <p className="px-3 py-2 text-xs text-fg-muted">
+              No hay proyectos. El admin puede crear en el Dashboard.
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
