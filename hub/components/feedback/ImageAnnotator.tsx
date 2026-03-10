@@ -55,7 +55,13 @@ export function ImageAnnotator({
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [historyPickerOpen, setHistoryPickerOpen] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setImgError(false);
+    setImgSize(null);
+  }, [src]);
 
   const redrawCanvas = useCallback((paths: DrawingPath[]) => {
     const canvas = canvasRef.current;
@@ -235,27 +241,35 @@ export function ImageAnnotator({
           } : { width: "100%", height: "100%" }}
           onClick={handleContainerClick}
         >
-          <img
-            src={src}
-            alt=""
-            className="block w-full h-full object-contain"
-            onLoad={(e) => {
-              const img = e.currentTarget;
-              const { naturalWidth: w, naturalHeight: h } = img;
-              setImgSize({ w, h });
-              if (canvasRef.current) {
-                canvasRef.current.width = w;
-                canvasRef.current.height = h;
-                // Redraw overlay after canvas resize (setting width/height clears it)
-                if (!pendingPin && overlayDrawing) {
-                  redrawCanvas(overlayDrawing);
-                } else if (!pendingPin && !overlayDrawing) {
-                  redrawCanvas([]);
+          {imgError ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-12 px-4 text-center">
+              <p className="text-sm font-mono text-red-400">Failed to load image</p>
+              <p className="text-xs font-mono text-fg-muted break-all max-w-md">{src}</p>
+            </div>
+          ) : (
+            <img
+              src={src}
+              alt=""
+              className="block w-full h-full object-contain"
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                const { naturalWidth: w, naturalHeight: h } = img;
+                setImgSize({ w, h });
+                setImgError(false);
+                if (canvasRef.current) {
+                  canvasRef.current.width = w;
+                  canvasRef.current.height = h;
+                  if (!pendingPin && overlayDrawing) {
+                    redrawCanvas(overlayDrawing);
+                  } else if (!pendingPin && !overlayDrawing) {
+                    redrawCanvas([]);
+                  }
                 }
-              }
-            }}
-            draggable={false}
-          />
+              }}
+              onError={() => setImgError(true)}
+              draggable={false}
+            />
+          )}
 
           {/* Drawing canvas */}
           <canvas

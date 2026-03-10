@@ -112,14 +112,21 @@ class QueryBuilder {
     return this._limitVal !== null ? `LIMIT ${this._limitVal}` : "";
   }
 
-  /** Ensure undefined becomes null; everything else passed as-is (Neon handles arrays/objects). */
+  /**
+   * Ensure undefined becomes null; stringify complex values for JSONB columns.
+   * Arrays of primitives (string[], number[]) stay as arrays for text[]/int[] columns.
+   * Arrays containing objects are stringified for JSONB columns (e.g. drawing).
+   */
   private normalizeValue(val: unknown): unknown {
     if (val === undefined) return null;
-    // Stringify plain objects for JSONB columns; arrays stay as arrays.
-    if (val !== null && typeof val === "object" && !Array.isArray(val)) {
-      return JSON.stringify(val);
+    if (val === null) return null;
+    if (typeof val !== "object") return val;
+    if (Array.isArray(val)) {
+      if (val.length === 0) return val;
+      const hasComplex = val.some((item) => item !== null && typeof item === "object");
+      return hasComplex ? JSON.stringify(val) : val;
     }
-    return val;
+    return JSON.stringify(val);
   }
 
   // -------------------------------------------------------------------------

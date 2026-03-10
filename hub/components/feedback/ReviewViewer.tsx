@@ -106,6 +106,7 @@ export function ReviewViewer({
   const [cardTitle, setCardTitle] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [listPanelWidth, setListPanelWidth] = useState(360);
   const [resizing, setResizing] = useState(false);
   const resizeStartRef = useRef<{ x: number; w: number } | null>(null);
@@ -183,15 +184,21 @@ export function ReviewViewer({
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
     setUploading(true);
+    setUploadError(null);
     uploadImageForReview(file, file.name).then((url) => {
       setUploading(false);
       if (url) {
         setPasteImage(url);
         setPasteBlob(null);
         setAddingCard(true);
+      } else {
+        setUploadError("Upload failed — check R2 configuration");
       }
       e.target.value = "";
-    }).catch(() => setUploading(false));
+    }).catch((err) => {
+      setUploading(false);
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    });
   }, []);
 
   const handleStartAddCard = useCallback(() => {
@@ -199,6 +206,7 @@ export function ReviewViewer({
     setPasteImage(null);
     setPasteBlob(null);
     setCardTitle("");
+    setUploadError(null);
   }, []);
 
   const handleCancelAddCard = useCallback(() => {
@@ -360,6 +368,9 @@ export function ReviewViewer({
           {addingCard && !pasteImage && !uploading && (
             <div className="border border-dashed border-fg-muted/50 bg-bg-muted/50 p-6 text-center">
               <p className="text-xs font-mono text-fg-muted mb-2">Paste (Ctrl+V) or upload a screenshot</p>
+              {uploadError && (
+                <p className="text-xs font-mono text-red-400 mb-2">{uploadError}</p>
+              )}
               <div className="flex items-center justify-center gap-3 flex-wrap">
                 <button
                   type="button"
