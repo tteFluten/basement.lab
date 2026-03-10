@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
-import { neon } from "@neondatabase/serverless";
 
 export const runtime = "nodejs";
 
@@ -28,7 +27,38 @@ export async function GET(request: NextRequest) {
     const wantAll = request.nextUrl.searchParams.get("all") === "1";
     const wantMembers = request.nextUrl.searchParams.get("members") === "1";
 
-    // Fetch all projects (always needed for wantAll, or for admins)
+    if (wantAll) {
+      // Step 1: get all projects
+      const { data: allProjectsData, error: allProjectsErr } = await db
+        .from("projects")
+        .select(projectColumns)
+        .order("name");
+      if (allProjectsErr) {
+        console.error("projects select (wantAll):", allProjectsErr);
+        return NextResponse.json({ error: allProjectsErr.message }, { status: 500 });
+      }
+      const allProjectsList = allProjectsData ?? [];
+
+      // Step 2: get this user's project_member rows
+      const { data: memberRows, error: memberErr } = await db
+        .from("project_members")
+        .select("project_id")
+        .eq("user_id", session.user.id);
+      if (memberErr) {
+        console.error("project_members query error:", memberErr);
+      }
+      const myIds = new Set((memberRows ?? []).map((r: any) => r.project_id).filter(Boolean));
+
+      // Step 3: map with isMember
+      const items = allProjectsList.map((p: any) => ({
+        ...p,
+        links: p.links ?? {},
+        isMember: myIds.has(p.id),
+      }));
+      return NextResponse.json({ items });
+    }
+
+    // Default path: fetch all projects, filter to user's own (admin sees all)
     const { data: allProjects, error: allErr } = await db
       .from("projects")
       .select(projectColumns)
@@ -64,25 +94,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (wantAll) {
-      // Use a direct JOIN to reliably compute isMember in a single query.
-      const sql = neon(process.env.DATABASE_URL ?? process.env.NEON_DATABASE_URL ?? "");
-      const rows = await sql`
-        SELECT p.id, p.name, p.client, p.thumbnail_url, p.links, p.start_date, p.end_date, p.created_at,
-               (pm.user_id IS NOT NULL) AS is_member
-        FROM projects p
-        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ${session.user.id}
-        ORDER BY p.name
-      `;
-      const items = rows.map((p) => ({
-        ...p,
-        links: p.links ?? {},
-        isMember: Boolean(p.is_member),
-      }));
-      return NextResponse.json({ items });
-    }
-
-    // Default: only the user's own projects (admin sees all as "own")
+    // Only the user's own projects (admin sees all as "own")
     const filtered = isAdmin
       ? projects
       : projects.filter((p) => myProjectIds.has(p.id));
