@@ -302,8 +302,8 @@ export default function AdminProjectsPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetchProjects(true).finally(() => setLoading(false));
-  }, [fetchProjects]);
+    Promise.all([fetchProjects(true), fetchUsers()]).finally(() => setLoading(false));
+  }, [fetchProjects, fetchUsers]);
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
