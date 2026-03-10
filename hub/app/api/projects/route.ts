@@ -7,20 +7,21 @@ export const runtime = "nodejs";
 
 /** GET: list projects. Members see only projects they belong to; admins see all. */
 export async function GET(request: NextRequest) {
-  if (!hasSupabase()) {
-    return NextResponse.json(
-      { error: "Supabase not configured" },
-      { status: 503 }
-    );
-  }
+  try {
+    if (!hasSupabase()) {
+      return NextResponse.json(
+        { error: "Supabase not configured" },
+        { status: 503 }
+      );
+    }
 
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const isAdmin = (session.user as { role?: string }).role === "admin";
-  const supabase = getSupabase();
+    const isAdmin = (session.user as { role?: string }).role === "admin";
+    const supabase = getSupabase();
 
   const projectColumns = "id, name, client, thumbnail_url, links, start_date, end_date, created_at";
 
@@ -36,12 +37,17 @@ export async function GET(request: NextRequest) {
     type ProjectRow = { id: string; links?: object };
     const projects = (data ?? []) as ProjectRow[];
     const ids = projects.map((p) => p.id);
-    const { data: membersData } = await supabase
-      .from("project_members")
-      .select("project_id, user_id")
-      .in("project_id", ids);
+    let membersData: { project_id: string; user_id: string }[] | null = null;
+    if (ids.length > 0) {
+      const res = await supabase
+        .from("project_members")
+        .select("project_id, user_id")
+        .in("project_id", ids);
+      membersData = res.data;
+    }
     const membersByProject = new Map<string, string[]>();
     for (const row of membersData ?? []) {
+      if (!row?.project_id || !row?.user_id) continue;
       const arr = membersByProject.get(row.project_id) ?? [];
       arr.push(row.user_id);
       membersByProject.set(row.project_id, arr);
@@ -92,6 +98,13 @@ export async function GET(request: NextRequest) {
     memberIds: membersByProject.get(p.id) ?? [],
   }));
   return NextResponse.json({ items });
+  } catch (e) {
+    console.error("GET /api/projects:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
 
 /** POST: create project. Admin only. */
