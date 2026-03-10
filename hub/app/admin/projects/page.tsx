@@ -573,17 +573,15 @@ export default function AdminProjectsPage() {
                     </td>
                     <td className="py-2 px-3 text-fg-muted">{p.client ?? "—"}</td>
                     <td className="py-2 px-3">
-                      {members.length === 0 ? (
-                        <span className="text-[11px] text-fg-muted/40">—</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {members.map((u) => (
-                            <span key={u.id} className="text-[11px] text-fg-muted bg-bg-muted border border-border px-1.5 py-0.5 whitespace-nowrap">
-                              {u.nickname || u.full_name || u.email}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-0.5 flex-wrap">
+                        {members.slice(0, 8).map((u) => (
+                          <span key={u.id} title={u.full_name || u.email}>
+                            <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" />
+                          </span>
+                        ))}
+                        {members.length > 8 && <span className="text-[10px] text-fg-muted">+{members.length - 8}</span>}
+                        {members.length === 0 && <span className="text-[11px] text-fg-muted/40">—</span>}
+                      </div>
                     </td>
                     <td className="py-2 px-3">
                       <div className="flex gap-1">

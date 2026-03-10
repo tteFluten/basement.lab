@@ -24,8 +24,9 @@ import {
   X,
   Banana,
   ListChecks,
-  UserPlus,
   Check,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
@@ -91,13 +92,29 @@ function ProjectSelector() {
     }
   }, [open]);
 
-  const handleJoin = async (projectId: string) => {
+  const handleJoin = async (projectId: string, name: string) => {
+    if (!confirm(`¿Unirse a "${name}"?`)) return;
     setJoining(projectId);
     try {
       await fetch(`/api/projects/${projectId}/join`, { method: "POST" });
       await loadProjects();
       setCurrentProjectId(projectId);
       setCurrentId(projectId);
+    } finally {
+      setJoining(null);
+    }
+  };
+
+  const handleLeave = async (projectId: string, name: string) => {
+    if (!confirm(`¿Salir de "${name}"?`)) return;
+    setJoining(projectId);
+    try {
+      await fetch(`/api/projects/${projectId}/join`, { method: "DELETE" });
+      if (currentId === projectId) {
+        setCurrentProjectId(null);
+        setCurrentId(null);
+      }
+      await loadProjects();
     } finally {
       setJoining(null);
     }
@@ -135,22 +152,32 @@ function ProjectSelector() {
                 Mis proyectos
               </p>
               {myProjects.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`w-full flex items-center gap-2 text-left px-3 py-2 text-sm hover:bg-bg ${
-                    currentId === p.id ? "text-fg font-medium" : "text-fg-muted"
-                  }`}
-                  role="menuitem"
-                  onClick={() => {
-                    setCurrentProjectId(p.id);
-                    setCurrentId(p.id);
-                    setOpen(false);
-                  }}
-                >
-                  {currentId === p.id && <Check className="w-3 h-3 shrink-0" />}
-                  <span className={`truncate ${currentId === p.id ? "" : "pl-5"}`}>{p.name}</span>
-                </button>
+                <div key={p.id} className="flex items-center gap-1 px-2 py-1">
+                  <button
+                    type="button"
+                    className={`flex-1 flex items-center gap-2 text-left px-1 py-1 text-sm hover:bg-bg rounded-sm ${
+                      currentId === p.id ? "text-fg font-medium" : "text-fg-muted"
+                    }`}
+                    role="menuitem"
+                    onClick={() => {
+                      setCurrentProjectId(p.id);
+                      setCurrentId(p.id);
+                      setOpen(false);
+                    }}
+                  >
+                    {currentId === p.id && <Check className="w-3 h-3 shrink-0" />}
+                    <span className={`truncate ${currentId === p.id ? "" : "pl-5"}`}>{p.name}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={joining === p.id}
+                    onClick={() => handleLeave(p.id, p.name)}
+                    className="p-1 text-fg-muted hover:text-red-400 disabled:opacity-40 shrink-0"
+                    title="Salir del proyecto"
+                  >
+                    {joining === p.id ? "…" : <Minus className="w-3 h-3" />}
+                  </button>
+                </div>
               ))}
             </>
           )}
@@ -162,16 +189,16 @@ function ProjectSelector() {
                 Todos los proyectos
               </p>
               {otherProjects.map((p) => (
-                <div key={p.id} className="flex items-center gap-1 px-2 py-1.5">
+                <div key={p.id} className="flex items-center gap-1 px-2 py-1">
                   <span className="flex-1 text-sm text-fg-muted truncate pl-1">{p.name}</span>
                   <button
                     type="button"
                     disabled={joining === p.id}
-                    onClick={() => handleJoin(p.id)}
-                    className="flex items-center gap-1 px-2 py-0.5 text-xs border border-border text-fg-muted hover:text-fg hover:border-fg disabled:opacity-40 shrink-0"
+                    onClick={() => handleJoin(p.id, p.name)}
+                    className="p-1 text-fg-muted hover:text-fg disabled:opacity-40 shrink-0"
+                    title="Unirse al proyecto"
                   >
-                    <UserPlus className="w-3 h-3" />
-                    {joining === p.id ? "…" : "Unirse"}
+                    {joining === p.id ? "…" : <Plus className="w-3 h-3" />}
                   </button>
                 </div>
               ))}
