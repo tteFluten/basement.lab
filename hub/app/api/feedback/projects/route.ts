@@ -31,9 +31,9 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const projectIds = (data ?? []).map((p) => p.id);
-  const ownerIds = Array.from(new Set((data ?? []).map((p) => p.owner_id).filter(Boolean) as string[]));
-  const linkedProjectIds = Array.from(new Set((data ?? []).map((p) => p.linked_project_id).filter(Boolean) as string[]));
+  const projectIds = (data ?? []).map((p: any) => p.id);
+  const ownerIds = Array.from(new Set((data ?? []).map((p: any) => p.owner_id).filter(Boolean) as string[]));
+  const linkedProjectIds = Array.from(new Set((data ?? []).map((p: any) => p.linked_project_id).filter(Boolean) as string[]));
 
   // Parallel: session counts, thumbnails, owner names, linked project names,
   //           user's work-project memberships, user's direct feedback memberships
@@ -93,7 +93,7 @@ export async function GET() {
   // Set of feedback project IDs this user directly joined
   const userDirectJoins = new Set((directMembershipsRes.data ?? []).map((r: { feedback_project_id: string }) => r.feedback_project_id));
 
-  const items = (data ?? []).map((p) => {
+  const items = (data ?? []).map((p: any) => {
     const isMember =
       isAdmin ||
       p.owner_id === userId ||
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     .select("slug")
     .like("slug", `${slug}%`);
 
-  const usedSlugs = new Set((existing ?? []).map((r) => r.slug));
+  const usedSlugs = new Set((existing ?? []).map((r: any) => r.slug));
   if (usedSlugs.has(slug)) {
     let i = 2;
     while (usedSlugs.has(`${slug}-${i}`)) i++;

@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
   if (memberError) {
     return NextResponse.json({ error: memberError.message }, { status: 500 });
   }
-  const projectIds = (memberRows ?? []).map((r) => r.project_id).filter(Boolean);
+  const projectIds = (memberRows ?? []).map((r: any) => r.project_id).filter(Boolean);
   if (projectIds.length === 0) {
     return NextResponse.json({ items: [] });
   }

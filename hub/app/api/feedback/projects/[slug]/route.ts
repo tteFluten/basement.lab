@@ -36,7 +36,7 @@ export async function GET(
     .order("created_at", { ascending: false });
 
   // Comment counts per session
-  const sessionIds = (sessions ?? []).map((s) => s.id);
+  const sessionIds = (sessions ?? []).map((s: any) => s.id);
   let commentCounts: Record<string, number> = {};
   if (sessionIds.length > 0) {
     const { data: comments } = await supabase
@@ -71,7 +71,7 @@ export async function GET(
       createdAt: new Date(project.created_at).getTime(),
     },
     workProjects: workProjectsData,
-    sessions: (sessions ?? []).map((s) => ({
+    sessions: (sessions ?? []).map((s: any) => ({
       id: s.id,
       projectId: s.project_id,
       title: s.title,

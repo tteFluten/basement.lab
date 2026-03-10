@@ -34,7 +34,7 @@ export async function GET(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  const userIds = (data ?? []).map((r) => r.user_id);
+  const userIds = (data ?? []).map((r: any) => r.user_id);
   return NextResponse.json({ userIds });
 }
 
