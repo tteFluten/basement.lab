@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const wantMembers = request.nextUrl.searchParams.get("members") === "1";
 
     if (wantAll) {
-      // Step 1: get all projects
+      // Get all projects
       const { data: allProjectsData, error: allProjectsErr } = await db
         .from("projects")
         .select(projectColumns)
@@ -37,23 +37,29 @@ export async function GET(request: NextRequest) {
         console.error("projects select (wantAll):", allProjectsErr);
         return NextResponse.json({ error: allProjectsErr.message }, { status: 500 });
       }
-      const allProjectsList = allProjectsData ?? [];
+      const allProjectsList = (allProjectsData ?? []) as { id: string }[];
 
-      // Step 2: get this user's project_member rows
-      const { data: memberRows, error: memberErr } = await db
-        .from("project_members")
-        .select("project_id")
-        .eq("user_id", session.user.id);
-      if (memberErr) {
-        console.error("project_members query error:", memberErr);
+      // Get ALL project_members rows (same query the admin page uses)
+      const allProjIds = allProjectsList.map((p) => p.id);
+      const membersByProject = new Map<string, string[]>();
+      if (allProjIds.length > 0) {
+        const { data: membersData } = await db
+          .from("project_members")
+          .select("project_id, user_id")
+          .in("project_id", allProjIds);
+        for (const row of membersData ?? []) {
+          if (!row?.project_id || !row?.user_id) continue;
+          const arr = membersByProject.get(row.project_id) ?? [];
+          arr.push(row.user_id);
+          membersByProject.set(row.project_id, arr);
+        }
       }
-      const myIds = new Set((memberRows ?? []).map((r: any) => r.project_id).filter(Boolean));
 
-      // Step 3: map with isMember
+      // Return all projects with memberIds — client computes isMember from its own session userId
       const items = allProjectsList.map((p: any) => ({
         ...p,
         links: p.links ?? {},
-        isMember: myIds.has(p.id),
+        memberIds: membersByProject.get(p.id) ?? [],
       }));
       return NextResponse.json({ items });
     }

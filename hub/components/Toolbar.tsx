@@ -54,9 +54,11 @@ const PROJECT_APP_LINKS = [
 
 const iconSize = 18;
 
-type Project = { id: string; name: string; isMember: boolean };
+type Project = { id: string; name: string; memberIds: string[] };
 
 function ProjectSelector() {
+  const { data: session } = useSession();
+  const userId = (session?.user as { id?: string })?.id ?? "";
   const [open, setOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -71,10 +73,10 @@ function ProjectSelector() {
         setProjects(list);
         const id = getCurrentProjectId();
         setCurrentId(id);
-        const myProjects = list.filter((p) => p.isMember);
-        if (myProjects.length === 1 && !id) {
-          setCurrentProjectId(myProjects[0].id);
-          setCurrentId(myProjects[0].id);
+        const mine = list.filter((p) => p.memberIds.includes(userId));
+        if (mine.length === 1 && !id) {
+          setCurrentProjectId(mine[0].id);
+          setCurrentId(mine[0].id);
         }
       })
       .catch(() => {});
@@ -120,8 +122,8 @@ function ProjectSelector() {
     }
   };
 
-  const myProjects = projects.filter((p) => p.isMember);
-  const otherProjects = projects.filter((p) => !p.isMember);
+  const myProjects = projects.filter((p) => userId && p.memberIds.includes(userId));
+  const otherProjects = projects.filter((p) => !userId || !p.memberIds.includes(userId));
   const currentName = projects.find((p) => p.id === currentId)?.name ?? "Project";
 
   return (
