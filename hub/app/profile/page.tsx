@@ -82,25 +82,52 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      fetch("/api/avatar", {
+
+    setUploadingAvatar(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Upload to R2
+      const uploadRes = await fetch("/api/avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dataUrl }),
-      })
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.url) setAvatarUrl(d.url);
-        })
-        .catch(() => {});
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) {
+        alert(uploadData.error ?? "Upload failed");
+        return;
+      }
+
+      // Save to DB immediately
+      const saveRes = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: uploadData.url }),
+      });
+      if (saveRes.ok) {
+        setAvatarUrl(uploadData.url);
+        setSaved(true);
+      } else {
+        alert("Avatar uploaded but failed to save. Try saving manually.");
+        setAvatarUrl(uploadData.url);
+      }
+    } catch {
+      alert("Avatar upload failed. Check your connection.");
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   if (loading) {
@@ -130,12 +157,13 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
             className="relative group focus:outline-none"
+            disabled={uploadingAvatar}
           >
             <Avatar src={avatarUrl} name={fullName || undefined} email={profile.email} size="lg" />
             <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera className="w-5 h-5 text-white" />
+              {uploadingAvatar ? <span className="text-white text-[10px]">...</span> : <Camera className="w-5 h-5 text-white" />}
             </span>
           </button>
           <input
