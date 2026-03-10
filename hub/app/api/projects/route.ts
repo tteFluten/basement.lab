@@ -100,10 +100,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ items });
   } catch (e) {
     console.error("GET /api/projects:", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
