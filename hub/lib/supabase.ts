@@ -39,9 +39,14 @@ async function rawQuery(queryText: string, queryParams: unknown[]): Promise<Row[
   const sql = neon(DATABASE_URL);
   // Split the query on every $N placeholder to get n+1 string segments.
   const parts = queryText.split(/\$\d+/);
+  // Extract the $N indices in textual order so params are passed in the
+  // correct position regardless of the order they were added to _params.
+  // e.g. "SET col = $2 WHERE id = $1" → indices [1, 0] → reorder accordingly.
+  const indices = [...queryText.matchAll(/\$(\d+)/g)].map((m) => parseInt(m[1], 10) - 1);
+  const orderedParams = indices.map((i) => queryParams[i]);
   const strings = Object.assign([...parts], { raw: [...parts] }) as TemplateStringsArray;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = await (sql as any)(strings, ...queryParams);
+  const rows = await (sql as any)(strings, ...orderedParams);
   return rows as Row[];
 }
 
