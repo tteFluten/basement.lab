@@ -33,6 +33,7 @@ import { getCurrentProjectId, setCurrentProjectId } from "@/lib/currentProject";
 import { getTemplateIcon } from "@/lib/iconTemplate";
 import { Image as ImageIcon } from "lucide-react";
 import { useAppTabs } from "@/lib/appTabsContext";
+import { Avatar } from "@/components/Avatar";
 
 const APP_LINKS = [
   { slug: "nanobanana", label: "NanoBanana", Icon: Banana },
@@ -54,11 +55,9 @@ const PROJECT_APP_LINKS = [
 
 const iconSize = 18;
 
-type Project = { id: string; name: string; memberIds: string[] };
+type Project = { id: string; name: string; memberIds: string[]; isMember: boolean };
 
 function ProjectSelector() {
-  const { data: session } = useSession();
-  const userId = (session?.user as { id?: string })?.id ?? "";
   const [open, setOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -73,7 +72,7 @@ function ProjectSelector() {
         setProjects(list);
         const id = getCurrentProjectId();
         setCurrentId(id);
-        const mine = list.filter((p) => p.memberIds.includes(userId));
+        const mine = list.filter((p) => p.isMember);
         if (mine.length === 1 && !id) {
           setCurrentProjectId(mine[0].id);
           setCurrentId(mine[0].id);
@@ -82,7 +81,7 @@ function ProjectSelector() {
       .catch(() => {});
   };
 
-  useEffect(() => { if (userId) loadProjects(); }, [userId]);
+  useEffect(() => { loadProjects(); }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -122,8 +121,8 @@ function ProjectSelector() {
     }
   };
 
-  const myProjects = projects.filter((p) => userId && p.memberIds.includes(userId));
-  const otherProjects = projects.filter((p) => !userId || !p.memberIds.includes(userId));
+  const myProjects = projects.filter((p) => p.isMember);
+  const otherProjects = projects.filter((p) => !p.isMember);
   const currentName = projects.find((p) => p.id === currentId)?.name ?? "Project";
 
   return (
@@ -408,7 +407,16 @@ function SubmittedAppsMenu() {
 function UserMenu() {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((d) => { if (d?.avatarUrl) setAvatarUrl(d.avatarUrl); })
+      .catch(() => {});
+  }, [status]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -434,9 +442,7 @@ function UserMenu() {
         aria-expanded={open}
         aria-haspopup="true"
       >
-        <span className="flex h-7 w-7 items-center justify-center border border-border bg-bg-muted text-fg text-xs">
-          {displayName.charAt(0).toUpperCase()}
-        </span>
+        <Avatar src={avatarUrl} name={displayName} size={28} />
         <span className="text-sm max-w-[120px] truncate">{displayName}</span>
         <ChevronDown className="h-4 w-4 shrink-0" />
       </button>

@@ -55,11 +55,12 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Return all projects with memberIds — client computes isMember from its own session userId
+      // Return all projects with memberIds + server-computed isMember
       const items = allProjectsList.map((p: any) => ({
         ...p,
         links: p.links ?? {},
         memberIds: membersByProject.get(p.id) ?? [],
+        isMember: membersByProject.get(p.id)?.includes(session.user.id) ?? false,
       }));
       return NextResponse.json({ items });
     }
