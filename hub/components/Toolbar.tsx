@@ -74,7 +74,7 @@ function ProjectSelector() {
           name: String(p?.name ?? ""),
           memberIds: Array.isArray(p?.memberIds) ? p.memberIds : [],
           isMember: Boolean(p?.isMember),
-        })).filter((p) => p.id);
+        })).filter((p: Project) => p.id);
         setProjects(list);
         const id = getCurrentProjectId();
         setCurrentId(id);
