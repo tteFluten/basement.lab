@@ -82,7 +82,7 @@ function ProjectSelector() {
       .catch(() => {});
   };
 
-  useEffect(() => { loadProjects(); }, []);
+  useEffect(() => { if (userId) loadProjects(); }, [userId]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
