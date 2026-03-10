@@ -552,8 +552,8 @@ export default function AdminProjectsPage() {
               <tr className="border-b border-border bg-bg-muted/50">
                 <th className="text-left py-2 px-3 font-medium text-fg">Project</th>
                 <th className="text-left py-2 px-3 font-medium text-fg">Client</th>
-                <th className="text-left py-2 px-3 font-medium text-fg w-24">Members</th>
-                <th className="w-40" />
+                <th className="text-left py-2 px-3 font-medium text-fg">Members</th>
+                <th className="w-40 shrink-0" />
               </tr>
             </thead>
             <tbody>
@@ -573,7 +573,7 @@ export default function AdminProjectsPage() {
                     </td>
                     <td className="py-2 px-3 text-fg-muted">{p.client ?? "—"}</td>
                     <td className="py-2 px-3">
-                      <div className="flex items-center gap-0.5 flex-wrap">
+                      <div className="flex items-center gap-0.5 flex-nowrap">
                         {members.slice(0, 8).map((u) => (
                           <span key={u.id} title={u.full_name || u.email}>
                             <Avatar src={u.avatar_url} name={u.full_name ?? undefined} email={u.email} size="sm" />
