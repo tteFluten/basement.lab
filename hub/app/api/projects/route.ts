@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getDb, hasDb } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
+import { neon } from "@neondatabase/serverless";
 
 export const runtime = "nodejs";
 
@@ -64,12 +65,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (wantAll) {
-      // Return every project with isMember flag so the client can split them.
-      const items = projects.map((p) => ({
+      // Use a direct JOIN to reliably compute isMember in a single query.
+      const sql = neon(process.env.DATABASE_URL ?? process.env.NEON_DATABASE_URL ?? "");
+      const rows = await sql`
+        SELECT p.id, p.name, p.client, p.thumbnail_url, p.links, p.start_date, p.end_date, p.created_at,
+               (pm.user_id IS NOT NULL) AS "isMember"
+        FROM projects p
+        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ${session.user.id}
+        ORDER BY p.name
+      `;
+      const items = rows.map((p) => ({
         ...p,
         links: p.links ?? {},
-        isMember: myProjectIds.has(p.id),
-        ...(wantMembers && isAdmin ? { memberIds: membersByProject.get(p.id) ?? [] } : {}),
+        isMember: Boolean(p.isMember),
       }));
       return NextResponse.json({ items });
     }
