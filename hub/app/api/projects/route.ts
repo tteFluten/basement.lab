@@ -65,11 +65,10 @@ export async function GET(request: NextRequest) {
 
     if (wantAll) {
       // Return every project with isMember flag so the client can split them.
-      // Admins are treated as members of all projects so the toolbar shows them all.
       const items = projects.map((p) => ({
         ...p,
         links: p.links ?? {},
-        isMember: isAdmin ? true : myProjectIds.has(p.id),
+        isMember: myProjectIds.has(p.id),
         ...(wantMembers && isAdmin ? { memberIds: membersByProject.get(p.id) ?? [] } : {}),
       }));
       return NextResponse.json({ items });
