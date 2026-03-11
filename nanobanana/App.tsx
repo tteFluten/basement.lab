@@ -689,19 +689,20 @@ export default function App() {
                       onClick={(e) => { if (isActive && item.image) { e.stopPropagation(); setViewingImage({ id: item.inputId ?? 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: item.inputColor ?? '#fff' }); } }}>
                       <img src={item.image} alt={`Generation ${idx}`} className="w-full object-contain" style={{ maxHeight: 520 }} />
                       {isActive && (
-                        <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--app-bg)]/40">
+                        <div className="absolute inset-0 flex items-end justify-center pb-5 gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
                           <button
                             onClick={(e) => { e.stopPropagation(); setViewingImage({ id: item.inputId ?? 'result', data: item.image.split(',')[1], mimeType: 'image/png', color: item.inputColor ?? '#fff' }); }}
-                            className="p-2.5 bg-[var(--app-bg)]/80 border border-[var(--app-border)] hover:text-[var(--app-text)]"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-black/90 border border-white/20 text-white text-sm font-medium hover:bg-black transition-colors"
                           >
-                            <Maximize2 size={16} />
+                            <Maximize2 size={15} />
+                            Ver imagen
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDownload(item.image, item.prompt); }}
-                            className="p-2.5 bg-[var(--app-bg)]/80 border border-[var(--app-border)] hover:text-[var(--app-text)]"
-                            title="Download / Save to History"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-black/90 border border-white/20 text-white text-sm font-medium hover:bg-black transition-colors"
                           >
-                            <Download size={16} />
+                            <Download size={15} />
+                            Descargar
                           </button>
                         </div>
                       )}
