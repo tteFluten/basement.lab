@@ -225,6 +225,11 @@ export async function POST(req: NextRequest) {
 
   const adminInstruction = isAdmin ? `
 
+HEALTH CHECK (solo admin): Cuando alguien te pida verificar el estado del sistema, correr diagnósticos, o preguntar si todo funciona bien, ejecutá:
+{{action:runHealthCheck}}
+Ejemplo: "Corriendo diagnósticos. {{action:runHealthCheck}}"
+Solo un tag por respuesta. No lo uses si no te piden explícitamente verificar el sistema.
+
 MEMORIA GLOBAL (solo vos podés hacer esto porque sos admin): Si alguien te pide guardar, recordar o anotar algo "para todos", "en la memoria global" o "para el equipo", respondé confirmando brevemente Y al final del mensaje incluí exactamente este tag con el dato a guardar:
 {{global-save:CONTENIDO}}
 Donde CONTENIDO es el dato concreto a recordar, redactado de forma concisa y en tercera persona si aplica. Solo un tag por respuesta. No lo uses para datos personales de usuarios.

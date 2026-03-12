@@ -42,7 +42,8 @@ type PatasAction =
   | { type: "openApp"; slug: string }
   | { type: "moveFeedbackSessions"; fromSlug: string; toSlug: string }
   | { type: "loadImage"; slug: string; url: string; field: string }
-  | { type: "saveInbox"; message: string };
+  | { type: "saveInbox"; message: string }
+  | { type: "runHealthCheck" };
 
 function extractAction(text: string): PatasAction | null {
   const m = text.match(/\{\{action:([a-zA-Z]+):([^}]+)\}\}/);
@@ -60,6 +61,7 @@ function extractAction(text: string): PatasAction | null {
     if (slug && url) return { type, slug, url, field };
   }
   if (type === "saveInbox") return { type, message: payload.trim() };
+  if (type === "runHealthCheck") return { type };
   return null;
 }
 
@@ -264,6 +266,25 @@ export function AIChatBar() {
         animateWords(msg);
       } catch (e) {
         const msg = `No pude mover las sesiones: ${e instanceof Error ? e.message : "error"}.`;
+        setHistory(prev => [...prev, { role: "ai", text: msg }]);
+        animateWords(msg);
+      }
+    } else if (action.type === "runHealthCheck") {
+      try {
+        const res = await fetch("/api/admin/health-check");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json() as { checks: { id: string; name: string; status: string; message: string; detail?: string }[]; errors: number; warnings: number; timestamp: string };
+        const failed = data.checks.filter(c => c.status === "error" || c.status === "warn");
+        let msg = `Health check completado: ${data.errors} error(s), ${data.warnings} warning(s), ${data.checks.filter(c => c.status === "ok").length} OK.`;
+        if (failed.length > 0) {
+          msg += "\n" + failed.map(c => `• ${c.status.toUpperCase()} — ${c.name}: ${c.message}${c.detail ? ` (${c.detail.slice(0, 120)})` : ""}`).join("\n");
+        } else {
+          msg += " Todos los sistemas operativos.";
+        }
+        setHistory(prev => [...prev, { role: "ai", text: msg }]);
+        animateWords(msg);
+      } catch (e) {
+        const msg = `No pude correr el health check: ${e instanceof Error ? e.message : "error"}.`;
         setHistory(prev => [...prev, { role: "ai", text: msg }]);
         animateWords(msg);
       }

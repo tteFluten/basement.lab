@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminUsageStats } from "@/components/AdminUsageStats";
+import { AdminHealthCheck } from "@/components/AdminHealthCheck";
 
 export default function AdminDashboardPage() {
   return (
@@ -7,6 +8,11 @@ export default function AdminDashboardPage() {
       <h1 className="text-xl font-medium border-b border-border pb-2 mb-4">
         Admin Dashboard
       </h1>
+
+      <section>
+        <h2 className="text-lg font-medium border-b border-border pb-2 mb-4">System Diagnostics</h2>
+        <AdminHealthCheck />
+      </section>
 
       <section>
         <AdminUsageStats />
