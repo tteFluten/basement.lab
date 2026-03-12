@@ -6,6 +6,7 @@ import { SessionProvider } from "@/components/SessionProvider";
 import { AppTabsProvider } from "@/lib/appTabsContext";
 import { ContentWithTabs } from "@/components/ContentWithTabs";
 import { BackgroundSync } from "@/components/BackgroundSync";
+import { AIChatBar } from "@/components/AIChatBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default function RootLayout({
             <BackgroundSync />
             <Toolbar />
             <ContentWithTabs>{children}</ContentWithTabs>
+            <AIChatBar />
             <Footer />
           </AppTabsProvider>
         </SessionProvider>
