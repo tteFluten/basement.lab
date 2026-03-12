@@ -3,8 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getDb, hasDb } from "@/lib/db";
 import { getGemini, hasGemini } from "@/lib/gemini";
-import { getR2, hasR2 } from "@/lib/r2";
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { hasR2 } from "@/lib/r2";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import fs from "fs";
 import path from "path";
 
@@ -87,6 +87,19 @@ async function checkDatabase(): Promise<CheckResult[]> {
   return results;
 }
 
+function makeR2Client(): S3Client {
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+    },
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+  });
+}
+
 async function checkR2(): Promise<CheckResult[]> {
   if (!hasR2()) {
     return [{ id: "r2", name: "R2 Storage", status: "error", message: "R2 credentials not configured" }];
@@ -94,13 +107,11 @@ async function checkR2(): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
   const testKey = `_health-check/test-${Date.now()}.txt`;
   const bucket = process.env.R2_BUCKET_NAME!;
+  const r2 = makeR2Client();
 
   // Write
   try {
-    const { ms } = await timed(async () => {
-      const r2 = getR2();
-      await r2.send(new PutObjectCommand({ Bucket: bucket, Key: testKey, Body: "ok", ContentType: "text/plain" }));
-    });
+    const { ms } = await timed(() => r2.send(new PutObjectCommand({ Bucket: bucket, Key: testKey, Body: "ok", ContentType: "text/plain" })));
     results.push({ id: "r2-write", name: "R2 Write", status: "ok", message: `Wrote test file (${ms}ms)`, durationMs: ms });
   } catch (e) {
     results.push({ id: "r2-write", name: "R2 Write", status: "error", message: "Write failed", detail: String(e) });
@@ -109,10 +120,7 @@ async function checkR2(): Promise<CheckResult[]> {
 
   // Read
   try {
-    const { ms } = await timed(async () => {
-      const r2 = getR2();
-      await r2.send(new GetObjectCommand({ Bucket: bucket, Key: testKey }));
-    });
+    const { ms } = await timed(() => r2.send(new GetObjectCommand({ Bucket: bucket, Key: testKey })));
     results.push({ id: "r2-read", name: "R2 Read", status: "ok", message: `Read test file (${ms}ms)`, durationMs: ms });
   } catch (e) {
     results.push({ id: "r2-read", name: "R2 Read", status: "error", message: "Read failed", detail: String(e) });
@@ -120,7 +128,6 @@ async function checkR2(): Promise<CheckResult[]> {
 
   // Delete
   try {
-    const r2 = getR2();
     await r2.send(new DeleteObjectCommand({ Bucket: bucket, Key: testKey }));
     results.push({ id: "r2-delete", name: "R2 Cleanup", status: "ok", message: "Deleted test file" });
   } catch (e) {
