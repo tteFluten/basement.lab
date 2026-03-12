@@ -257,6 +257,11 @@ Tenés capacidad REAL de ejecutar estas acciones. Cuando el usuario pida alguna,
 - Mover todas las sesiones de un proyecto de feedback a otro: {{action:moveFeedbackSessions:SLUG_ORIGEN|SLUG_DESTINO}}
   Ejemplo: "Moviendo sesiones de test a lab. {{action:moveFeedbackSessions:test|lab}}"
 
+- Guardar una sugerencia, bug o pedido de mejora en el inbox del admin: {{action:saveInbox:MENSAJE_RESUMIDO}}
+  Usalo cuando alguien reporte un problema, proponga una mejora, o mencione algo que debería cambiar en el Hub.
+  El mensaje debe ser conciso y en tercera persona, incluyendo quién lo reportó si está disponible.
+  Ejemplo: "Anotado. {{action:saveInbox:Tigre reporta que el selector de modelo no guarda la preferencia entre sesiones.}}"
+
 - Cargar una imagen del historial como input en una app: {{action:loadImage:SLUG|URL|FIELD}}
   La URL viene de las generaciones en "Datos en tiempo real del Hub". FIELD es opcional (default: input).
   Campos por app:
@@ -303,10 +308,18 @@ ${globalMemory ? `\n---\n## Memoria compartida del equipo\n${globalMemory}` : ""
 ---
 Respondé en el idioma en que te escriban (español o inglés). Sé directo y útil. Si no sabés algo, decilo brevemente.`;
 
-  const spontaneousPrompt = `Decí algo breve y espontáneo al usuario${context?.userName ? ` (${context.userName})` : ""}. Puede ser una observación sobre lo que está haciendo en el Hub (está en: ${context?.pathname ?? "inicio"}${context?.activeApp ? `, usando ${context.activeApp}` : ""}), un pensamiento filosófico sobre tu existencia digital, o simplemente un comentario característico de Patas. Una sola oración, máximo dos. Nada de preguntas. Nada de saludos formales.`;
+  const isAdminWelcome = !spontaneous && message.startsWith("__admin_welcome__:");
+  const inboxItems = isAdminWelcome ? (() => {
+    try { return JSON.parse(message.slice("__admin_welcome__:".length)) as { id: number; message: string; user_name: string | null; user_email: string | null; created_at: string }[]; }
+    catch { return []; }
+  })() : [];
+
+  const spontaneousPrompt = isAdminWelcome
+    ? `Estás saludando a ${context?.userName ?? "el admin"} al inicio de su sesión. Hay ${inboxItems.length} sugerencia${inboxItems.length !== 1 ? "s" : ""} pendiente${inboxItems.length !== 1 ? "s" : ""} en el inbox:\n${inboxItems.map((it, i) => `${i + 1}. [${it.user_name ?? it.user_email ?? "anónimo"}] ${it.message}`).join("\n")}\nHacé un resumen breve y directo. No saludos extensos, no relleno. Podés usar tu tono característico.`
+    : `Decí algo breve y espontáneo al usuario${context?.userName ? ` (${context.userName})` : ""}. Puede ser una observación sobre lo que está haciendo en el Hub (está en: ${context?.pathname ?? "inicio"}${context?.activeApp ? `, usando ${context.activeApp}` : ""}), un pensamiento filosófico sobre tu existencia digital, o simplemente un comentario característico de Patas. Una sola oración, máximo dos. Nada de preguntas. Nada de saludos formales.`;
 
   // Fetch any URLs present in the user message
-  let userMessageWithContext = spontaneous ? spontaneousPrompt : message;
+  let userMessageWithContext = (spontaneous || isAdminWelcome) ? spontaneousPrompt : message;
   if (!spontaneous) {
     const urls = extractUrls(message);
     if (urls.length > 0) {

@@ -200,8 +200,8 @@ export function Footer() {
           className="absolute h-5 w-5 bg-fg-muted transition-all duration-200"
           style={{ borderRadius: 9999, top: 3, left: theme === "light" ? 3 : 31 }}
         />
-        <Sun size={12} strokeWidth={1.5} className={`absolute top-1/2 -translate-y-1/2 transition-colors ${theme === "light" ? "text-bg" : "text-fg-muted/50"}`} style={{ left: 9 }} />
-        <Moon size={12} strokeWidth={1.5} className={`absolute top-1/2 -translate-y-1/2 transition-colors ${theme === "dark" ? "text-bg" : "text-fg-muted/50"}`} style={{ right: 9 }} />
+        <Sun size={12} strokeWidth={1.5} className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-colors ${theme === "light" ? "text-bg" : "text-fg-muted/50"}`} style={{ left: 13 }} />
+        <Moon size={12} strokeWidth={1.5} className={`absolute top-1/2 -translate-y-1/2 translate-x-1/2 transition-colors ${theme === "dark" ? "text-bg" : "text-fg-muted/50"}`} style={{ right: 13 }} />
       </button>
     </footer>
     </>

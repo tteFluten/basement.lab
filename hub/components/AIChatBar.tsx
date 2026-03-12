@@ -41,7 +41,8 @@ type PatasAction =
   | { type: "createFeedbackProject"; name: string }
   | { type: "openApp"; slug: string }
   | { type: "moveFeedbackSessions"; fromSlug: string; toSlug: string }
-  | { type: "loadImage"; slug: string; url: string; field: string };
+  | { type: "loadImage"; slug: string; url: string; field: string }
+  | { type: "saveInbox"; message: string };
 
 function extractAction(text: string): PatasAction | null {
   const m = text.match(/\{\{action:([a-zA-Z]+):([^}]+)\}\}/);
@@ -58,6 +59,7 @@ function extractAction(text: string): PatasAction | null {
     const [slug, url, field = "input"] = parts;
     if (slug && url) return { type, slug, url, field };
   }
+  if (type === "saveInbox") return { type, message: payload.trim() };
   return null;
 }
 
@@ -125,6 +127,8 @@ export function AIChatBar() {
   const { data: session } = useSession();
   const userName = (session?.user as { name?: string } | undefined)?.name ?? null;
   const userEmail = (session?.user as { email?: string } | undefined)?.email ?? null;
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
+  const adminWelcomeRef = useRef(false);
   const lastInteractionRef = useRef<number>(Date.now());
   const userEmailRef2 = useRef(userEmail);
   useEffect(() => { userEmailRef2.current = userEmail; }, [userEmail]);
@@ -143,6 +147,32 @@ export function AIChatBar() {
       .then(data => { if (data?.memory) setPatasMemory(data.memory); })
       .catch(() => {});
   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Admin welcome: fetch inbox and greet once per session
+  useEffect(() => {
+    if (!isAdmin || adminWelcomeRef.current || session === undefined) return;
+    adminWelcomeRef.current = true;
+    fetch("/api/patas-inbox")
+      .then(r => r.ok ? r.json() : { items: [] })
+      .then(async ({ items }: { items: { id: number; message: string; user_name: string | null; user_email: string | null; created_at: string }[] }) => {
+        if (items.length === 0) return;
+        try {
+          const reader = await callPatas(`__admin_welcome__:${JSON.stringify(items)}`, true);
+          const decoder = new TextDecoder();
+          let text = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            text += decoder.decode(value, { stream: true });
+          }
+          const clean = stripMarkers(text);
+          setHistory(prev => [...prev, { role: "ai", text: clean }]);
+          animateWords(clean);
+        } catch { /* silently ignore */ }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, session]);
 
   // Persist history on every change
   useEffect(() => {
@@ -237,6 +267,12 @@ export function AIChatBar() {
         setHistory(prev => [...prev, { role: "ai", text: msg }]);
         animateWords(msg);
       }
+    } else if (action.type === "saveInbox") {
+      fetch("/api/patas-inbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: action.message }),
+      }).catch(() => {});
     } else if (action.type === "loadImage") {
       try {
         // Convert R2 URL to base64 dataUrl (same as ReferencePickerModal does)
