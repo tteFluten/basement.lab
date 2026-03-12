@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useAppTabs } from "@/lib/appTabsContext";
 
 type Message = { role: "user" | "ai"; text: string };
@@ -43,6 +44,10 @@ export function AIChatBar() {
   const historyEndRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { activeSlug } = useAppTabs();
+  const { data: session } = useSession();
+  const userName = (session?.user as { name?: string } | undefined)?.name ?? null;
+  const userEmail = (session?.user as { email?: string } | undefined)?.email ?? null;
+  const lastInteractionRef = useRef<number>(Date.now());
 
   const triggerZone = useCallback((zoneName: string) => {
     const sel = ZONES[zoneName];
@@ -53,6 +58,65 @@ export function AIChatBar() {
     clearTimeout(highlightTimerRef.current);
     highlightTimerRef.current = setTimeout(() => setHighlight(null), 3500);
   }, []);
+
+  // Shared fetch helper — used by both submit and spontaneous
+  const pathnameRef = useRef(pathname);
+  const activeSlugRef = useRef(activeSlug);
+  const userNameRef = useRef(userName);
+  const userEmailRef = useRef(userEmail);
+  useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+  useEffect(() => { activeSlugRef.current = activeSlug; }, [activeSlug]);
+  useEffect(() => { userNameRef.current = userName; }, [userName]);
+  useEffect(() => { userEmailRef.current = userEmail; }, [userEmail]);
+
+  const callPatas = useCallback(async (message: string, spontaneous = false) => {
+    const res = await fetch("/api/ai-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        spontaneous,
+        context: {
+          pathname: pathnameRef.current,
+          activeApp: activeSlugRef.current ?? null,
+          userName: userNameRef.current,
+          userEmail: userEmailRef.current,
+        },
+      }),
+    });
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+    return res.body.getReader();
+  }, []);
+
+  // Spontaneous messages — Patas speaks every 4-8 min if idle >2 min
+  useEffect(() => {
+    function scheduleNext() {
+      const delay = (Math.random() * 4 + 4) * 60 * 1000; // 4–8 min
+      return setTimeout(async () => {
+        const idleMs = Date.now() - lastInteractionRef.current;
+        if (idleMs < 2 * 60 * 1000) { scheduleNext(); return; } // too recent
+        try {
+          const reader = await callPatas("__spontaneous__", true);
+          const decoder = new TextDecoder();
+          let text = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            text += decoder.decode(value, { stream: true });
+            setStreaming(stripZones(text));
+          }
+          const zone = extractZone(text);
+          if (zone) triggerZone(zone);
+          const clean = stripZones(text);
+          setStreaming("");
+          setHistory(prev => [...prev, { role: "ai", text: clean }]);
+        } catch { /* silently ignore */ }
+        scheduleNext();
+      }, delay);
+    }
+    const t = scheduleNext();
+    return () => clearTimeout(t);
+  }, [callPatas, triggerZone]);
 
   // Eye animation
   const eyeRef = useRef<HTMLDivElement>(null);
@@ -115,25 +179,13 @@ export function AIChatBar() {
     setInput("");
     setLoading(true);
     setStreaming("");
+    lastInteractionRef.current = Date.now();
 
     const userMsg: Message = { role: "user", text: msg };
     setHistory((prev) => [...prev, userMsg]);
 
     try {
-      const res = await fetch("/api/ai-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: msg,
-          context: { pathname, activeApp: activeSlug ?? null },
-        }),
-      });
-
-      if (!res.ok || !res.body) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const reader = res.body.getReader();
+      const reader = await callPatas(msg);
       const decoder = new TextDecoder();
       let fullText = "";
 

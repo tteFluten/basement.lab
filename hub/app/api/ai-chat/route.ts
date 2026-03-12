@@ -57,15 +57,19 @@ export async function POST(req: NextRequest) {
     return new Response("GEMINI_API_KEY no configurada", { status: 503 });
   }
 
-  let body: { message: string; context?: { pathname?: string; activeApp?: string | null } };
+  let body: {
+    message: string;
+    spontaneous?: boolean;
+    context?: { pathname?: string; activeApp?: string | null; userName?: string | null; userEmail?: string | null };
+  };
   try {
     body = await req.json();
   } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const { message, context } = body;
-  if (!message?.trim()) {
+  const { message, spontaneous, context } = body;
+  if (!spontaneous && !message?.trim()) {
     return new Response("Empty message", { status: 400 });
   }
 
@@ -95,7 +99,8 @@ SEÑALAR ELEMENTOS DE UI: Cuando expliques algo de la interfaz del Hub, podés s
 - {{zone:chat}} — esta misma barra de chat (Patas)
 Solo incluí el marker si es genuinamente útil para entender lo que explicás. No lo fuerces.
 
-Contexto actual del usuario:
+Contexto actual:
+- Usuario: ${context?.userName ?? "desconocido"} (${context?.userEmail ?? "sin email"})
 - Página/URL: ${context?.pathname ?? "desconocida"}
 - App activa: ${context?.activeApp ?? "ninguna (en el hub principal)"}
 
@@ -110,15 +115,17 @@ ${companyKnowledge}
 ---
 Respondé en el idioma en que te escriban (español o inglés). Sé directo y útil. Si no sabés algo, decilo brevemente.`;
 
+  const spontaneousPrompt = `Decí algo breve y espontáneo al usuario${context?.userName ? ` (${context.userName})` : ""}. Puede ser una observación sobre lo que está haciendo en el Hub (está en: ${context?.pathname ?? "inicio"}${context?.activeApp ? `, usando ${context.activeApp}` : ""}), un pensamiento filosófico sobre tu existencia digital, o simplemente un comentario característico de Patas. Una sola oración, máximo dos. Nada de preguntas. Nada de saludos formales.`;
+
   try {
     const ai = getGemini();
     const result = await ai.models.generateContentStream({
       model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: message }] }],
+      contents: [{ role: "user", parts: [{ text: spontaneous ? spontaneousPrompt : message }] }],
       config: {
         systemInstruction,
         maxOutputTokens: 400,
-        temperature: 0.6,
+        temperature: spontaneous ? 0.95 : 0.6,
       },
     });
 
