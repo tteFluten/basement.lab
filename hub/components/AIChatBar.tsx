@@ -231,6 +231,11 @@ export function AIChatBar() {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.35; }
       }
+      #patas-history::-webkit-scrollbar { width: 3px; }
+      #patas-history::-webkit-scrollbar-track { background: transparent; }
+      #patas-history::-webkit-scrollbar-thumb { background: rgba(255,77,0,0.25); border-radius: 2px; }
+      #patas-history::-webkit-scrollbar-thumb:hover { background: rgba(255,77,0,0.5); }
+      #patas-history { scrollbar-width: thin; scrollbar-color: rgba(255,77,0,0.25) transparent; }
     `}</style>
 
     {/* Zone highlight overlay */}
@@ -264,6 +269,7 @@ export function AIChatBar() {
     >
       {/* Expanded history */}
       <div
+        id="patas-history"
         className="overflow-y-auto flex flex-col gap-0.5 px-3 py-1.5"
         style={{ height: EXPANDED_H - COLLAPSED_H, display: expanded ? "flex" : "none" }}
       >
@@ -316,8 +322,8 @@ export function AIChatBar() {
           disabled={loading}
           spellCheck={false}
           id="ai-chat-input"
-          className="h-full px-2 bg-transparent text-xs outline-none shrink-0"
-          style={{ width: 160, color: C, caretColor: C }}
+          className="h-full px-2 bg-transparent text-xs outline-none min-w-0"
+          style={{ flex: "0 1 180px", color: C, caretColor: C }}
         />
 
         {/* Divider */}
