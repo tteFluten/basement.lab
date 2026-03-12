@@ -7,7 +7,7 @@ import { CAMERA_TYPES, LENSES, MOVEMENTS, LIGHTING, ENGINES, STILL_STYLES } from
 import { OptionGrid } from './components/OptionGrid';
 import { OutputJSON } from './components/OutputJSON';
 import { BulkProcessor, BulkItem } from './components/BulkProcessor';
-import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, listenPatasCommand } from './lib/hubBridge';
 
 const App: React.FC = () => {
   const [config, setConfig] = useState<PromptConfig>({
@@ -31,6 +31,10 @@ const App: React.FC = () => {
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
   
   const previewRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => listenPatasCommand((_action, _field, dataUrl) => {
+    if (dataUrl) setConfig(prev => ({ ...prev, startImage: dataUrl }));
+  }), []);
 
   useEffect(() => {
     if (generatedStill && previewRef.current) {

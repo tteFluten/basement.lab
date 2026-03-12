@@ -3,7 +3,7 @@ import Sidebar from './components/Sidebar';
 import { RenderJob } from './types';
 import { generateRender } from './services/geminiService';
 import ApiKeyOverlay from './components/ApiKeyOverlay';
-import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime, listenPatasCommand } from './lib/hubBridge';
 
 const RANDOM_PROMPTS = [
   "Brutalist concrete villa, overgrown jungle vines, harsh noon shadows, 4k",
@@ -23,6 +23,10 @@ const App: React.FC = () => {
   const [referenceUrl, setReferenceUrl] = useState<string>();
   const [isRendering, setIsRendering] = useState(false);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
+
+  useEffect(() => listenPatasCommand((_action, _field, dataUrl) => {
+    if (dataUrl) { setReferenceBase64(dataUrl); setReferenceUrl(dataUrl); }
+  }), []);
 
   useEffect(() => {
     const checkKey = async () => {

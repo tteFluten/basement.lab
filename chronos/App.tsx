@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeCausality, analyzeConsequence, reconstructFrame, AnalysisResult } from './services/geminiService';
-import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, listenPatasCommand } from './lib/hubBridge';
 
 type GeminiAspectRatio = "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
 
@@ -39,6 +39,10 @@ const App: React.FC = () => {
     if (ratio > 0.65) return "3:4";
     return "9:16";
   };
+
+  useEffect(() => listenPatasCommand((_action, _field, dataUrl) => {
+    if (dataUrl) applyReferenceImage(dataUrl);
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyReferenceImage = (result: string) => {
     const img = new Image();

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MockupType, AspectRatio, StylePreset, GenerationResult } from './types';
 import { generateMockup } from './services/geminiService';
-import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime, listenPatasCommand } from './lib/hubBridge';
 
 interface PendingGeneration {
   id: string;
@@ -36,6 +36,12 @@ const App: React.FC = () => {
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const styleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => listenPatasCommand((_action, field, dataUrl) => {
+    if (!dataUrl) return;
+    if (field === 'style') setStyleRef(dataUrl);
+    else setLogo(dataUrl);
+  }), []);
 
   useEffect(() => {
     if (isHubEnv() || (typeof window !== "undefined" && window.location.pathname.startsWith("/embed/"))) {

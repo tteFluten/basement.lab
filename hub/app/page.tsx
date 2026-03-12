@@ -4,10 +4,6 @@ import { HomeAppsSection } from "./HomeAppsSection";
 export default function HomePage() {
   return (
     <main className="min-h-[80vh] bg-bg text-fg p-8 lg:p-10">
-      <h1 className="text-lg font-medium text-fg border-b border-border pb-4 mb-8">
-        Basement Lab
-      </h1>
-
       <HomeAppsSection />
 
       <section>

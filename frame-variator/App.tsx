@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GeminiService, CAMERA_POVS } from './services/geminiService';
 import { Variation, SceneAnalysis, GridState } from './types';
-import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime, listenPatasCommand } from './lib/hubBridge';
 import { resizeImageForApi, RETRY_PRESET } from './lib/imageResize';
 import { 
   Upload, 
@@ -76,6 +76,10 @@ const App: React.FC = () => {
 
   const currentGrid = mode === 'camera' ? cameraGrid : narrativeGrid;
   const setCurrentGrid = mode === 'camera' ? setCameraGrid : setNarrativeGrid;
+
+  useEffect(() => listenPatasCommand((_action, _field, dataUrl) => {
+    if (dataUrl) applyOriginalImage(dataUrl);
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyOriginalImage = async (dataUrl: string) => {
     const forApi = await resizeImageForApi(dataUrl);

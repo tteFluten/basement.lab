@@ -43,3 +43,11 @@ export type BridgeGenerationDone = {
   type: typeof BASEMENT_GENERATION_DONE;
   durationMs: number;
 };
+
+export const BASEMENT_PATAS_COMMAND = "BASEMENT_PATAS_COMMAND";
+export type BridgePatasCommand = {
+  type: typeof BASEMENT_PATAS_COMMAND;
+  action: "loadImage";
+  field: string;
+  dataUrl: string;
+};

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Plus,
   Image as ImageIcon,
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { ImageFile, StylingOptions, ProcessingState, AspectRatio, QualityLevel } from './types';
 import { transformImage, analyzeReferenceStyle } from './services/geminiService';
-import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, reportGenerationTime, listenPatasCommand } from './lib/hubBridge';
 
 function dataUrlToFile(dataUrl: string, name = 'reference.png'): File {
   const [header, base64] = dataUrl.split(',');
@@ -79,6 +79,14 @@ const App: React.FC = () => {
     setSourceImages(prev => [...prev, ...newImages]);
     e.target.value = '';
   };
+
+  useEffect(() => listenPatasCommand((_action, _field, dataUrl) => {
+    if (!dataUrl) return;
+    const ensureDataUrl = dataUrl.startsWith('data:')
+      ? Promise.resolve(dataUrl)
+      : urlToDataUrl(dataUrl);
+    ensureDataUrl.then(du => applyReference(dataUrlToFile(du), du)).catch(() => {});
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyReference = (file: File, preview: string) => {
     setReferenceImage({

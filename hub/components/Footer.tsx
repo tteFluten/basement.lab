@@ -174,7 +174,7 @@ export function Footer() {
             </span>
           </>
         ) : (
-          <span className="text-fg-muted italic">{IDLE_PROMPTS[idlePromptIdx]}</span>
+          <span key={idlePromptIdx} className="text-fg-muted italic transition-opacity duration-500">{IDLE_PROMPTS[idlePromptIdx]}</span>
         )}
       </div>
       <button

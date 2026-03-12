@@ -88,3 +88,13 @@ export function reportGenerationTime(durationMs: number): void {
   if (window.self === window.top) return;
   window.parent.postMessage({ type: "BASEMENT_GENERATION_DONE", durationMs }, "*");
 }
+
+export function listenPatasCommand(callback: (action: string, field: string, dataUrl: string) => void): () => void {
+  const handler = (e: MessageEvent) => {
+    if (e.data?.type === "BASEMENT_PATAS_COMMAND") {
+      callback(e.data.action as string, e.data.field as string, e.data.dataUrl as string);
+    }
+  };
+  window.addEventListener("message", handler);
+  return () => window.removeEventListener("message", handler);
+}

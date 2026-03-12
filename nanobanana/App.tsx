@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Clipboard, Send, X, Image as ImageIcon, Maximize2, Download, RefreshCcw, Key, FolderOpen, Copy, Check, Wand2, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { generateImage, improvePrompt, isEmbedMode, getHubModel, HistoryTurn } from './services/geminiService';
-import { isHubEnv, openReferencePicker, openDownloadAction } from './lib/hubBridge';
+import { isHubEnv, openReferencePicker, openDownloadAction, listenPatasCommand } from './lib/hubBridge';
 
 import { prepareImagePartForApi, resizeImageForApi } from './lib/imageResize';
 
@@ -132,6 +132,18 @@ export default function App() {
   const isGenerating = activeGenerations > 0;
   const latestResult = [...history].reverse().find(h => h.status === 'done');
   const resultText = latestResult?.text ?? null;
+
+  useEffect(() => listenPatasCommand((_action, _field, dataUrl) => {
+    if (!dataUrl) return;
+    const isBase64 = dataUrl.startsWith('data:');
+    const data = isBase64 ? dataUrl.split(',')[1] : dataUrl;
+    const mimeType = isBase64 ? (dataUrl.match(/^data:([^;]+);/)?.[1] ?? 'image/png') : 'image/png';
+    const COLORS = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8'];
+    setImageCounter(c => {
+      setImages(prev => [...prev, { id: String(c), data, mimeType, color: COLORS[c % COLORS.length] }]);
+      return c + 1;
+    });
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Restore session from localStorage on mount
   useEffect(() => {

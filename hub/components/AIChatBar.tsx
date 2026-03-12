@@ -40,7 +40,8 @@ const APP_LABELS: Record<string, string> = {
 type PatasAction =
   | { type: "createFeedbackProject"; name: string }
   | { type: "openApp"; slug: string }
-  | { type: "moveFeedbackSessions"; fromSlug: string; toSlug: string };
+  | { type: "moveFeedbackSessions"; fromSlug: string; toSlug: string }
+  | { type: "loadImage"; slug: string; url: string; field: string };
 
 function extractAction(text: string): PatasAction | null {
   const m = text.match(/\{\{action:([a-zA-Z]+):([^}]+)\}\}/);
@@ -51,6 +52,11 @@ function extractAction(text: string): PatasAction | null {
   if (type === "moveFeedbackSessions") {
     const [fromSlug, toSlug] = payload.split("|").map((s: string) => s.trim());
     if (fromSlug && toSlug) return { type, fromSlug, toSlug };
+  }
+  if (type === "loadImage") {
+    const parts = payload.split("|").map((s: string) => s.trim());
+    const [slug, url, field = "input"] = parts;
+    if (slug && url) return { type, slug, url, field };
   }
   return null;
 }
@@ -228,6 +234,33 @@ export function AIChatBar() {
         animateWords(msg);
       } catch (e) {
         const msg = `No pude mover las sesiones: ${e instanceof Error ? e.message : "error"}.`;
+        setHistory(prev => [...prev, { role: "ai", text: msg }]);
+        animateWords(msg);
+      }
+    } else if (action.type === "loadImage") {
+      try {
+        // Convert R2 URL to base64 dataUrl (same as ReferencePickerModal does)
+        let dataUrl = action.url;
+        if (!dataUrl.startsWith("data:")) {
+          const resp = await fetch(dataUrl);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const blob = await resp.blob();
+          dataUrl = await new Promise<string>((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result as string);
+            reader.onerror = rej;
+            reader.readAsDataURL(blob);
+          });
+        }
+        // Find the app iframe and send the command
+        const iframe = document.querySelector(`iframe[src*="/embed/${action.slug}/"]`) as HTMLIFrameElement | null;
+        if (!iframe?.contentWindow) throw new Error(`App "${action.slug}" no está abierta`);
+        iframe.contentWindow.postMessage(
+          { type: "BASEMENT_PATAS_COMMAND", action: "loadImage", field: action.field, dataUrl },
+          "*"
+        );
+      } catch (e) {
+        const msg = `No pude cargar la imagen: ${e instanceof Error ? e.message : "error"}.`;
         setHistory(prev => [...prev, { role: "ai", text: msg }]);
         animateWords(msg);
       }
