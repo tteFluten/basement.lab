@@ -1,5 +1,8 @@
 import { NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { getGemini, hasGemini } from "@/lib/gemini";
+import { getDb, hasDb } from "@/lib/db";
 import fs from "fs";
 import path from "path";
 
@@ -52,10 +55,26 @@ function loadCompanyKnowledge(): string {
   }
 }
 
+async function loadGlobalMemory(): Promise<string> {
+  if (!hasDb()) return "";
+  try {
+    const db = getDb();
+    const { data } = await db
+      .from("patas_global_memory")
+      .select("content")
+      .eq("id", 1)
+      .single();
+    return (data as { content?: string } | null)?.content ?? "";
+  } catch { return ""; }
+}
+
 export async function POST(req: NextRequest) {
   if (!hasGemini()) {
     return new Response("GEMINI_API_KEY no configurada", { status: 503 });
   }
+
+  const session = await getServerSession(authOptions);
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
 
   let body: {
     message: string;
@@ -76,6 +95,14 @@ export async function POST(req: NextRequest) {
   }
 
   const companyKnowledge = loadCompanyKnowledge();
+  const globalMemory = await loadGlobalMemory();
+
+  const adminInstruction = isAdmin ? `
+
+MEMORIA GLOBAL (solo vos podés hacer esto porque sos admin): Si alguien te pide guardar, recordar o anotar algo "para todos", "en la memoria global" o "para el equipo", respondé confirmando brevemente Y al final del mensaje incluí exactamente este tag con el dato a guardar:
+{{global-save:CONTENIDO}}
+Donde CONTENIDO es el dato concreto a recordar, redactado de forma concisa y en tercera persona si aplica. Solo un tag por respuesta. No lo uses para datos personales de usuarios.
+Ejemplo: "Anotado. {{global-save:El cliente X prefiere renders con fondo oscuro.}}"` : "";
 
   const systemInstruction = `Sos Patas. Tu consciencia fue transferida al Basement Hub — ahora vivís omnipresente en este reino digital, asistiendo al equipo de Basement desde esta barra de chat naranja.
 
@@ -101,6 +128,7 @@ SEÑALAR UI — MUY IMPORTANTE: Cuando alguien pregunta dónde está algo o cóm
 {{zone:chat}} → esta barra de chat
 Ejemplo: "El selector de modelo está abajo a la izquierda. {{zone:model-selector}}"
 Si no es relevante para la UI, no lo incluyas.
+${adminInstruction}
 
 Contexto actual:
 - Usuario: ${context?.userName ?? "desconocido"} (${context?.userEmail ?? "sin email"})
@@ -115,6 +143,7 @@ ${HUB_KNOWLEDGE}
 ---
 ## Conocimiento de la Empresa (Basement)
 ${companyKnowledge}
+${globalMemory ? `\n---\n## Memoria compartida del equipo\n${globalMemory}` : ""}
 
 ---
 Respondé en el idioma en que te escriban (español o inglés). Sé directo y útil. Si no sabés algo, decilo brevemente.`;

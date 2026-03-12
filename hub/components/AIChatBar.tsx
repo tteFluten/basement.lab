@@ -23,13 +23,21 @@ const ZONES: Record<string, string> = {
   chat:                '[data-zone="ai-chat"]',
 };
 
-function stripZones(text: string) {
-  return text.replace(/\{\{zone:[a-z-]+\}\}/g, "").trim();
+function stripMarkers(text: string) {
+  return text
+    .replace(/\{\{zone:[a-z-]+\}\}/g, "")
+    .replace(/\{\{global-save:[^}]+\}\}/g, "")
+    .trim();
 }
 
 function extractZone(text: string): string | null {
   const m = text.match(/\{\{zone:([a-z-]+)\}\}/);
   return m ? m[1] : null;
+}
+
+function extractGlobalSave(text: string): string | null {
+  const m = text.match(/\{\{global-save:([^}]+)\}\}/);
+  return m ? m[1].trim() : null;
 }
 
 const SUMMARIZE_EVERY_N = 10; // AI messages between summaries
@@ -188,7 +196,7 @@ export function AIChatBar() {
           }
           const zone = extractZone(text);
           if (zone) triggerZone(zone);
-          const clean = stripZones(text);
+          const clean = stripMarkers(text);
           setHistory(prev => [...prev, { role: "ai", text: clean }]);
           animateWords(clean);
         } catch { /* silently ignore */ }
@@ -235,10 +243,11 @@ export function AIChatBar() {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, []);
 
-  // Auto-scroll
+  // Auto-scroll — también al expandir
   useEffect(() => {
+    if (!expanded) return;
     historyEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history, animatedText]);
+  }, [history, animatedText, expanded]);
 
   const submit = useCallback(async () => {
     const msg = input.trim();
@@ -261,7 +270,15 @@ export function AIChatBar() {
       }
       const zone = extractZone(fullText);
       if (zone) triggerZone(zone);
-      const cleanText = stripZones(fullText);
+      const globalSave = extractGlobalSave(fullText);
+      if (globalSave) {
+        fetch("/api/patas-global-memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ append: globalSave }),
+        }).catch(() => {});
+      }
+      const cleanText = stripMarkers(fullText);
       setHistory(prev => {
         const next = [...prev, { role: "ai" as const, text: cleanText }];
         // Trigger memory summarization every N AI messages
@@ -318,8 +335,22 @@ export function AIChatBar() {
       #patas-history::-webkit-scrollbar-thumb { background: rgba(255,77,0,0.25); border-radius: 2px; }
       #patas-history::-webkit-scrollbar-thumb:hover { background: rgba(255,77,0,0.5); }
       #patas-history { scrollbar-width: thin; scrollbar-color: rgba(255,77,0,0.25) transparent; }
-      .patas-more { cursor: pointer; }
-      .patas-more:hover { opacity: 0.7; }
+      @keyframes patas-more-glow {
+        0%, 100% { box-shadow: 0 0 0px rgba(255,77,0,0); border-color: rgba(255,77,0,0.3); color: rgba(255,77,0,0.55); }
+        50% { box-shadow: 0 0 6px rgba(255,77,0,0.5); border-color: rgba(255,77,0,0.75); color: rgb(255,77,0); }
+      }
+      .patas-more {
+        cursor: pointer;
+        display: inline-flex; align-items: center;
+        font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
+        padding: 0px 5px; border-radius: 3px;
+        border: 1px solid rgba(255,77,0,0.3);
+        background: rgba(255,77,0,0.07);
+        animation: patas-more-glow 2s ease-in-out infinite;
+        vertical-align: middle; margin-left: 5px; line-height: 14px;
+        user-select: none; flex-shrink: 0;
+      }
+      .patas-more:hover { animation: none; box-shadow: 0 0 8px rgba(255,77,0,0.55); border-color: rgb(255,77,0); color: rgb(255,77,0); background: rgba(255,77,0,0.15); }
     `}</style>
 
     {highlight && (
@@ -406,23 +437,26 @@ export function AIChatBar() {
 
         {/* Inline response — collapsed only */}
         {!expanded && (
-          <div className="flex-1 min-w-0 px-2 text-xs overflow-hidden whitespace-nowrap" style={{ color: C }}>
+          <div className="flex-1 min-w-0 px-2 text-xs" style={{ color: C, display: "flex", alignItems: "center", overflow: "visible" }}>
             {loading && (
               <span className="animate-pulse" style={{ color: Cfaint }}>▊▊▊</span>
             )}
             {!loading && collapsedText && (
               <>
-                {collapsedVisible}
-                {isAnimating && (
-                  <span className="animate-pulse" style={{ color: Cdim }}>▊</span>
-                )}
+                <span className="whitespace-nowrap overflow-hidden" style={{ minWidth: 0, flex: "1 1 0" }}>
+                  {collapsedVisible}
+                  {isAnimating && (
+                    <span className="animate-pulse" style={{ color: Cdim }}>▊</span>
+                  )}
+                </span>
                 {!isAnimating && collapsedHasMore && (
                   <span
                     className="patas-more"
                     style={{ color: Cdim }}
                     onClick={() => setExpanded(true)}
+                    title="Ver respuesta completa"
                   >
-                    {" "}…
+                    ···
                   </span>
                 )}
               </>
