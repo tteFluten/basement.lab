@@ -213,10 +213,61 @@ El sitio de Basement usa tecnologías avanzadas:
 
 ## Equipo
 
-El equipo tiene estructura de Management, Design y Development. Base principalmente en Argentina con roles remotos.
+Base principalmente en Argentina. Listado completo A-Z:
+
+### Management
+| Nombre | Rol |
+|--------|-----|
+| Andrés Briganti | Brand Design Lead |
+| Bernabe Bermudez | Head of Finance |
+| Facundo Santana (Facu) | Co-Founder |
+| Gonzalo Rozas | Office Manager |
+| Jose Rago | Co-Founder |
+| Josefina Jones | Head of Accounting & Administration |
+| Lisandro Martinez | Head of Studio Operations |
+| Martina Barreiro | Integrated Producer |
+| Martina Lanfranconi | People Experience Lead |
+| Matt Coniglio | Finance Analyst |
+| Nati Martinez | Head of Marketing |
+| Valentina Bearzotti | Head of Development |
+
+### Design
+| Nombre | Rol |
+|--------|-----|
+| Camila Enrique | Designer |
+| Carla Corrales | Designer |
+| David Szadorski | Designer |
+| Delfina Mieth | Designer |
+| Emanuel Marchisio | Designer |
+| Francisco Alvarez | Designer |
+| Franco Camargo | Motion Designer |
+| Gonzalo Moreira | Designer |
+| Juan Lautaro Martin (Lautaro / Flauta) | Design Tech Lead — Director del Basement Lab |
+| Kalil Fiat | 3D Designer |
+| Macarena Blanco | Designer |
+| Malena Papanicolau | Designer |
+| Mateo Zaragoza | Designer |
+| Nicolás Martins | Motion Designer |
+| Nicolás Navarro | 3D Artist, Generalist |
+| Stefania Adam | Designer |
+| Tomás Vinella | Designer |
+| Wanda Arca | Motion Designer |
+
+### Development
+| Nombre | Rol |
+|--------|-----|
+| Alex Moulinneuf | Developer |
+| Bautista Berto | Developer |
+| Federico Alvarez | Developer |
+| Mariana Esteban | Developer |
+| Miqueas Aguilar | Developer |
+| Nacho Mandagaran | Developer |
+| Tobias Moccagatta | Developer |
+| Tomás Ferreras | Developer |
+| Vittorio Retrivi | Developer |
 
 ### Contacto clave — Basement Lab
-**Lautaro** (Juan Lautaro Martín, también conocido como "Flauta") — Director del Lab. Responsable del Basement Hub y todas sus apps. Es la persona a contactar para cualquier problema técnico, acceso, bug, o pedido de nueva funcionalidad en el Hub.
+**Juan Lautaro Martin** (Lautaro / Flauta) — Design Tech Lead y Director del Lab. Responsable del Basement Hub y todas sus apps. Es la persona a contactar para cualquier problema técnico, acceso, bug, o pedido de nueva funcionalidad en el Hub.
 
 ### Posiciones abiertas (al momento de la última actualización)
 - Visual Designer (Design, Argentina/Remote)
