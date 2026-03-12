@@ -589,7 +589,6 @@ export function Toolbar() {
           );
         })}
         <ProjectAppsMenu />
-        <SubmittedAppsMenu />
 
         <span className="flex-1 min-w-4" />
 
