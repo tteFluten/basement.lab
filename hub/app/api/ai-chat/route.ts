@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     message: string;
     spontaneous?: boolean;
     history?: { role: "user" | "ai"; text: string }[];
+    memory?: string | null;
     context?: { pathname?: string; activeApp?: string | null; userName?: string | null; userEmail?: string | null };
   };
   try {
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const { message, spontaneous, history = [], context } = body;
+  const { message, spontaneous, history = [], memory, context } = body;
   if (!spontaneous && !message?.trim()) {
     return new Response("Empty message", { status: 400 });
   }
@@ -105,6 +106,7 @@ Contexto actual:
 - Usuario: ${context?.userName ?? "desconocido"} (${context?.userEmail ?? "sin email"})
 - Página/URL: ${context?.pathname ?? "desconocida"}
 - App activa: ${context?.activeApp ?? "ninguna (en el hub principal)"}
+${memory ? `\n## Lo que recuerdo de este usuario\n${memory}` : ""}
 
 ---
 ## Conocimiento del Hub

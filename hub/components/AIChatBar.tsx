@@ -32,7 +32,8 @@ function extractZone(text: string): string | null {
   return m ? m[1] : null;
 }
 
-const MAX_STORED_MESSAGES = 80;
+const SUMMARIZE_EVERY_N = 10; // AI messages between summaries
+const MAX_STORED_MESSAGES = 120; // localStorage cap (long-term memory is in DB)
 
 function truncateForBar(text: string): { visible: string; hasMore: boolean } {
   if (text.length <= COLLAPSED_MAX_CHARS) return { visible: text, hasMore: false };
@@ -65,6 +66,8 @@ export function AIChatBar() {
   const [animatedText, setAnimatedText] = useState("");
   const [isAnimating, setIsAnimating] = useState(false);
   const [highlight, setHighlight] = useState<DOMRect | null>(null);
+  const [patasMemory, setPatasMemory] = useState<string | null>(null);
+  const aiMessageCountRef = useRef(0);
 
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const animTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -79,11 +82,19 @@ export function AIChatBar() {
   const userEmailRef2 = useRef(userEmail);
   useEffect(() => { userEmailRef2.current = userEmail; }, [userEmail]);
 
-  // Load persisted history once session is known
+  const patasMemoryRef = useRef<string | null>(null);
+  useEffect(() => { patasMemoryRef.current = patasMemory; }, [patasMemory]);
+
+  // Load persisted history + DB memory once session is known
   useEffect(() => {
     if (session === undefined) return; // still loading
     const stored = loadHistory(userEmail);
     if (stored.length > 0) setHistory(stored);
+    // Load long-term memory from DB (best-effort)
+    fetch("/api/me/patas-memory")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.memory) setPatasMemory(data.memory); })
+      .catch(() => {});
   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist history on every change
@@ -146,6 +157,7 @@ export function AIChatBar() {
         message,
         spontaneous,
         history: historyRef.current.slice(-30),
+        memory: patasMemoryRef.current,
         context: {
           pathname: pathnameRef.current,
           activeApp: activeSlugRef.current ?? null,
@@ -250,7 +262,26 @@ export function AIChatBar() {
       const zone = extractZone(fullText);
       if (zone) triggerZone(zone);
       const cleanText = stripZones(fullText);
-      setHistory(prev => [...prev, { role: "ai", text: cleanText }]);
+      setHistory(prev => {
+        const next = [...prev, { role: "ai" as const, text: cleanText }];
+        // Trigger memory summarization every N AI messages
+        aiMessageCountRef.current += 1;
+        if (aiMessageCountRef.current % SUMMARIZE_EVERY_N === 0) {
+          fetch("/api/me/patas-memory", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: next.slice(-60),
+              currentMemory: patasMemoryRef.current,
+              userName: userNameRef.current,
+            }),
+          })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.memory) setPatasMemory(data.memory); })
+            .catch(() => {});
+        }
+        return next;
+      });
       animateWords(cleanText);
     } catch (e) {
       const errText = e instanceof Error ? `Error: ${e.message}` : "Error al contactar al asistente.";
