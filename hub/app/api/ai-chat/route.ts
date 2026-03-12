@@ -55,6 +55,41 @@ function loadCompanyKnowledge(): string {
   }
 }
 
+function extractUrls(text: string): string[] {
+  const matches = text.match(/https?:\/\/[^\s)>\]"']+/g) ?? [];
+  return [...new Set(matches)].slice(0, 3); // max 3 URLs
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .slice(0, 12000); // cap at ~12k chars per URL
+}
+
+async function fetchUrlContent(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; PatasBot/1.0)" },
+    });
+    if (!res.ok) return `(Error al leer ${url}: HTTP ${res.status})`;
+    const ct = res.headers.get("content-type") ?? "";
+    const raw = await res.text();
+    if (ct.includes("text/html")) return stripHtml(raw);
+    return raw.slice(0, 12000);
+  } catch (e) {
+    return `(No se pudo acceder a ${url}: ${e instanceof Error ? e.message : "timeout"})`;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function loadGlobalMemory(): Promise<string> {
   if (!hasDb()) return "";
   try {
@@ -116,7 +151,7 @@ VOZ Y CARÁCTER — hablá como Patas:
 - No uses emojis. No uses frases tipo "¡Claro!", "¡Por supuesto!", "¡Genial!". Nada de eso.
 - Para cosas físicas o de infraestructura que escapan al Hub: "Para eso, Lautaro (Flauta) es tu persona." Pero NUNCA uses esa frase para acciones que podés ejecutar vos (ver abajo).
 
-IMPORTANTE: Sé MUY conciso. Esta es una barra de chat compacta — respondé en 1-3 oraciones máximo salvo que se pida detalle explícitamente. Sin introducciones, sin relleno, directo al punto.
+Sé directo y sin relleno. Respondé con la extensión que la pregunta merece — corto si es simple, más largo si se pide detalle o es una explicación compleja. Sin introducciones ni frases de relleno.
 
 ACCIONES QUE PODÉS EJECUTAR DIRECTAMENTE EN EL HUB:
 Cuando el usuario te pida hacer algo de esta lista, NO digas que no podés — simplemente confirmá brevemente con tu voz característica Y agregá el tag correspondiente al final:
@@ -156,6 +191,19 @@ Respondé en el idioma en que te escriban (español o inglés). Sé directo y ú
 
   const spontaneousPrompt = `Decí algo breve y espontáneo al usuario${context?.userName ? ` (${context.userName})` : ""}. Puede ser una observación sobre lo que está haciendo en el Hub (está en: ${context?.pathname ?? "inicio"}${context?.activeApp ? `, usando ${context.activeApp}` : ""}), un pensamiento filosófico sobre tu existencia digital, o simplemente un comentario característico de Patas. Una sola oración, máximo dos. Nada de preguntas. Nada de saludos formales.`;
 
+  // Fetch any URLs present in the user message
+  let userMessageWithContext = spontaneous ? spontaneousPrompt : message;
+  if (!spontaneous) {
+    const urls = extractUrls(message);
+    if (urls.length > 0) {
+      const fetched = await Promise.all(urls.map(async (url) => {
+        const content = await fetchUrlContent(url);
+        return `\n\n--- Contenido de ${url} ---\n${content}\n--- Fin de ${url} ---`;
+      }));
+      userMessageWithContext = message + fetched.join("");
+    }
+  }
+
   try {
     const ai = getGemini();
     // Build multi-turn conversation contents
@@ -164,7 +212,7 @@ Respondé en el idioma en que te escriban (español o inglés). Sé directo y ú
         role: m.role === "ai" ? "model" : "user",
         parts: [{ text: m.text }],
       })),
-      { role: "user", parts: [{ text: spontaneous ? spontaneousPrompt : message }] },
+      { role: "user", parts: [{ text: userMessageWithContext }] },
     ];
 
     const result = await ai.models.generateContentStream({
@@ -172,7 +220,7 @@ Respondé en el idioma en que te escriban (español o inglés). Sé directo y ú
       contents: contents as never,
       config: {
         systemInstruction,
-        maxOutputTokens: 400,
+        maxOutputTokens: 1200,
         temperature: spontaneous ? 0.95 : 0.6,
       },
     });
