@@ -275,10 +275,11 @@ export function AIChatBar() {
       }).catch(() => {});
     } else if (action.type === "loadImage") {
       try {
-        // Convert R2 URL to base64 dataUrl (same as ReferencePickerModal does)
+        // Convert R2 URL to base64 dataUrl via server proxy (avoids CORS)
         let dataUrl = action.url;
         if (!dataUrl.startsWith("data:")) {
-          const resp = await fetch(dataUrl);
+          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(dataUrl)}`;
+          const resp = await fetch(proxyUrl);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const blob = await resp.blob();
           dataUrl = await new Promise<string>((res, rej) => {

@@ -154,7 +154,8 @@ export function ReferencePickerModal({ open, onClose, onSelect }: Props) {
     }
 
     setSelectedId(item.id);
-    fetch(url)
+    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+    fetch(proxyUrl)
       .then((r) => r.blob())
       .then((blob) => {
         const reader = new FileReader();
