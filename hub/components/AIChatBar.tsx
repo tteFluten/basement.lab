@@ -32,10 +32,29 @@ function extractZone(text: string): string | null {
   return m ? m[1] : null;
 }
 
+const MAX_STORED_MESSAGES = 80;
+
 function truncateForBar(text: string): { visible: string; hasMore: boolean } {
   if (text.length <= COLLAPSED_MAX_CHARS) return { visible: text, hasMore: false };
   const cut = text.slice(0, COLLAPSED_MAX_CHARS).replace(/\s+\S*$/, "") || text.slice(0, COLLAPSED_MAX_CHARS);
   return { visible: cut, hasMore: true };
+}
+
+function loadHistory(userEmail: string | null): Message[] {
+  try {
+    const key = `patas-history:${userEmail ?? "anon"}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    return JSON.parse(raw) as Message[];
+  } catch { return []; }
+}
+
+function saveHistory(userEmail: string | null, history: Message[]) {
+  try {
+    const key = `patas-history:${userEmail ?? "anon"}`;
+    const trimmed = history.slice(-MAX_STORED_MESSAGES);
+    localStorage.setItem(key, JSON.stringify(trimmed));
+  } catch { /* quota exceeded etc, ignore */ }
 }
 
 export function AIChatBar() {
@@ -57,6 +76,21 @@ export function AIChatBar() {
   const userName = (session?.user as { name?: string } | undefined)?.name ?? null;
   const userEmail = (session?.user as { email?: string } | undefined)?.email ?? null;
   const lastInteractionRef = useRef<number>(Date.now());
+  const userEmailRef2 = useRef(userEmail);
+  useEffect(() => { userEmailRef2.current = userEmail; }, [userEmail]);
+
+  // Load persisted history once session is known
+  useEffect(() => {
+    if (session === undefined) return; // still loading
+    const stored = loadHistory(userEmail);
+    if (stored.length > 0) setHistory(stored);
+  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist history on every change
+  useEffect(() => {
+    if (history.length === 0) return;
+    saveHistory(userEmailRef2.current, history);
+  }, [history]);
 
   const pathnameRef = useRef(pathname);
   const activeSlugRef = useRef(activeSlug);
@@ -111,7 +145,7 @@ export function AIChatBar() {
       body: JSON.stringify({
         message,
         spontaneous,
-        history: historyRef.current.slice(-20),
+        history: historyRef.current.slice(-30),
         context: {
           pathname: pathnameRef.current,
           activeApp: activeSlugRef.current ?? null,
