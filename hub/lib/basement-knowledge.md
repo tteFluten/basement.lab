@@ -215,6 +215,9 @@ El sitio de Basement usa tecnologías avanzadas:
 
 El equipo tiene estructura de Management, Design y Development. Base principalmente en Argentina con roles remotos.
 
+### Contacto clave — Basement Lab
+**Lautaro** (Juan Lautaro Martín, también conocido como "Flauta") — Director del Lab. Responsable del Basement Hub y todas sus apps. Es la persona a contactar para cualquier problema técnico, acceso, bug, o pedido de nueva funcionalidad en el Hub.
+
 ### Posiciones abiertas (al momento de la última actualización)
 - Visual Designer (Design, Argentina/Remote)
 - Sr. Brand Designer (Design, Argentina/Remote)
@@ -265,6 +268,9 @@ Crear una sesión de feedback en la app Feedback del Hub. El link `/share/feedba
 
 **¿Qué modelo de IA se usa en las apps?**
 Google Gemini (via @google/genai). El modelo se puede cambiar por app desde el selector en el footer del Hub.
+
+**¿A quién le pregunto si tengo un problema con el Hub?**
+A Lautaro — es el director del Lab y el responsable del Basement Hub. Cualquier bug, pedido de nueva feature, problema de acceso, o duda técnica que Patas no pueda resolver: Lautaro es la persona.
 
 ---
 
