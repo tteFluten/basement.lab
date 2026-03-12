@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
   let body: {
     message: string;
     spontaneous?: boolean;
+    history?: { role: "user" | "ai"; text: string }[];
     context?: { pathname?: string; activeApp?: string | null; userName?: string | null; userEmail?: string | null };
   };
   try {
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const { message, spontaneous, context } = body;
+  const { message, spontaneous, history = [], context } = body;
   if (!spontaneous && !message?.trim()) {
     return new Response("Empty message", { status: 400 });
   }
@@ -119,9 +120,18 @@ Respondé en el idioma en que te escriban (español o inglés). Sé directo y ú
 
   try {
     const ai = getGemini();
+    // Build multi-turn conversation contents
+    const contents = [
+      ...history.map((m) => ({
+        role: m.role === "ai" ? "model" : "user",
+        parts: [{ text: m.text }],
+      })),
+      { role: "user", parts: [{ text: spontaneous ? spontaneousPrompt : message }] },
+    ];
+
     const result = await ai.models.generateContentStream({
       model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: spontaneous ? spontaneousPrompt : message }] }],
+      contents: contents as never,
       config: {
         systemInstruction,
         maxOutputTokens: 400,

@@ -64,10 +64,12 @@ export function AIChatBar() {
   const activeSlugRef = useRef(activeSlug);
   const userNameRef = useRef(userName);
   const userEmailRef = useRef(userEmail);
+  const historyRef = useRef<Message[]>([]);
   useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
   useEffect(() => { activeSlugRef.current = activeSlug; }, [activeSlug]);
   useEffect(() => { userNameRef.current = userName; }, [userName]);
   useEffect(() => { userEmailRef.current = userEmail; }, [userEmail]);
+  useEffect(() => { historyRef.current = history; }, [history]);
 
   const callPatas = useCallback(async (message: string, spontaneous = false) => {
     const res = await fetch("/api/ai-chat", {
@@ -76,6 +78,7 @@ export function AIChatBar() {
       body: JSON.stringify({
         message,
         spontaneous,
+        history: historyRef.current.slice(-20), // last 20 messages for context
         context: {
           pathname: pathnameRef.current,
           activeApp: activeSlugRef.current ?? null,
