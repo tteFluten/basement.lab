@@ -222,7 +222,7 @@ Base principalmente en Argentina. Listado completo A-Z:
 | Bernabe Bermudez | Head of Finance |
 | Facundo Santana (Facu) | Co-Founder |
 | Gonzalo Rozas | Office Manager |
-| Jose Rago | Co-Founder |
+| Jose Rago (Tigre) | Co-Founder |
 | Josefina Jones | Head of Accounting & Administration |
 | Lisandro Martinez | Head of Studio Operations |
 | Martina Barreiro | Integrated Producer |
