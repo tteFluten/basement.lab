@@ -23,10 +23,21 @@ const ZONES: Record<string, string> = {
   chat:                '[data-zone="ai-chat"]',
 };
 
+type PatasAction = { type: "createFeedbackProject"; name: string };
+
+function extractAction(text: string): PatasAction | null {
+  const m = text.match(/\{\{action:([a-zA-Z]+):([^}]+)\}\}/);
+  if (!m) return null;
+  const [, type, payload] = m;
+  if (type === "createFeedbackProject") return { type, name: payload.trim() };
+  return null;
+}
+
 function stripMarkers(text: string) {
   return text
     .replace(/\{\{zone:[a-z-]+\}\}/g, "")
     .replace(/\{\{global-save:[^}]+\}\}/g, "")
+    .replace(/\{\{action:[a-zA-Z]+:[^}]+\}\}/g, "")
     .trim();
 }
 
@@ -156,6 +167,28 @@ export function AIChatBar() {
     return () => { animTimersRef.current.forEach(clearTimeout); };
   }, []);
 
+  // Execute hub actions emitted by Patas
+  const executeAction = useCallback(async (action: PatasAction) => {
+    if (action.type === "createFeedbackProject") {
+      try {
+        const res = await fetch("/api/feedback/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: action.name }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const project = await res.json() as { name: string; slug: string };
+        const msg = `Proyecto "${project.name}" creado.`;
+        setHistory(prev => [...prev, { role: "ai", text: msg }]);
+        animateWords(msg);
+      } catch (e) {
+        const msg = `No pude crear el proyecto: ${e instanceof Error ? e.message : "error"}.`;
+        setHistory(prev => [...prev, { role: "ai", text: msg }]);
+        animateWords(msg);
+      }
+    }
+  }, [animateWords]);
+
   // Fetch helper
   const callPatas = useCallback(async (message: string, spontaneous = false) => {
     const res = await fetch("/api/ai-chat", {
@@ -278,6 +311,7 @@ export function AIChatBar() {
           body: JSON.stringify({ append: globalSave }),
         }).catch(() => {});
       }
+      const action = extractAction(fullText);
       const cleanText = stripMarkers(fullText);
       setHistory(prev => {
         const next = [...prev, { role: "ai" as const, text: cleanText }];
@@ -299,7 +333,7 @@ export function AIChatBar() {
         }
         return next;
       });
-      animateWords(cleanText);
+      animateWords(cleanText, action ? () => executeAction(action) : undefined);
     } catch (e) {
       const errText = e instanceof Error ? `Error: ${e.message}` : "Error al contactar al asistente.";
       setHistory(prev => [...prev, { role: "ai", text: errText }]);
@@ -307,7 +341,7 @@ export function AIChatBar() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, callPatas, triggerZone, animateWords]);
+  }, [input, loading, callPatas, triggerZone, animateWords, executeAction]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") submit();
