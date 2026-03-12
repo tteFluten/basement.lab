@@ -30,8 +30,10 @@ export default function RootLayout({
             <BackgroundSync />
             <Toolbar />
             <ContentWithTabs>{children}</ContentWithTabs>
-            <AIChatBar />
-            <Footer />
+            <div className="shrink-0 sticky bottom-0 z-40">
+              <AIChatBar />
+              <Footer />
+            </div>
           </AppTabsProvider>
         </SessionProvider>
       </body>

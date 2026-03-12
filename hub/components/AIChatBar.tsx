@@ -27,6 +27,9 @@ export function AIChatBar() {
   const phaseRef = useRef(0);
   const animRef = useRef<number>();
   const loadingRef = useRef(false);
+  // Blink state: frames until next blink, and blink progress (0=open, peaks at 1=closed)
+  const blinkCountdownRef = useRef(Math.random() * 180 + 120); // ~2-5s at 60fps
+  const blinkProgressRef = useRef(0); // 0..1..0
 
   useEffect(() => {
     loadingRef.current = loading;
@@ -34,14 +37,31 @@ export function AIChatBar() {
 
   useEffect(() => {
     function tick() {
-      const speed = loadingRef.current ? 0.09 : 0.016;
-      const ampX = loadingRef.current ? 4 : 3;
-      const ampY = loadingRef.current ? 1.5 : 0;
+      const isLoading = loadingRef.current;
+      const speed = isLoading ? 0.13 : 0.016;
+      const ampX = isLoading ? 6 : 3;
+      const ampY = isLoading ? 2.5 : 0;
+
       phaseRef.current += speed;
       const x = Math.sin(phaseRef.current) * ampX;
-      const y = loadingRef.current ? Math.sin(phaseRef.current * 1.7) * ampY : 0;
+      const y = isLoading ? Math.sin(phaseRef.current * 1.7) * ampY : 0;
+
+      // Blink logic
+      blinkCountdownRef.current -= 1;
+      let scaleY = 1;
+      if (blinkCountdownRef.current <= 0) {
+        // Drive blink progress 0→1→0 over ~12 frames
+        blinkProgressRef.current += 1 / 6;
+        if (blinkProgressRef.current >= 2) {
+          blinkProgressRef.current = 0;
+          blinkCountdownRef.current = Math.random() * 240 + 120;
+        }
+        const t = blinkProgressRef.current <= 1 ? blinkProgressRef.current : 2 - blinkProgressRef.current;
+        scaleY = 1 - t * 0.92; // squish to ~8% height at peak
+      }
+
       if (eyeRef.current) {
-        eyeRef.current.style.transform = `translate(${x}px, ${y}px)`;
+        eyeRef.current.style.transform = `translate(${x}px, ${y}px) scaleY(${scaleY})`;
       }
       animRef.current = requestAnimationFrame(tick);
     }
@@ -112,8 +132,9 @@ export function AIChatBar() {
 
   return (
     <div
-      className="shrink-0 border-t border-amber-800/50 bg-amber-950"
+      className="shrink-0 border-t border-amber-900/60"
       style={{
+        backgroundColor: "#110600",
         height: expanded ? EXPANDED_H : COLLAPSED_H,
         transition: "height 0.2s cubic-bezier(0.4,0,0.2,1)",
         overflow: "hidden",
@@ -160,28 +181,20 @@ export function AIChatBar() {
 
       {/* Input row — always visible */}
       <div className="flex items-center gap-0 h-8 shrink-0">
-        {/* Eye container */}
+        {/* Eye — bare animated square, no border */}
         <div
           className="flex items-center justify-center shrink-0"
           style={{ width: 36, height: 32 }}
         >
-          {/* Outer eye shape */}
           <div
-            className="relative flex items-center justify-center border border-amber-800/60"
-            style={{ width: 18, height: 11, borderRadius: 9999 }}
-          >
-            {/* Pupil (animated square) */}
-            <div
-              ref={eyeRef}
-              className="absolute"
-              style={{
-                width: 6,
-                height: 6,
-                backgroundColor: loading ? "#f59e0b" : "#b45309",
-                transition: "background-color 0.4s",
-              }}
-            />
-          </div>
+            ref={eyeRef}
+            style={{
+              width: 6,
+              height: 6,
+              backgroundColor: loading ? "#f59e0b" : "#92400e",
+              transition: "background-color 0.4s",
+            }}
+          />
         </div>
 
         {/* Divider */}
