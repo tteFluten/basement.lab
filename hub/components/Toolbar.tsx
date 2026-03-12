@@ -561,7 +561,7 @@ export function Toolbar() {
           href="/"
           className="text-fg font-medium hover:text-fg-muted shrink-0"
         >
-          Basement Lab
+          basementLabHub
         </Link>
 
         <span className="w-px h-5 bg-border shrink-0" aria-hidden />

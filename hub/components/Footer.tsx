@@ -129,6 +129,14 @@ export function Footer() {
   }
 
   return (
+    <>
+    <style>{`
+      @keyframes idle-phrase-in {
+        from { opacity: 0; transform: translateY(5px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .idle-phrase { animation: idle-phrase-in 0.5s ease both; }
+    `}</style>
     <footer className="border-t border-border bg-bg-muted shrink-0 px-4 py-2 flex flex-wrap items-center justify-between gap-4" data-zone="footer">
       <div className="flex items-center gap-3 text-xs">
         {appSlug ? (
@@ -174,7 +182,7 @@ export function Footer() {
             </span>
           </>
         ) : (
-          <span key={idlePromptIdx} className="text-fg-muted italic transition-opacity duration-500">{IDLE_PROMPTS[idlePromptIdx]}</span>
+          <span key={idlePromptIdx} className="text-fg-muted idle-phrase">{IDLE_PROMPTS[idlePromptIdx]}</span>
         )}
       </div>
       <button
@@ -189,12 +197,13 @@ export function Footer() {
         style={{ borderRadius: 9999 }}
       >
         <div
-          className="absolute top-1 h-5 w-5 bg-fg-muted transition-all duration-200"
-          style={{ borderRadius: 9999, left: theme === "light" ? 4 : 28 }}
+          className="absolute h-5 w-5 bg-fg-muted transition-all duration-200"
+          style={{ borderRadius: 9999, top: 3, left: theme === "light" ? 3 : 31 }}
         />
         <Sun size={12} strokeWidth={1.5} className={`absolute top-1/2 -translate-y-1/2 transition-colors ${theme === "light" ? "text-bg" : "text-fg-muted/50"}`} style={{ left: 9 }} />
         <Moon size={12} strokeWidth={1.5} className={`absolute top-1/2 -translate-y-1/2 transition-colors ${theme === "dark" ? "text-bg" : "text-fg-muted/50"}`} style={{ right: 9 }} />
       </button>
     </footer>
+    </>
   );
 }

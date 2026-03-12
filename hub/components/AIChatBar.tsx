@@ -448,6 +448,7 @@ export function AIChatBar() {
       animateWords(errText);
     } finally {
       setLoading(false);
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [input, loading, callPatas, triggerZone, animateWords, executeAction]);
 
