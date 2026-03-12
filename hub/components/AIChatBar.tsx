@@ -369,7 +369,7 @@ export function AIChatBar() {
     const ro = new ResizeObserver(check);
     ro.observe(el);
     return () => ro.disconnect();
-  });
+  }, [collapsedText, expanded]);
 
   // Drag-to-resize handlers
   const handleResizeDragStart = useCallback((e: React.MouseEvent) => {
