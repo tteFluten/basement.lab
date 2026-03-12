@@ -477,7 +477,9 @@ export function AIChatBar() {
         }
         return next;
       });
-      animateWords(cleanText, action ? () => executeAction(action) : undefined);
+      // Execute action immediately (don't wait for animation to finish)
+      if (action) executeAction(action);
+      animateWords(cleanText);
     } catch (e) {
       const errText = e instanceof Error ? `Error: ${e.message}` : "Error al contactar al asistente.";
       setHistory(prev => [...prev, { role: "ai", text: errText }]);
