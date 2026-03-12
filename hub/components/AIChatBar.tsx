@@ -129,12 +129,18 @@ export function AIChatBar() {
   };
 
   const lastAiMsg = [...history].reverse().find((h) => h.role === "ai")?.text ?? "";
+  const C = "rgb(255,77,0)";
+  const Cfaint = "rgba(255,77,0,0.25)";
+  const Cdim = "rgba(255,77,0,0.45)";
 
   return (
+    <>
+    <style>{`#ai-chat-input::placeholder { color: rgba(255,77,0,0.3); }`}</style>
     <div
-      className="shrink-0 border-t border-amber-900/60"
+      className="shrink-0"
       style={{
         backgroundColor: "#110600",
+        borderTop: `1px solid rgba(255,77,0,0.18)`,
         height: expanded ? EXPANDED_H : COLLAPSED_H,
         transition: "height 0.2s cubic-bezier(0.4,0,0.2,1)",
         overflow: "hidden",
@@ -146,33 +152,27 @@ export function AIChatBar() {
         style={{ height: EXPANDED_H - COLLAPSED_H, display: expanded ? "flex" : "none" }}
       >
         {history.length === 0 && (
-          <p className="text-xs text-amber-900 italic select-none">
+          <p className="text-xs italic select-none" style={{ color: Cfaint }}>
             Preguntá sobre el hub o la empresa…
           </p>
         )}
         {history.map((h, i) => (
-          <div
-            key={i}
-            className={`text-xs leading-relaxed ${
-              h.role === "user" ? "text-amber-600" : "text-amber-200/90"
-            }`}
-          >
-            <span className="select-none text-amber-800 mr-1">
+          <div key={i} className="text-xs leading-relaxed" style={{ color: h.role === "user" ? Cdim : C }}>
+            <span className="select-none mr-1" style={{ color: Cfaint }}>
               {h.role === "user" ? "›" : "◈"}
             </span>
             {h.text}
           </div>
         ))}
-        {/* Streaming preview in expanded mode */}
         {loading && streaming && (
-          <div className="text-xs leading-relaxed text-amber-200/90">
-            <span className="select-none text-amber-800 mr-1">◈</span>
+          <div className="text-xs leading-relaxed" style={{ color: C }}>
+            <span className="select-none mr-1" style={{ color: Cfaint }}>◈</span>
             {streaming}
-            <span className="animate-pulse text-amber-500">▊</span>
+            <span className="animate-pulse" style={{ color: Cdim }}>▊</span>
           </div>
         )}
         {loading && !streaming && (
-          <div className="text-xs text-amber-800 animate-pulse select-none">
+          <div className="text-xs animate-pulse select-none" style={{ color: Cfaint }}>
             <span className="mr-1">◈</span>pensando…
           </div>
         )}
@@ -182,23 +182,12 @@ export function AIChatBar() {
       {/* Input row — always visible */}
       <div className="flex items-center gap-0 h-8 shrink-0">
         {/* Eye — bare animated square, no border */}
-        <div
-          className="flex items-center justify-center shrink-0"
-          style={{ width: 36, height: 32 }}
-        >
-          <div
-            ref={eyeRef}
-            style={{
-              width: 6,
-              height: 6,
-              backgroundColor: loading ? "#f59e0b" : "#92400e",
-              transition: "background-color 0.4s",
-            }}
-          />
+        <div className="flex items-center justify-center shrink-0" style={{ width: 36, height: 32 }}>
+          <div ref={eyeRef} style={{ width: 6, height: 6, backgroundColor: C }} />
         </div>
 
         {/* Divider */}
-        <div className="w-px h-4 bg-amber-800/40 shrink-0" />
+        <div className="w-px h-4 shrink-0" style={{ backgroundColor: Cfaint }} />
 
         {/* Input field */}
         <input
@@ -207,35 +196,31 @@ export function AIChatBar() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={loading ? "pensando…" : "preguntá sobre el hub o basement…"}
+          placeholder="Ask Patas"
           disabled={loading}
           spellCheck={false}
-          className="h-full px-2 bg-transparent text-amber-200 placeholder-amber-900 text-xs outline-none shrink-0"
-          style={{ width: 220, caretColor: "#fbbf24" }}
+          id="ai-chat-input"
+          className="h-full px-2 bg-transparent text-xs outline-none shrink-0"
+          style={{ width: 160, color: C, caretColor: C }}
         />
 
         {/* Divider */}
-        <div className="w-px h-4 bg-amber-800/40 shrink-0" />
+        <div className="w-px h-4 shrink-0" style={{ backgroundColor: Cfaint }} />
 
         {/* Inline response (collapsed mode only) */}
         {!expanded && (
-          <div className="flex-1 min-w-0 px-2 text-xs text-amber-300/80 truncate">
+          <div className="flex-1 min-w-0 px-2 text-xs truncate" style={{ color: C }}>
             {loading && !streaming && (
-              <span className="text-amber-800 animate-pulse select-none">▊▊▊</span>
+              <span className="animate-pulse" style={{ color: Cfaint }}>▊▊▊</span>
             )}
             {loading && streaming && (
               <>
                 {streaming}
-                <span className="animate-pulse text-amber-500">▊</span>
+                <span className="animate-pulse" style={{ color: Cdim }}>▊</span>
               </>
             )}
             {!loading && (streaming || lastAiMsg) && (
               <span>{streaming || lastAiMsg}</span>
-            )}
-            {!loading && !streaming && !lastAiMsg && (
-              <span className="text-amber-900 select-none italic">
-                {history.length > 0 ? history[history.length - 1]?.text ?? "" : ""}
-              </span>
             )}
           </div>
         )}
@@ -246,12 +231,14 @@ export function AIChatBar() {
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="shrink-0 px-3 h-full flex items-center text-amber-800 hover:text-amber-500 transition-colors"
+          className="shrink-0 px-3 h-full flex items-center transition-colors"
+          style={{ color: Cdim }}
           title={expanded ? "Colapsar" : "Expandir chat"}
         >
           {expanded ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
         </button>
       </div>
     </div>
+    </>
   );
 }
