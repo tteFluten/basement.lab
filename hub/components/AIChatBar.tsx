@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useAppTabs } from "@/lib/appTabsContext";
+import { getAppUrl } from "@/lib/appUrls";
 
 type Message = { role: "user" | "ai"; text: string };
 
@@ -23,13 +24,33 @@ const ZONES: Record<string, string> = {
   chat:                '[data-zone="ai-chat"]',
 };
 
-type PatasAction = { type: "createFeedbackProject"; name: string };
+const APP_LABELS: Record<string, string> = {
+  cineprompt: "CinePrompt",
+  chronos: "Chronos",
+  swag: "Swag",
+  avatar: "Avatar",
+  render: "Render",
+  "frame-variator": "Frame Variator",
+  connect: "Connect",
+  nanobanana: "NanoBanana",
+  feedback: "Feedback",
+};
+
+type PatasAction =
+  | { type: "createFeedbackProject"; name: string }
+  | { type: "openApp"; slug: string }
+  | { type: "moveFeedbackSessions"; fromSlug: string; toSlug: string };
 
 function extractAction(text: string): PatasAction | null {
   const m = text.match(/\{\{action:([a-zA-Z]+):([^}]+)\}\}/);
   if (!m) return null;
   const [, type, payload] = m;
   if (type === "createFeedbackProject") return { type, name: payload.trim() };
+  if (type === "openApp") return { type, slug: payload.trim() };
+  if (type === "moveFeedbackSessions") {
+    const [fromSlug, toSlug] = payload.split("|").map((s: string) => s.trim());
+    if (fromSlug && toSlug) return { type, fromSlug, toSlug };
+  }
   return null;
 }
 
@@ -93,7 +114,8 @@ export function AIChatBar() {
   const inputRef = useRef<HTMLInputElement>(null);
   const historyEndRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  const { activeSlug } = useAppTabs();
+  const { activeSlug, openTab } = useAppTabs();
+  const router = useRouter();
   const { data: session } = useSession();
   const userName = (session?.user as { name?: string } | undefined)?.name ?? null;
   const userEmail = (session?.user as { email?: string } | undefined)?.email ?? null;
@@ -186,8 +208,31 @@ export function AIChatBar() {
         setHistory(prev => [...prev, { role: "ai", text: msg }]);
         animateWords(msg);
       }
+    } else if (action.type === "openApp") {
+      const slug = action.slug;
+      const label = APP_LABELS[slug] ?? slug;
+      const url = getAppUrl(slug);
+      openTab(slug, label, url);
+      router.push(`/apps/${slug}`);
+    } else if (action.type === "moveFeedbackSessions") {
+      try {
+        const res = await fetch(`/api/feedback/projects/${action.fromSlug}/move-sessions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetSlug: action.toSlug }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { moved, from, to } = await res.json() as { moved: number; from: string; to: string };
+        const msg = `${moved} sesión${moved !== 1 ? "es" : ""} movida${moved !== 1 ? "s" : ""} de "${from}" a "${to}".`;
+        setHistory(prev => [...prev, { role: "ai", text: msg }]);
+        animateWords(msg);
+      } catch (e) {
+        const msg = `No pude mover las sesiones: ${e instanceof Error ? e.message : "error"}.`;
+        setHistory(prev => [...prev, { role: "ai", text: msg }]);
+        animateWords(msg);
+      }
     }
-  }, [animateWords]);
+  }, [animateWords, openTab, router]);
 
   // Fetch helper
   const callPatas = useCallback(async (message: string, spontaneous = false) => {
