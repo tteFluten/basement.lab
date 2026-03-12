@@ -75,13 +75,14 @@ function formatSize(bytes: number): string {
 }
 
 function SessionCard({
-  s, projectSlug, isSelected, onToggleSelect, onUpdate,
+  s, projectSlug, isSelected, onToggleSelect, onUpdate, onDelete,
 }: {
   s: FeedbackSession;
   projectSlug: string;
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
   onUpdate: (id: string, updates: Partial<FeedbackSession>) => void;
+  onDelete: (id: string) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -310,6 +311,13 @@ function SessionCard({
               title="Edit session"
             >
               <Pencil size={11} />
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Delete "${s.title}"? This cannot be undone.`)) onDelete(s.id); }}
+              className="p-1 text-fg-muted/40 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+              title="Delete session"
+            >
+              <Trash2 size={11} />
             </button>
           </div>
         )}
@@ -744,6 +752,11 @@ export default function ProjectPage() {
     await navigator.clipboard.writeText(links);
     setCopyAllDone(true);
     setTimeout(() => setCopyAllDone(false), 2500);
+  }
+
+  async function handleDeleteSession(id: string) {
+    const res = await fetch(`/api/feedback/sessions/${id}`, { method: "DELETE" });
+    if (res.ok) setSessions((prev) => prev.filter((s) => s.id !== id));
   }
 
   async function handleBulkDelete() {
@@ -1315,6 +1328,7 @@ export default function ProjectPage() {
                 isSelected={selectedIds.has(s.id)}
                 onToggleSelect={handleToggleSelect}
                 onUpdate={handleUpdateSession}
+                onDelete={handleDeleteSession}
               />
             </div>
           ))}

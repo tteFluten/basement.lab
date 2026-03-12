@@ -31,12 +31,20 @@
 }
 
 /* ----- Base ----- */
+*, *::before, *::after {
+  font-family: 'Geist Mono', monospace;
+}
+
 body {
   font-family: 'Geist Mono', monospace;
   background-color: var(--app-bg);
   color: var(--app-text);
   line-height: 1.2;
   margin: 0;
+}
+
+input, select, textarea, button, option {
+  font-family: 'Geist Mono', monospace;
 }
 #root {
   min-height: 100%;

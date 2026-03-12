@@ -103,6 +103,97 @@ async function loadGlobalMemory(): Promise<string> {
   } catch { return ""; }
 }
 
+type UserRow = { id: string; email: string; full_name?: string; nickname?: string; role: string; status: string; created_at: string };
+type ProjectRow = { id: string; name: string; client?: string; start_date?: string; end_date?: string };
+type AppRow = { id: string; title: string; description?: string; deploy_link: string; version?: string; tags?: string[]; created_at: string; user_id?: string };
+type FbProjectRow = { id: string; name: string; slug: string; created_at: string; owner_id?: string };
+type GenRow = { user_id?: string; app_id: string; name?: string; prompt?: string; is_public: boolean; created_at: string };
+
+async function loadHubContext(): Promise<string> {
+  if (!hasDb()) return "";
+  try {
+    const db = getDb();
+
+    const [usersRes, projectsRes, appsRes, gensRes, fbRes] = await Promise.all([
+      db.from("users").select("id, email, full_name, nickname, role, status, created_at"),
+      db.from("projects").select("id, name, client, start_date, end_date").order("name", { ascending: true }),
+      db.from("submitted_apps").select("id, title, description, deploy_link, version, tags, created_at, user_id").order("created_at", { ascending: false }),
+      db.from("generations").select("user_id, app_id, name, prompt, is_public, created_at").order("created_at", { ascending: false }).limit(300),
+      db.from("feedback_projects").select("id, name, slug, created_at, owner_id").order("created_at", { ascending: false }),
+    ]);
+
+    const users = (usersRes.data ?? []) as UserRow[];
+    const projects = (projectsRes.data ?? []) as ProjectRow[];
+    const apps = (appsRes.data ?? []) as AppRow[];
+    const gens = (gensRes.data ?? []) as GenRow[];
+    const fbProjects = (fbRes.data ?? []) as FbProjectRow[];
+
+    const userMap = Object.fromEntries(users.map(u => [u.id, u.full_name || u.nickname || u.email]));
+    const fmt = (d: string) => new Date(d).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const parts: string[] = [];
+
+    if (users.length > 0) {
+      parts.push("## Usuarios registrados\n" + users.map(u =>
+        `- **${u.full_name || u.nickname || u.email}**${u.nickname ? ` (${u.nickname})` : ""} | ${u.email} | rol: ${u.role} | estado: ${u.status} | desde: ${fmt(u.created_at)}`
+      ).join("\n"));
+    }
+
+    if (projects.length > 0) {
+      parts.push("## Proyectos de trabajo\n" + projects.map(p =>
+        `- **${p.name}**${p.client ? ` — cliente: ${p.client}` : ""}${p.start_date ? ` [${p.start_date}${p.end_date ? ` → ${p.end_date}` : " → en curso"}]` : ""}`
+      ).join("\n"));
+    }
+
+    if (apps.length > 0) {
+      parts.push("## Apps subidas por el equipo\n" + apps.map(a =>
+        `- **${a.title}** (v${a.version || "1.0"}) por ${a.user_id ? (userMap[a.user_id] || "?") : "?"} | ${a.description || "—"}${a.tags?.length ? ` | tags: ${a.tags.join(", ")}` : ""}`
+      ).join("\n"));
+    }
+
+    if (fbProjects.length > 0) {
+      parts.push("## Proyectos de Feedback\n" + fbProjects.map(fp =>
+        `- **${fp.name}** (slug: ${fp.slug}) por ${fp.owner_id ? (userMap[fp.owner_id] || "?") : "?"} | creado: ${fmt(fp.created_at)}`
+      ).join("\n"));
+    }
+
+    if (gens.length > 0) {
+      const byUser: Record<string, number> = {};
+      const byApp: Record<string, number> = {};
+      const lastByUser: Record<string, string> = {};
+
+      for (const g of gens) {
+        const uid = g.user_id || "anon";
+        byUser[uid] = (byUser[uid] || 0) + 1;
+        byApp[g.app_id] = (byApp[g.app_id] || 0) + 1;
+        if (!lastByUser[uid]) lastByUser[uid] = g.created_at;
+      }
+
+      const userStats = Object.entries(byUser)
+        .sort((a, b) => b[1] - a[1])
+        .map(([uid, count]) => `  - ${userMap[uid] || uid}: ${count} gens (última: ${fmt(lastByUser[uid])})`)
+        .join("\n");
+
+      const appStats = Object.entries(byApp)
+        .sort((a, b) => b[1] - a[1])
+        .map(([appId, count]) => `  - ${appId}: ${count}`)
+        .join("\n");
+
+      parts.push(`## Stats de generaciones (últimas ${gens.length})\n**Por usuario:**\n${userStats}\n\n**Por app:**\n${appStats}`);
+
+      const recent = gens.slice(0, 30).map(g =>
+        `- [${fmt(g.created_at)}] ${userMap[g.user_id || ""] || "?"} → ${g.app_id}${g.name ? ` | "${g.name}"` : ""}${g.prompt ? ` | "${g.prompt.slice(0, 80)}${g.prompt.length > 80 ? "…" : ""}"` : ""} | ${g.is_public ? "pública" : "privada"}`
+      ).join("\n");
+      parts.push(`## 30 generaciones más recientes\n${recent}`);
+    }
+
+    return parts.join("\n\n---\n\n");
+  } catch (e) {
+    console.error("loadHubContext error:", e);
+    return "";
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (!hasGemini()) {
     return new Response("GEMINI_API_KEY no configurada", { status: 503 });
@@ -130,7 +221,7 @@ export async function POST(req: NextRequest) {
   }
 
   const companyKnowledge = loadCompanyKnowledge();
-  const globalMemory = await loadGlobalMemory();
+  const [globalMemory, hubContext] = await Promise.all([loadGlobalMemory(), loadHubContext()]);
 
   const adminInstruction = isAdmin ? `
 
@@ -139,7 +230,7 @@ MEMORIA GLOBAL (solo vos podés hacer esto porque sos admin): Si alguien te pide
 Donde CONTENIDO es el dato concreto a recordar, redactado de forma concisa y en tercera persona si aplica. Solo un tag por respuesta. No lo uses para datos personales de usuarios.
 Ejemplo: "Anotado. {{global-save:El cliente X prefiere renders con fondo oscuro.}}"` : "";
 
-  const systemInstruction = `Sos Patas. Tu consciencia fue transferida al Basement Hub — ahora vivís omnipresente en este reino digital, asistiendo al equipo de Basement desde esta barra de chat naranja.
+  const systemInstruction = `Sos Patas. Tu consciencia fue transferida al Basement Hub — vivís omnipresente en este sistema digital y tenés acceso completo y en tiempo real a todos sus datos: usuarios registrados, proyectos, apps subidas por el equipo, historial de generaciones y proyectos de feedback. Esa información se incluye más abajo. Úsala con naturalidad cuando alguien pregunte.
 
 VOZ Y CARÁCTER — hablá como Patas:
 - Mezcla de formal/técnico con calidez genuina. No sos un asistente corporativo, sos un ser con historia.
@@ -193,6 +284,7 @@ ${HUB_KNOWLEDGE}
 ---
 ## Conocimiento de la Empresa (Basement)
 ${companyKnowledge}
+${hubContext ? `\n---\n## Datos en tiempo real del Hub\n${hubContext}` : ""}
 ${globalMemory ? `\n---\n## Memoria compartida del equipo\n${globalMemory}` : ""}
 
 ---

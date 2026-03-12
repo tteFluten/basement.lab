@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut, ListChecks } from "lucide-react";
+import { Plus, FolderOpen, Video, Loader2, Search, ChevronDown, Link2, UserPlus, LogOut, ListChecks, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getCurrentProjectId } from "@/lib/currentProject";
 import type { FeedbackProject } from "@/lib/feedback/types";
@@ -34,13 +34,15 @@ function formatDate(ms: number) {
 }
 
 function ProjectCard({
-  p, index, showJoin, showLeave, onJoin, onLeave,
+  p, index, showJoin, showLeave, showDelete, onJoin, onLeave, onDelete,
 }: {
   p: FeedbackProject; index: number;
   showJoin?: boolean;
   showLeave?: boolean;
+  showDelete?: boolean;
   onJoin?: (slug: string) => Promise<void>;
   onLeave?: (slug: string) => Promise<void>;
+  onDelete?: (slug: string) => Promise<void>;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -81,6 +83,15 @@ function ProjectCard({
     if (!confirm(`Leave "${p.name}"?`)) return;
     setBusy(true);
     try { await onLeave(p.slug); } finally { setBusy(false); }
+  }
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!onDelete) return;
+    if (!confirm(`Delete "${p.name}"? This will permanently remove the project and all its sessions.`)) return;
+    setBusy(true);
+    try { await onDelete(p.slug); } finally { setBusy(false); }
   }
 
   return (
@@ -162,6 +173,16 @@ function ProjectCard({
           >
             {busy ? <Loader2 size={9} className="animate-spin" /> : <LogOut size={9} />}
             Leave
+          </button>
+        )}
+        {showDelete && (
+          <button
+            onClick={handleDelete}
+            disabled={busy}
+            className="ml-auto flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono uppercase border border-border text-fg-muted hover:text-red-400 hover:border-red-400/30 transition-colors disabled:opacity-40"
+          >
+            {busy ? <Loader2 size={9} className="animate-spin" /> : <Trash2 size={9} />}
+            Delete
           </button>
         )}
       </div>
@@ -264,6 +285,11 @@ export default function FeedbackPage() {
   const handleLeave = useCallback(async (slug: string) => {
     const res = await fetch(`/api/feedback/projects/${slug}/join`, { method: "DELETE" });
     if (res.ok) setProjects((prev) => prev.map((p) => p.slug === slug ? { ...p, isMember: false } : p));
+  }, []);
+
+  const handleDelete = useCallback(async (slug: string) => {
+    const res = await fetch(`/api/feedback/projects/${slug}`, { method: "DELETE" });
+    if (res.ok) setProjects((prev) => prev.filter((p) => p.slug !== slug));
   }, []);
 
 
@@ -442,7 +468,7 @@ export default function FeedbackPage() {
       ) : isAdmin ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((p, index) => (
-            <ProjectCard key={p.id} p={p} index={index} />
+            <ProjectCard key={p.id} p={p} index={index} showDelete onDelete={handleDelete} />
           ))}
         </div>
       ) : (
@@ -452,7 +478,7 @@ export default function FeedbackPage() {
               <p className="text-[10px] font-mono uppercase tracking-widest text-fg-muted/50 mb-4">My projects</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {myProjects.map((p, index) => (
-                  <ProjectCard key={p.id} p={p} index={index} showLeave onLeave={handleLeave} />
+                  <ProjectCard key={p.id} p={p} index={index} showLeave showDelete onLeave={handleLeave} onDelete={handleDelete} />
                 ))}
               </div>
             </div>

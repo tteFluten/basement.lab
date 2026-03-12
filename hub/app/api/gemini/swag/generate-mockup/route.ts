@@ -3,6 +3,19 @@ import { getGemini, hasGemini } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 
+async function toBase64(input: string): Promise<{ data: string; mimeType: string }> {
+  if (input.startsWith("http://") || input.startsWith("https://")) {
+    const res = await fetch(input);
+    if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const ct = res.headers.get("content-type") ?? "image/png";
+    return { data: buffer.toString("base64"), mimeType: ct.split(";")[0] };
+  }
+  const raw = input.includes(",") ? input.split(",")[1] : input;
+  const mimeMatch = input.match(/^data:([^;]+);/);
+  return { data: raw, mimeType: mimeMatch?.[1] ?? "image/png" };
+}
+
 const STYLE_MODIFIERS: Record<string, string> = {
   "Reference Composition": "Match the visual language of the reference image exactly.",
   "Clean & Minimalist": "Extremely clean, negative space, sharp focus, essential elements only.",
@@ -31,10 +44,11 @@ export async function POST(request: NextRequest) {
     const additionalDetails = (body.additionalDetails as string) ?? "";
     const strictReference = body.strictReference === true;
 
-    const logoData = logoBase64.includes(",") ? logoBase64.split(",")[1] : logoBase64;
-    if (!logoData) {
+    if (!logoBase64) {
       return NextResponse.json({ error: "logoBase64 required" }, { status: 400 });
     }
+    const logoResolved = await toBase64(logoBase64);
+    const logoData = logoResolved.data;
 
     const currentStyleModifier = STYLE_MODIFIERS[stylePreset] ?? "Clean, professional product photography.";
 
@@ -84,10 +98,10 @@ export async function POST(request: NextRequest) {
     }
 
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [{ text: prompt }];
-    parts.push({ inlineData: { data: logoData, mimeType: "image/png" } });
+    parts.push({ inlineData: { data: logoData, mimeType: logoResolved.mimeType } });
     if (styleBase64) {
-      const styleData = styleBase64.includes(",") ? styleBase64.split(",")[1] : styleBase64;
-      parts.push({ inlineData: { data: styleData, mimeType: "image/jpeg" } });
+      const styleResolved = await toBase64(styleBase64);
+      parts.push({ inlineData: { data: styleResolved.data, mimeType: styleResolved.mimeType } });
     }
 
     const model = (body.model as string) ?? "gemini-3.1-flash-image-preview";

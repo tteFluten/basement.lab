@@ -1,7 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+
+const IDLE_PROMPTS = [
+  "¿Cargaste tus horas en Harvest hoy?",
+  "Tomá agua. En serio, ahora.",
+  "¿Hay alguna meet en los próximos 30 minutos?",
+  "Un descanso de 5 minutos te va a dar más que 30 de forcejeo.",
+  "¿Bloqueado? Describí el problema en voz alta o escribilo.",
+  "Revisá si tenés mails sin responder de ayer.",
+  "¿Tus horas de esta semana están al día en Harvest?",
+  "Levantate, estirá los hombros, volvé.",
+  "¿El bloqueador que tenés es técnico o de decisión?",
+  "Mandá ese mensaje que venís postergando.",
+  "¿Hace cuánto no comés algo?",
+  "Revisá el calendario: ¿hay algo que te hayan movido?",
+  "Si estás en un loop, cambiá de contexto por 10 minutos.",
+  "¿Hay alguna tarea que puedas cerrar ahora mismo en 2 minutos?",
+  "¿Cargaste el tiempo de hoy en Harvest?",
+  "Respirá profundo. Tres veces. Ya.",
+  "¿Necesitás que alguien desbloquee algo? Escribile.",
+  "Revisá si hay PRs esperando tu revisión.",
+  "¿El problema más urgente de hoy ya tiene dueño?",
+  "Tomá agua y después decidí qué sigue.",
+];
 import { Sun, Moon, Lock, Globe } from "lucide-react";
 import {
   IMAGE_MODELS,
@@ -41,10 +64,21 @@ export function Footer() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
   const [model, setModel] = useState(DEFAULT_IMAGE_MODEL);
+  const [idlePromptIdx, setIdlePromptIdx] = useState(0);
+  const idleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    setIdlePromptIdx(Math.floor(Math.random() * IDLE_PROMPTS.length));
   }, []);
+
+  useEffect(() => {
+    if (!mounted || appSlug) return;
+    idleIntervalRef.current = setInterval(() => {
+      setIdlePromptIdx((i) => (i + 1) % IDLE_PROMPTS.length);
+    }, 12000);
+    return () => { if (idleIntervalRef.current) clearInterval(idleIntervalRef.current); };
+  }, [mounted, appSlug]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -140,7 +174,7 @@ export function Footer() {
             </span>
           </>
         ) : (
-          <span className="text-fg-muted">Select an app to choose model</span>
+          <span className="text-fg-muted italic">{IDLE_PROMPTS[idlePromptIdx]}</span>
         )}
       </div>
       <button

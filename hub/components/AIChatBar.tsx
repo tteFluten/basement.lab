@@ -10,8 +10,9 @@ import { getAppUrl } from "@/lib/appUrls";
 type Message = { role: "user" | "ai"; text: string };
 
 const COLLAPSED_H = 32;
-const EXPANDED_H = 120;
-const COLLAPSED_MAX_CHARS = 90;
+const EXPANDED_H_DEFAULT = 220;
+const EXPANDED_H_MIN = 80;
+const EXPANDED_H_MAX = 700;
 const WORD_DELAY_MS = 36;
 
 const ZONES: Record<string, string> = {
@@ -75,11 +76,6 @@ function extractGlobalSave(text: string): string | null {
 const SUMMARIZE_EVERY_N = 10; // AI messages between summaries
 const MAX_STORED_MESSAGES = 120; // localStorage cap (long-term memory is in DB)
 
-function truncateForBar(text: string): { visible: string; hasMore: boolean } {
-  if (text.length <= COLLAPSED_MAX_CHARS) return { visible: text, hasMore: false };
-  const cut = text.slice(0, COLLAPSED_MAX_CHARS).replace(/\s+\S*$/, "") || text.slice(0, COLLAPSED_MAX_CHARS);
-  return { visible: cut, hasMore: true };
-}
 
 function loadHistory(userEmail: string | null): Message[] {
   try {
@@ -102,12 +98,16 @@ export function AIChatBar() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [expandedH, setExpandedH] = useState(EXPANDED_H_DEFAULT);
   const [history, setHistory] = useState<Message[]>([]);
   const [animatedText, setAnimatedText] = useState("");
   const [isAnimating, setIsAnimating] = useState(false);
   const [highlight, setHighlight] = useState<DOMRect | null>(null);
   const [patasMemory, setPatasMemory] = useState<string | null>(null);
+  const [textOverflows, setTextOverflows] = useState(false);
   const aiMessageCountRef = useRef(0);
+  const collapsedTextSpanRef = useRef<HTMLSpanElement>(null);
+  const dragStateRef = useRef<{ startY: number; startH: number } | null>(null);
 
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const animTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -327,6 +327,36 @@ export function AIChatBar() {
     historyEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, animatedText, expanded]);
 
+  // Detect text overflow in collapsed bar
+  useEffect(() => {
+    const el = collapsedTextSpanRef.current;
+    if (!el) return;
+    const check = () => setTextOverflows(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+
+  // Drag-to-resize handlers
+  const handleResizeDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragStateRef.current = { startY: e.clientY, startH: expandedH };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragStateRef.current) return;
+      const delta = dragStateRef.current.startY - ev.clientY; // drag up = bigger
+      const next = Math.min(EXPANDED_H_MAX, Math.max(EXPANDED_H_MIN, dragStateRef.current.startH + delta));
+      setExpandedH(next);
+    };
+    const onUp = () => {
+      dragStateRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [expandedH]);
+
   const submit = useCallback(async () => {
     const msg = input.trim();
     if (!msg || loading) return;
@@ -399,7 +429,6 @@ export function AIChatBar() {
 
   // What to show in collapsed bar
   const collapsedText = animatedText || (history.findLast(h => h.role === "ai")?.text ?? "");
-  const { visible: collapsedVisible, hasMore: collapsedHasMore } = truncateForBar(collapsedText);
 
   // In expanded history, animate the last AI entry
   const lastAiIndex = history.map((h, i) => h.role === "ai" ? i : -1).filter(i => i >= 0).at(-1) ?? -1;
@@ -420,16 +449,16 @@ export function AIChatBar() {
       }
       .patas-more {
         cursor: pointer;
-        display: inline-flex; align-items: center;
-        font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
-        padding: 0px 5px; border-radius: 3px;
-        border: 1px solid rgba(255,77,0,0.3);
-        background: rgba(255,77,0,0.07);
+        display: inline-flex; align-items: center; gap: 3px;
+        font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+        padding: 2px 7px; border-radius: 3px;
+        border: 1px solid rgba(255,77,0,0.5);
+        background: rgba(255,77,0,0.12);
         animation: patas-more-glow 2s ease-in-out infinite;
-        vertical-align: middle; margin-left: 5px; line-height: 14px;
-        user-select: none; flex-shrink: 0;
+        vertical-align: middle; margin-left: 6px; line-height: 14px;
+        user-select: none; flex-shrink: 0; white-space: nowrap;
       }
-      .patas-more:hover { animation: none; box-shadow: 0 0 8px rgba(255,77,0,0.55); border-color: rgb(255,77,0); color: rgb(255,77,0); background: rgba(255,77,0,0.15); }
+      .patas-more:hover { animation: none; box-shadow: 0 0 8px rgba(255,77,0,0.55); border-color: rgb(255,77,0); color: rgb(255,77,0); background: rgba(255,77,0,0.2); }
     `}</style>
 
     {highlight && (
@@ -449,16 +478,30 @@ export function AIChatBar() {
       style={{
         backgroundColor: "#110600",
         borderTop: "1px solid rgba(255,77,0,0.18)",
-        height: expanded ? EXPANDED_H : COLLAPSED_H,
-        transition: "height 0.2s cubic-bezier(0.4,0,0.2,1)",
+        height: expanded ? expandedH + COLLAPSED_H : COLLAPSED_H,
+        transition: dragStateRef.current ? "none" : "height 0.2s cubic-bezier(0.4,0,0.2,1)",
         overflow: "hidden",
       }}
     >
+      {/* Resize handle — drag up/down to resize expanded area */}
+      {expanded && (
+        <div
+          onMouseDown={handleResizeDragStart}
+          style={{
+            height: 6, cursor: "ns-resize", display: "flex", alignItems: "center", justifyContent: "center",
+            background: "transparent", flexShrink: 0,
+          }}
+          title="Arrastrar para redimensionar"
+        >
+          <div style={{ width: 32, height: 2, borderRadius: 2, background: "rgba(255,77,0,0.25)" }} />
+        </div>
+      )}
+
       {/* Expanded history */}
       <div
         id="patas-history"
         className="overflow-y-auto flex flex-col gap-0.5 px-3 py-1.5"
-        style={{ height: EXPANDED_H - COLLAPSED_H, display: expanded ? "flex" : "none" }}
+        style={{ height: expanded ? expandedH - 6 : 0, display: expanded ? "flex" : "none" }}
       >
         {history.length === 0 && (
           <p className="text-xs italic select-none" style={{ color: Cfaint }}>
@@ -516,31 +559,35 @@ export function AIChatBar() {
 
         {/* Inline response — collapsed only */}
         {!expanded && (
-          <div className="flex-1 min-w-0 px-2 text-xs" style={{ color: C, display: "flex", alignItems: "center", overflow: "visible" }}>
+          <div className="flex-1 min-w-0 px-2 text-xs overflow-hidden" style={{ color: C }}>
             {loading && (
               <span className="animate-pulse" style={{ color: Cfaint }}>▊▊▊</span>
             )}
             {!loading && collapsedText && (
-              <>
-                <span className="whitespace-nowrap overflow-hidden" style={{ minWidth: 0, flex: "1 1 0" }}>
-                  {collapsedVisible}
-                  {isAnimating && (
-                    <span className="animate-pulse" style={{ color: Cdim }}>▊</span>
-                  )}
-                </span>
-                {!isAnimating && collapsedHasMore && (
-                  <span
-                    className="patas-more"
-                    style={{ color: Cdim }}
-                    onClick={() => setExpanded(true)}
-                    title="Ver respuesta completa"
-                  >
-                    ···
-                  </span>
+              <span
+                ref={collapsedTextSpanRef}
+                className="whitespace-nowrap"
+                style={{ overflow: "hidden", textOverflow: "ellipsis", display: "block" }}
+              >
+                {collapsedText}
+                {isAnimating && (
+                  <span className="animate-pulse" style={{ color: Cdim }}>▊</span>
                 )}
-              </>
+              </span>
             )}
           </div>
+        )}
+
+        {/* "Ver más" — fixed at the right edge, only when collapsed text overflows */}
+        {!expanded && !isAnimating && textOverflows && (
+          <span
+            className="patas-more shrink-0"
+            style={{ color: Cdim }}
+            onClick={() => setExpanded(true)}
+            title="Ver respuesta completa"
+          >
+            ver más ↗
+          </span>
         )}
 
         {expanded && <div className="flex-1" />}
