@@ -81,7 +81,7 @@ export function Footer() {
 
   if (!mounted) {
     return (
-      <footer className="border-t border-border bg-bg-muted shrink-0 px-4 py-2 flex justify-end items-center gap-4">
+      <footer className="border-t border-border bg-bg-muted shrink-0 px-4 py-2 flex justify-end items-center gap-4" data-zone="footer">
         <span className="flex h-8 border border-border text-fg-muted">
           <span className="flex w-9 items-center justify-center border-r border-border">
             <Sun size={16} />
@@ -95,7 +95,7 @@ export function Footer() {
   }
 
   return (
-    <footer className="border-t border-border bg-bg-muted shrink-0 px-4 py-2 flex flex-wrap items-center justify-between gap-4">
+    <footer className="border-t border-border bg-bg-muted shrink-0 px-4 py-2 flex flex-wrap items-center justify-between gap-4" data-zone="footer">
       <div className="flex items-center gap-3 text-xs">
         {appSlug ? (
           <>
@@ -108,6 +108,7 @@ export function Footer() {
               onChange={handleModelChange}
               className="bg-bg border border-border px-2 py-1 text-fg focus:outline-none focus:border-fg-muted min-w-[240px] max-w-[280px]"
               title="Image generation model for this app"
+              data-zone="model-selector"
             >
               {IMAGE_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -119,7 +120,7 @@ export function Footer() {
               Last: {lastGenerationMs != null ? formatDuration(lastGenerationMs) : "—"}
             </span>
             <span className="text-fg-muted">Save as:</span>
-            <span className="flex border border-border">
+            <span className="flex border border-border" data-zone="visibility-toggle">
               <button
                 type="button"
                 title="New saves will be private (only you)"
@@ -149,6 +150,7 @@ export function Footer() {
         aria-checked={theme === "light"}
         aria-label="Toggle theme"
         title={theme === "dark" ? "Switch to light" : "Switch to dark"}
+        data-zone="theme-toggle"
         className="relative h-7 w-14 border border-border bg-bg-muted transition-colors hover:border-fg-muted"
         style={{ borderRadius: 9999 }}
       >

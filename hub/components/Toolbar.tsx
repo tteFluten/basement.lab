@@ -511,7 +511,7 @@ function TabStrip() {
   if (openTabs.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-px px-4 py-0.5 bg-bg border-t border-border overflow-x-auto">
+    <div className="flex items-center gap-px px-4 py-0.5 bg-bg border-t border-border overflow-x-auto" data-zone="tabs">
       {openTabs.map((tab) => {
         const isActive = activeSlug === tab.slug;
         return (
@@ -555,7 +555,7 @@ export function Toolbar() {
   const { openTabs } = useAppTabs();
 
   return (
-    <header className="border-b border-border bg-bg-muted shrink-0">
+    <header className="border-b border-border bg-bg-muted shrink-0" data-zone="toolbar">
       <nav className="flex items-center gap-4 px-4 py-2 flex-wrap">
         <Link
           href="/"

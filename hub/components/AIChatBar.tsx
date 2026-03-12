@@ -10,6 +10,25 @@ type Message = { role: "user" | "ai"; text: string };
 const COLLAPSED_H = 32;
 const EXPANDED_H = 120;
 
+const ZONES: Record<string, string> = {
+  toolbar:             '[data-zone="toolbar"]',
+  tabs:                '[data-zone="tabs"]',
+  footer:              '[data-zone="footer"]',
+  "model-selector":    '[data-zone="model-selector"]',
+  "theme-toggle":      '[data-zone="theme-toggle"]',
+  "visibility-toggle": '[data-zone="visibility-toggle"]',
+  chat:                '[data-zone="ai-chat"]',
+};
+
+function stripZones(text: string) {
+  return text.replace(/\{\{zone:[a-z-]+\}\}/g, "").trim();
+}
+
+function extractZone(text: string): string | null {
+  const m = text.match(/\{\{zone:([a-z-]+)\}\}/);
+  return m ? m[1] : null;
+}
+
 export function AIChatBar() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState("");
@@ -17,10 +36,23 @@ export function AIChatBar() {
   const [expanded, setExpanded] = useState(false);
   const [history, setHistory] = useState<Message[]>([]);
 
+  const [highlight, setHighlight] = useState<DOMRect | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   const inputRef = useRef<HTMLInputElement>(null);
   const historyEndRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { activeSlug } = useAppTabs();
+
+  const triggerZone = useCallback((zoneName: string) => {
+    const sel = ZONES[zoneName];
+    if (!sel) return;
+    const el = document.querySelector(sel);
+    if (!el) return;
+    setHighlight(el.getBoundingClientRect());
+    clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlight(null), 3500);
+  }, []);
 
   // Eye animation
   const eyeRef = useRef<HTMLDivElement>(null);
@@ -110,10 +142,13 @@ export function AIChatBar() {
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
         fullText += chunk;
-        setStreaming(fullText);
+        setStreaming(stripZones(fullText));
       }
 
-      setHistory((prev) => [...prev, { role: "ai", text: fullText }]);
+      const zone = extractZone(fullText);
+      if (zone) triggerZone(zone);
+      const cleanText = stripZones(fullText);
+      setHistory((prev) => [...prev, { role: "ai", text: cleanText }]);
     } catch (e) {
       const errText = e instanceof Error ? `Error: ${e.message}` : "Error al contactar al asistente.";
       setHistory((prev) => [...prev, { role: "ai", text: errText }]);
@@ -135,8 +170,34 @@ export function AIChatBar() {
 
   return (
     <>
-    <style>{`#ai-chat-input::placeholder { color: rgba(255,77,0,0.3); }`}</style>
+    <style>{`
+      #ai-chat-input::placeholder { color: rgba(255,77,0,0.3); }
+      @keyframes patas-ping {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+      }
+    `}</style>
+
+    {/* Zone highlight overlay */}
+    {highlight && (
+      <div
+        style={{
+          position: "fixed",
+          top: highlight.top - 3,
+          left: highlight.left - 3,
+          width: highlight.width + 6,
+          height: highlight.height + 6,
+          border: "2px solid rgb(255,77,0)",
+          pointerEvents: "none",
+          zIndex: 9998,
+          animation: "patas-ping 1s ease-in-out infinite",
+          boxShadow: "0 0 8px rgba(255,77,0,0.4), inset 0 0 8px rgba(255,77,0,0.08)",
+        }}
+      />
+    )}
+
     <div
+      data-zone="ai-chat"
       className="shrink-0"
       style={{
         backgroundColor: "#110600",
