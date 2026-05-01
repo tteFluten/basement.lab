@@ -1,0 +1,4 @@
+{
+  "name": "DotMask",
+  "description": "Bulk file format converter for audio and video. Drop files, pick a target format, convert locally in the browser via FFmpeg WASM."
+}
